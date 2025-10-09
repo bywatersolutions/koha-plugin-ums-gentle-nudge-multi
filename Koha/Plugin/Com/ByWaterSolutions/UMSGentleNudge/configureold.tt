@@ -6,12 +6,11 @@
 [% INCLUDE 'doc-head-close.inc' %]
 </head>
 <body>
-[% INCLUDE 'header.inc' %]
+
 [% INCLUDE 'cat-search.inc' %]
 
 <div id="breadcrumbs"><a href="/cgi-bin/koha/mainpage.pl">Home</a> &rsaquo; <a href="/cgi-bin/koha/plugins/plugins-home.pl">Plugins</a> &rsaquo; UMS Collections &rsaquo; Configuration</div>
-
-<div id="container-main" class="container-fluid">
+[% PROCESS 'main-container.inc' asides='admin-menu' %]
     <div class="panel panel-default">
       <div class="panel-heading">
         <h3 class="panel-title">Utilities</h3>
@@ -215,7 +214,6 @@
             <button type="submit" class="btn btn-default">Submit</button>
           </div>
         </form>
-    </div>
 
 [% MACRO jsinclude BLOCK %]
     [% INCLUDE 'calendar.inc' %]

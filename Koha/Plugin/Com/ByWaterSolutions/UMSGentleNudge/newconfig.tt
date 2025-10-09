@@ -1,0 +1,434 @@
+[% WRAPPER "wrapper-staff-tool-plugin.inc" method="configure" plugin_title="UMS Collections" %]
+<title>
+    [% FILTER collapse %]
+        [% IF op == 'add_form' %]
+            [% IF umsconfig_type == 'global' %]
+                <h2>Modify Global configuration</h2>
+                <span class="help-block">All branches/groups will be use this unless they have their own configuration defined.</span>
+            [% ELSIF config_type == 'branch' %]
+                [% IF umsconfig.config_id %]
+                    [% tx("Modify library '{library}' configuration", { library = umsconfig.config_id }) | html %]
+                [% END %] <!--Library title-->
+                <span class="help-block">This uses the library function <a href="/cgi-bin/koha/admin/branches.pl">See and define branches.</a></span>
+            [% ELSIF config_type == 'group' %]
+                [% IF umsconfig.config_id %]
+                    [% tx("Modify group '{group}' configuration", { group = umsconfig.config_id }) | html %]
+                [% END %] <!--Group title-->
+                <span class="help-block">This uses the library groups function. <a href="/cgi-bin/koha/admin/library_groups.pl">See and Define Groups</a>.</span>
+            [% END %] <!--config_type-->
+        [% END %]<!--Add form-->
+    [% END %]<!--filter-->
+</title>
+
+[% FOREACH m IN messages %]
+    <div class="alert alert-[% m.type | html %]">
+        [% SWITCH m.code %]
+        [% CASE 'error_on_update' %]
+            <span>An error occurred when updating this configuration. Perhaps it already exists.</span>
+        [% CASE 'error_on_insert' %]
+            <span>An error occurred when adding this configuration. The config_id might already exist.</span>
+        [% CASE 'error_on_delete' %]
+            <span>An error occurred when deleting this configuration. Check the logs for details.</span>
+        [% CASE 'success_on_update' %]
+            <span>Configuration updated successfully.</span>
+        [% CASE 'success_on_insert' %]
+            <span>Configuration added successfully.</span>
+        [% CASE 'success_on_delete' %]
+            <span>Configuration deleted successfully.</span>
+        [% CASE %]
+            <span>[% m.code | html %]</span>
+        [% END %]
+    </div>
+[% END %]
+
+<body>
+<div id="doc3" class="panel panel-default" style="padding:10px;">
+     <h1 class="panel-title">UMS Gentle Nudge Configuration</h1>
+[% IF op == 'list' || op == 'view' %]
+    <div id="toolbar" class="btn-toolbar">
+        <a class="btn btn-default" id="newconfig" href="/cgi-bin/koha/admin/branches.pl?op=add_form"><i class="fa fa-plus"></i> New library</a>
+        [% IF op == 'view' && library %]
+            <a class="btn btn-default" id="editbranch" href="/cgi-bin/koha/admin/branches.pl?op=add_form&branchcode=[% library.branchcode | uri %]"><i class="fa-solid fa-pencil" aria-hidden="true"></i> Edit library</a>
+        [% END %]
+    </div>
+[% END %]
+
+[% IF op == 'add_form' %]
+      <div id="edit_umsconfig_modal" class="modal" role="dialog" aria-hidden="true" style="display:block !important;">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 id="search_filters_label">Edit configuration for <span id="umsconfig_edit_modal_name"></span></h1>
+              <button type="button" class="closebtn" data-bs-dismiss="modal" aria-hidden="false">x</button>
+            </div><!-- /modal-header -->
+            <div class="modal-body">
+              <div class="umsconfig-edit" data-type="update_umsconfig">
+                <fieldset class="rows">
+                <legend>Configuration</legend>
+
+<div class="form-group">
+                    <label for="umsconfig_id">Configuration for: </label>
+                    <select name="umsconfig_selector" id="umsconfig_id_select" class="form-control">
+
+                        [% IF umsconfig_type=="branch" %]
+                              <option>Select a branch</option>
+                          [% FOREACH l IN libraries %]
+                              <option value="[% l.branchcode %]" [% IF umsconfig_id == l.branchcode %]selected="selected"[% END %]>[% l.branchname | html %]</option>
+                          [% END %]
+                        [% ELSIF umsconfig_type=="group" %]
+                          [% FOREACH g in groups %]
+                            <option value="[% g.id %]" [% IF umsconfig_id==g.id %]selected="selected"[% END %]>[% g.description |html %]</option>
+                          [% END %]
+                        [% ELSE %]
+                        <option value="default" selected="selected">Default</option>
+                        [% END %]
+                    </select>
+                    <span class="help-block">This uses the [% IF umsconfig_type=="group" %]library groups function. <a href="/cgi-bin/koha/admin/library_groups.pl">See and Define Groups</a>.[% ELSE %]library function <a href="/cgi-bin/koha/admin/branches.pl">See and define branches.</a>[% END %]</span>
+</div>
+<div class="form-group">
+                    <label for="umsconfig_day">Day of week to send</label>
+                    <select name="run_on_dow" class="form-control">
+                        <option value="0" [% IF run_on_dow == 0 %]selected="selected"[% END %]>Sunday</option>
+                        <option value="1" [% IF run_on_dow == 1 %]selected="selected"[% END %]>Monday</option>
+                        <option value="2" [% IF run_on_dow == 2 %]selected="selected"[% END %]>Tuesday</option>
+                        <option value="3" [% IF run_on_dow == 3 %]selected="selected"[% END %]>Wednesday</option>
+                        <option value="4" [% IF run_on_dow == 4 %]selected="selected"[% END %]>Thursday</option>
+                        <option value="5" [% IF run_on_dow == 5 %]selected="selected"[% END %]>Friday</option>
+                        <option value="6" [% IF run_on_dow == 6 %]selected="selected"[% END %]>Saturday</option>
+                    </select>
+                    <span class="help-block">Please ensure that your system administrator has enabled the cronjob <em>plugins_nightly.pl</em>.</span>
+</div>
+<div class="form-group">
+                    <label for="umsconfig_categories">Patron categories: </label>
+                    <select name="patron_categories" class="form-control">
+                    </select>
+                    <span class="help-block">Leave blank for all categories</span>
+</div>
+<div class="form-group">
+                      <label for="fees_threshold">Threshold</label>
+                      <div class="input-group">
+                        <div class="input-group-addon">$</div>
+                        <input type="fees_threshold" name="fees_threshold" class="form-control" value="[% fees_threshold %]">
+                      </div>
+                      <span class="help-block">Minimum amount owed to be sent to collections.</span>
+                    </div>
+                    <div class="form-group">
+                      <label for="require_lost_fee">Require lost fee</label>
+                      <select name="require_lost_fee" class="form-control">
+                        <option value="no" [% IF require_lost_fee == "no" %]selected="selected"[% END %]>No</option>
+                        <option value="yes" [% IF require_lost_fee == "yes" %]selected="selected"[% END %]>Yes</option>
+                      </select>
+                      <span class="help-block">If enabled, a patron will not be sent to collections unless at least one of their outstanding fees is a lost fee of any amount.</span>
+                    </div>
+                    <div class="form-group">
+                      <label for="processing_fee">Processing fee</label>
+                      <div class="input-group">
+                        <div class="input-group-addon">$</div>
+                        <input type="processing_fee" name="processing_fee" class="form-control" value="[% processing_fee %]">
+                      </div>
+                      <span class="help-block">Amount of the processing fee added to the patron's account.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="collections_flag">Collections flag</label>
+                      <select name="collections_flag" class="form-control">
+                        <option value="sort1" [% IF collections_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
+                        <option value="sort2" [% IF collections_flag == "sort2" %]selected="selected"[% END %]>sort2</option>
+                        [% FOREACH a IN attributes %]
+                            <option value="[% a.code %]" [% IF collections_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
+                        [% END %]
+                      </select>
+                      <span class="help-block">
+                          Specify the how the patron is flagged as being in collections.
+                          If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO authorised value category.
+                          If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference.
+                      </span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="exemption_flag">Exemption flag</label>
+                      <select name="exemption_flag" class="form-control">
+                        <option value="sort1" [% IF exemption_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
+                        <option value="sort2" [% IF exemption_flag == "sort2" %]selected="selected"[% END %]>sort2</option>
+                        [% FOREACH a IN attributes %]
+                            <option value="[% a.code %]" [% IF exemption_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
+                        [% END %]
+                      </select>
+                      <span class="help-block">
+                          Specify the how the patron is flagged as being in collections.
+                          If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO authorised value category.
+                          If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference.
+                      </span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="fees_starting_age">Count fees newer than</label>
+                      <input type="text" name="fees_starting_age" class="form-control" value="[% fees_starting_age %]">
+                      <span class="help-block">Fees newer than this number of days will be totaled to check if a patron should be sent to collections.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="fees_ending_age">Count fees older than</label>
+                      <input type="text" name="fees_ending_age" class="form-control" value="[% fees_ending_age %]">
+                      <span class="help-block">Fees older than this number of days will be totaled to check if a patron should be sent to collections.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="fees_created_before_date_filter">Ignore fees created before this date</label>
+                      <input type="text" id="fees_created_before_date_filter" size="10" name="fees_created_before_date_filter" class="flatpickr" value="[% fees_created_before_date_filter | html %]"/>
+                      <span class="help-block">Fees created before this date will not be part of the total used to check if a patron should be sent to collections</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="auto_clear_paid">Clear collections flag for patrons with balance at or below the threshold</label>
+                      <select name="auto_clear_paid" class="form-control">
+                        <option value="yes" [% IF auto_clear_paid == "yes" %]selected="selected"[% END %]>Yes</option>
+                        <option value="no" [% IF auto_clear_paid == "no" %]selected="selected"[% END %]>No</option>
+                      </select>
+                      <span class="help-block">If enabled, patrons who have paid off all they owe will have the collections flag removed automatically.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="auto_clear_paid_threshold">Clear collections flag threshold</label>
+                      <input type="text" name="auto_clear_paid_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
+                      <span class="help-block">If set, the patron will be cleared from collections if if they do not exceed this threshold.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="add_restriction">Add restriction for patrons entering collections</label>
+                      <select name="add_restriction" class="form-control">
+                        <option value="yes" [% IF add_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+                        <option value="no" [% IF add_restriction == "no" %]selected="selected"[% END %]>No</option>
+                      </select>
+                      <span class="help-block">If enabled, newly flag patrons will have a restriction added to their record.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="age_limitation">Remove minors from collections report</label>
+                      <select name="age_limitation" class="form-control">
+                        <option value="yes" [% IF age_limitation == "yes" %]selected="selected"[% END %]>Yes</option>
+                        <option value="no" [% IF age_limitation == "no" %]selected="selected"[% END %]>No</option>
+                      </select>
+                      <span class="help-block">If enabled, patrons under the age of 18 years old will not be included on the collections report.</span>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="remove_restriction">Remove restriction for patrons leaving collections</label>
+                      <select name="remove_restriction" class="form-control">
+                        <option value="yes" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+                        <option value="no" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>
+                      </select>
+                      <span class="help-block">If enabled, patrons that have paid their debt will have any restrictions added when entering collections removed automatically.</span>
+                    </div>
+
+
+                    <fieldset>
+                        <legend>Email Information</legend>
+                        <span class="help-block">If email information is set, plugin will email files to the given email addresses</span>
+
+                        <div class="form-group">
+                          <label for="unique_email">Unique email address</label>
+                          <input type="text" name="unique_email" class="form-control" value="[% unique_email %]">
+                          <span class="help-block">Email address provided to you by Unique Management Systems to email reports to.</span>
+                        </div>
+
+                        <div class="form-group">
+                          <label for="cc_email">Additional email address</label>
+                          <input type="text" name="cc_email" class="form-control" value="[% cc_email %]">
+                          <span class="help-block">If you would like to send the report to another email address as well, enter it here.</span>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>SFTP Information</legend>
+                        <span class="help-block">If SFTP host is set, plugin will upload files to the remote SFTP server</span>
+
+                        <div class="form-group">
+                          <label for="host">Host</label>
+                          <input type="text" name="host" class="form-control" value="[% host %]">
+                        </div>
+
+                        <div class="form-group">
+                          <label for="username">Username</label>
+                          <input type="text" name="username" class="form-control" value="[% username %]">
+                        </div>
+
+                        <div class="form-group">
+                          <label for="password">Password</label>
+                          <input type="password" name="password" class="form-control" value="[% password %]">
+                        </div>
+
+                        <div class="form-group">
+                          <label for="upload_path">Upload path</label>
+                          <input type="text" name="upload_path" class="form-control" value="[% upload_path %]">
+                          <span class="hint">Leave blank to use the default upload path.</span>
+                        </div>
+                    </fieldset>
+
+                              <div class="form-group">
+                                <button type="submit" class="btn btn-default">Submit</button>
+                              </div>
+                            </form>
+                  </div>
+                </fieldset>
+              </div><!-- /umsconfig-edit -->
+            </div><!-- /modal-body -->
+          </div><!-- /modal-content -->
+        </div><!-- /modal-dialog -->
+      </div><!-- /edit_ums_config_modal -->
+    </div> <!-- /Page section. -->
+    <h1>
+        [% IF umsconfig.config_type == 'global' %]
+            [% IF umsconfig_id == "global" %]
+                <Modify global configuration
+            [% ELSE %]
+                New global configuration
+            [% END %]
+            <span class="help-block">All branches/groups will be use this unless they have their own configuration defined.</span>
+        [% ELSIF umsconfig.config_type == 'branch' %]
+            [% IF umsconfig_id %]
+                [% tx("Modify library '{library}' configuration", { library = umsconfig.config_id }) | html %]
+            [% ELSE %]
+                New library configuration
+            [% END %]
+            <span class="help-block">This uses the library function <a href="/cgi-bin/koha/admin/branches.pl">See and define branches.</a></span>
+        [% ELSIF umsconfig.config_type == 'group' %]
+            [% IF umsconfig_id %]
+                [% tx("Modify group '{group}' configuration", { group = umsconfig.config_id }) | html %]
+            [% ELSE %]
+                New group configuration
+            [% END %]
+            <span class="help-block">This uses the library groups function. <a href="/cgi-bin/koha/admin/library_groups.pl">See and define groups</a>.</span>
+        [% END %]
+    </h1>
+
+[% END %]
+
+
+    <h1>Configuration</h1>
+    [% IF config_count > 0 %]
+        <div class="page-section">
+            <table id="configurations">
+                <thead>
+                    <tr>
+                        <th>Configuration</th>
+                        <th>Configuration type</th>
+                        <th>Configuration ID</th>
+                        <th>Enabled</th>
+                        <th>Day of week</th>
+                        <th>Threshold</th>
+                        <th>Processing fee</th>
+                        <th>Clear threshold</th>
+                        <th>Clear below</th>
+                        <th>Restriction</th>
+                        <th>Remove minors</th>
+                        <th data-class-name="actions no-export">Actions</th>
+                    </th>
+                </thead>
+            </table>
+        </div>
+    [% ELSE %]
+        <div class="alert alert-info">There are no configurations defined. <a href="/cgi-bin/koha/plugins/run.pl?class=Koha%3A%3APlugin%3A%3ACom%3A%3AByWaterSolutions%3A%3AUMSGentleNudge&method=configure&op=add_form&umsconfig_type=default">Define your default configuration</a>.</div>
+    [% END %]
+
+
+[% IF op == 'view' && umsconfig_id %]
+    [% IF umsconfig_type == "global" %]
+        [% view == "Global" %]
+        [% view_name == "Global" %]
+    [% ELSIF umsconfig_type == "branch" %]
+        [% view == "Library" %]
+        [%  view-name == umsconfig_id.library.branchname | html %]
+    [% ELSIF umsconfig_type == "group" %]
+        [%  view == "Group" %]
+        [%  view_name == umsconfig_id.group.title | html %]
+    [% END %]
+    <h1>H1</h1>
+    <div class="center-block row page-section">
+        <div class="col-sm-6">
+            <div class="rows">
+                <ol>
+                    <li>
+                        <span class="label">Configuration for [% view_name %]</span>
+                    </li>
+                    <li>
+                        <span class="label">Enabled</span>
+                    </li>
+                    <li>
+                        <span class="label">Configuration Type</span>
+                        [% umsconfig_type | html %]
+                    </li>
+                    <li>
+                        <span class="label">Configuration id</span>
+                        [% umsconfig_id | html %]
+                    </li>
+                    <li>
+                        <span class="label">Day of week</span>
+                        [% umsconfig_day | html %]
+                    </li>
+                    <li>
+                        <span class="label">Patron categories</span>
+                        [% umsconfig_patron_categories | html %]
+                    </li>
+                    <li>
+                        <span class="label">Threshold</span>
+                        [% umsconfig_threshold | html %]
+                    </li>
+                    <li>
+                        <span class="label">Processing fee</span>
+                        [% umsconfig_processing_fee | html %]
+                    </li>
+                    <li>
+                        <span class="label">Collections flag</span>
+                        [% umsconfig_collections_flag | html %]
+                    </li>
+                    <li>
+                        <span class="label">Exemption flag</span>
+                        [% umsconfig_exemption_flag | html %]
+                    </li>
+                    <li>
+                        <span class="label">Fees newer</span>
+                    </li>
+                    <li>
+                        <span class="label">Fees older</span>
+                    </li>
+                    <li>
+                        <span class="label">Ignore before</span>
+                    </li>
+                    <li>
+                        <span class="label">Clear below</span>
+                    </li>
+                    <li>
+                        <span class="label">Clear threshold</span>
+                    </li>
+                    <li>
+                        <span class="label">Restriction</span>
+                    </li>
+                    <li>
+                        <span class="label">Remove minors</span>
+                    </li>
+                    <li>
+                        <span class="label">Unique email</span>
+                    </li>
+                    <li>
+                        <span class="label">Additional email</span>
+                    </li>
+                    <li>
+                        <span class="label">SFTP host</span>
+                    </li>
+                    <li>
+                        <span class="label">SFTP username</span>
+                    </li>
+                    <li>
+                        <span class="label">SFTP password</span>
+                    </li>
+                <ol>
+            </div>
+        </div>
+    </div>
+[% ELSIF op == 'view' %]
+    <div>This configuration does not exist.</div>
+[% END %]
+</div>
+</body>
+[% END %]

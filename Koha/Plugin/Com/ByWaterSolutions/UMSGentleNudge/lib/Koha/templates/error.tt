@@ -1,0 +1,3 @@
+[% WRAPPER "wrapper-staff-tool-plugin.inc" method="config" plugin_title="UMS Collections" %]
+<h1>Loaded</h1>
+[% END %]
