@@ -1,6 +1,11 @@
 # Unique Collections Multi-Configuration plugin for Koha
 
 This plugin automates the process of sending patrons to the UMS collections service and updating those patrons in Koha.
+This allows for a default configuration plus configurations for specific branches or library groups.
+The script will run most specific to least specific:
+Branch - if a branch is defined, it will always use this.
+Group  - If no branches are defined, the group will be used. If some branches have specific configurations they will run instead of this.
+Default - If no groups or branches are defined, this will run. Groups and Branches can both be configured with a "disabled" switch to turn the plugin off for those branches.
 
 ## What is ByWater Solutions’ UMS Gentle Nudge plugin?
 
