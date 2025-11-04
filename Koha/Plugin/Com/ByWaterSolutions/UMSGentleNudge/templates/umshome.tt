@@ -1,14 +1,9 @@
 <!DOCTYPE html>
 [% USE Branches %]
-<!--[% USE LibraryGroups %]-->
 [% USE Dumper %]
 [% USE Categories %]
 
-<style>
-
-  </style>
 [% WRAPPER "wrapper-staff-tool-plugin.inc" method="configure" plugin_title="UMS Collections" %]
-
 <div id="message"></div>
     <body>
         <div id="toolbar" class="btn-toolbar">
@@ -19,7 +14,7 @@
                 <i class="fa fa-plus"></i> New group configuration
               </button>
           </div>
-        <div hidden="">
+        <div  >
         <div class="page-section">
             <div class="card">
                 <div class="card-header">
@@ -60,9 +55,6 @@
                                   </tbody>
                               </table>
                           </div>
-                      </div>
-
-                    <div class="tab-content">
                         <div class="tab-pane fade" id="branch-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">Branch configurations. You can create, edit, enable/disable, and delete these configs.</p>
@@ -82,8 +74,6 @@
                                   </tbody>
                               </table>
                           </div>
-                      </div>
-                    <div class="tab-content">
                         <div class="tab-pane fade" id="group-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
@@ -165,21 +155,21 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h4 class="modal-title" id="newUMSConfigLabel">New Configuration</h4>
-                    </div>
+                      </div>
                     <div class="modal-body">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="umsconfig_id">Configuration for: </label>
+                                    
                                     <select name="umsconfig_selector" id="umsconfig_id_select" class="form-control">
-                                    <option class="branch_option" hidden="" >Select a branch</option>
+                                    <option class="modal-select-type">Select a</option>
                                     [% FOREACH l IN Branches.all() %]
                                         <option class="branch_option" value="[% l.branchcode %]" [% IF umsconfig_id == l.branchcode %]selected="selected" [% END %]hidden="" >[% l.branchname | html %]</option>
                                     [% END %]
-                                    <!--<option class="group_option" hidden="" >Select a library group</option>
-                                        [% FOREACH g IN LibraryGroups.allGroups %]
-                                            <option class="group_option" value="[% g.id %]" [% IF umsconfig_id==g.id %]selected="selected" hidden[% END %]hidden="" >[% IF g.parent_id > 0 %][% LibraryGroups.GetTitle(g.parent_id) %] - [% END %][% g.title %]</option>
-                                        [% END %] -->
+                                        [% FOREACH g IN groups %]
+                                            <option class="group_option" value="[% g.id %]" [% IF umsconfig_id == g.id %]selected="selected" hidden[% END %]hidden="" >[% IF g.parent_id > 0 %][% LibraryGroups.GetTitle(g.parent_id) %] - [% END %][% g.title %]</option>
+                                        [% END %] 
                                       </select>
                                   </div>
                               </div>
@@ -187,16 +177,16 @@
                                 <div class="form-group mb-3">
                                     <label for="config-enabled" class="form-label">Enabled?</label>
                                         <select class="form-control" id="config-enabled">
-                                            <option value="1">Enabled</option>
                                             <option value="0">Disabled</option>
+                                            <option value="1">Enabled</option>
                                           </select>
                                   </div>
                               </div>
                           </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label for="run_on_dow">Day of week to send</label>
+                                <div class="form-group mb-6">
+                                    <label for="run_on_dow">Day of week to send <i id="info_added" data-bs-toggle="tooltip" title="Please ensure that your system administrator has enabled the cronjob plugins_nightly.pl." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="run_on_dow" class="form-control">
                                         <option value="0" [% IF run_on_dow == 0 %]selected="selected"[% END %]>Sunday</option>
                                         <option value="1" [% IF run_on_dow == 1 %]selected="selected"[% END %]>Monday</option>
@@ -206,215 +196,240 @@
                                         <option value="5" [% IF run_on_dow == 5 %]selected="selected"[% END %]>Friday</option>
                                         <option value="6" [% IF run_on_dow == 6 %]selected="selected"[% END %]>Saturday</option>
                                       </select>
-                                    <span class="help-block">Please ensure that your system administrator has enabled the cronjob <em>plugins_nightly.pl</em>.</span>
+                                    
                                   </div>
                               </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label for="umsconfig_categories">Patron categories: </label>
+                          </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-12">
+                                    <label for="umsconfig_categories">Patron categories <i id="info_added" data-bs-toggle="tooltip" title="Leave blank for all categories. multiple values can be selected with ctrl+click or shift+click." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="umsconfig_categories" multiple="multiple">
                                     [% FOREACH category IN Categories.all() %]
                                         <option value="[% category.categorycode %]">[% category.description %]</option>
                                     [% END %]
                                     </select>
-                                    <br /><span class="help-block">Leave blank for all categories. multiple values can be selected with ctrl+click or shift+click.</span>
+                                    <br />
                                   </div>
                               </div>
                           </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="fees_threshold">Threshold</label>
+                                    <label for="fees_threshold">Threshold <i id="info_added" data-bs-toggle="tooltip" title="Minimum amount owed to be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i><label>
                                     <div class="input-group">
-                                        <div class="input-group-addon">$</div>
-                                        <input type="fees_threshold" name="fees_threshold" class="form-control" value="[% fees_threshold %]">
-                                    </div>
-                                    <span class="help-block">Minimum amount owed to be sent to collections.</span>
+                                        <div class="input-group-addon">$</div> 
+                                            <input type="fees_threshold" name="fees_threshold" class="form-control" value="[% fees_threshold %]">
+                                      </div>
                                   </div>
                               </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="require_lost_fee">Require lost fee</label>
+                                    <label for="processing_fee">Processing fee <i id="info_added" data-bs-toggle="tooltip" title="Amount of the processing fee added to the patron's account." data-bs-placement="right" class="fa fa-info-circle"></i><label>
+                                    <div class="input-group">
+                                        <div class="input-group-addon">$ </div>
+                                        <input type="processing_fee" name="processing_fee" class="form-control" value="[% processing_fee %]">
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="require_lost_fee">Require lost fee <i id="info_added" data-bs-toggle="tooltip" title="If enabled, a patron will not be sent to collections unless at least one of their outstanding fees is a lost fee of any amount." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="require_lost_fee" class="form-control">
                                         <option value="no" [% IF require_lost_fee == "no" %]selected="selected"[% END %]>No</option>
                                         <option value="yes" [% IF require_lost_fee == "yes" %]selected="selected"[% END %]>Yes</option>
                                     </select>
-                                    <span class="help-block">If enabled, a patron will not be sent to collections unless at least one of their outstanding fees is a lost fee of any amount.</span>
+                                    <span class="help-block"></span>
                                   </div>
-                            </div>
-                        </div>
+                              </div>
+
+                            <div class="col-md-6">
+
+                                <div class="form-group mb-3">
+                                    <label for="processing_debit">Processing fee debit type <i id="info_added" data-bs-toggle="tooltip" title="Which debit type will be used" data-bs-placement="right" class="fa fa-info-circle"></i><label>
+                                    <select name="processing_debit" class="form-control">
+                                            <option value="" selected="selected"> Select an attribute</option>
+                                        [% FOREACH debit_type IN debit_types %]
+                                            <option value="[% debit_type.code | html %]" selected="selected">[% debit_type.description | html %]</option>
+                                          [% END %]
+                                    </select>
+                                  </div>
+                              </div>
+                          </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="processing_fee">Processing fee</label>
-                                    <div class="input-group">
-                                        <div class="input-group-addon">$</div>
-                                        <input type="processing_fee" name="processing_fee" class="form-control" value="[% processing_fee %]">
-                                    </div>
-                                    <span class="help-block">Amount of the processing fee added to the patron's account.</span>
-                                </div>
-                            </div>
+                                    <label for="collections_flag">Collections flag <i id="info_added" data-bs-toggle="tooltip" title="Specify the how the patron is flagged as being in collections.
 
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label for="collections_flag">Collections flag</label>
+If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO authorised value category.
+
+If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="collections_flag" class="form-control">
+                                        <option value="" selected="selected"> Select an attribute</option>
                                         <option value="sort1" [% IF collections_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
                                         <option value="sort2" [% IF collections_flag == "sort2" %]selected="selected"[% END %]>sort2</option>
                                         [% FOREACH a IN attributes %]
                                             <option value="[% a.code %]" [% IF collections_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
                                         [% END %]
-                                    </select>
-                                    <span class="help-block">
-                                        Specify the how the patron is flagged as being in collections.
-                                        If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO authorised value category.
-                                        If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference.
-                                    </span>
-                                </div>
+                                      </select>
+                                  </div>
                             </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="exemption_flag">Exemption flag</label>
+                                    <label for="exemption_flag">Exemption flag <i id="info_added" data-bs-toggle="tooltip" title=" Specify the how the patron is flagged as being in collections.
+ 
+ If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO authorised value category.
+
+ If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="exemption_flag" class="form-control">
+                                        <option value="" selected="selected"> Select an attribute</option>
                                         <option value="sort1" [% IF exemption_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
                                         <option value="sort2" [% IF exemption_flag == "sort2" %]selected="selected"[% END %]>sort2</option>
                                         [% FOREACH a IN attributes %]
                                             <option value="[% a.code %]" [% IF exemption_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
                                         [% END %]
                                     </select>
-                                    <span class="help-block">
-                                        Specify the how the patron is flagged as being in collections.
-                                        If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO authorised value category.
-                                        If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference.
-                                    </span>
-                                </div>
                             </div>
+                          </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="fees_starting_age">Count fees newer than</label>
+                                    <label for="fees_starting_age">Count fees newer than <i id="info_added" data-bs-toggle="tooltip" title="Fees newer than this number of days will be totaled to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="text" name="fees_starting_age" class="form-control" value="[% fees_starting_age %]">
-                                    <span class="help-block">Fees newer than this number of days will be totaled to check if a patron should be sent to collections.</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
+                                  </div>
+                              </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="fees_ending_age">Count fees older than</label>
+                                    <label for="fees_ending_age">Count fees older than <i id="info_added" data-bs-toggle="tooltip" title="Fees older than this number of days will be totaled to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="text" name="fees_ending_age" class="form-control" value="[% fees_ending_age %]">
-                                    <span class="help-block">Fees older than this number of days will be totaled to check if a patron should be sent to collections.</span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
+                                   </div>
+                              </div>
+                          </div>
+                        <div class="row">
+                            <div class="col-md-12">
                                 <div class="form-group mb-3">
-                                    <label for="fees_created_before_date_filter">Ignore fees created before this date</label>
+                                    <label for="fees_created_before_date_filter">Ignore fees created before this date <i id="info_added" data-bs-toggle="tooltip" title="Fees created before this date will not be part of the total used to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="text" id="fees_created_before_date_filter" size="10" name="fees_created_before_date_filter" class="flatpickr" value="[% fees_created_before_date_filter | html %]"/>
-                                    <span class="help-block">Fees created before this date will not be part of the total used to check if apatron should be sent to collections..</span>
                                   </div>
                               </div>
                           </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                      <label for="auto_clear_paid">Clear collections flag for patrons with balance at or below the threshold</label>
-                      <select name="auto_clear_paid" class="form-control">
-                        <option value="yes" [% IF auto_clear_paid == "yes" %]selected="selected"[% END %]>Yes</option>
-                        <option value="no" [% IF auto_clear_paid == "no" %]selected="selected"[% END %]>No</option>
-                      </select>
-                      <span class="help-block">If enabled, patrons who have paid off all they owe will have the collections flag removed automatically.</span>
-                                </div>
-                            </div>
+                                    <label for="auto_clear_paid">Clear flag when balance at or below threshold <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons who have paid off all they owe will have the collections flag removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <select class="form-control">
+                                        <option value="yes" [% IF auto_clear_paid == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="no" [% IF auto_clear_paid == "no" %]selected="selected"[% END %]>No</option>
+                                    </select>
+                                  </div>
+                              </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                      <label for="auto_clear_paid_threshold">Clear collections flag threshold</label>
-                      <input type="text" name="auto_clear_paid_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
-                      <span class="help-block">If set, the patron will be cleared from collections if if they do not exceed this threshold.</span>
+                                    <label for="auto_clear_paid_threshold">Clear collections flag threshold <i id="info_added" data-bs-toggle="tooltip" title="If set, the patron will be cleared from collections if if they do not exceed this threshold." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <div class="input-group">
+                                        <div class="input-group-addon">$ </div>
+                                    <input type="text" name="auto_clear_paid_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
+                                      </div>
                                   </div>
                               </div>
                           </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                      <label for="add_restriction">Add restriction for patrons entering collections</label>
-                      <select name="add_restriction" class="form-control">
-                        <option value="yes" [% IF add_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
-                        <option value="no" [% IF add_restriction == "no" %]selected="selected"[% END %]>No</option>
-                      </select>
-                      <span class="help-block">If enabled, newly flag patrons will have a restriction added to their record.</span>
-                                </div>
-                            </div>
+                                    <label for="add_restriction">Add restriction for patrons entering collections <i id="info_added" data-bs-toggle="tooltip" title="If enabled, newly flag patrons will have a restriction added to their record." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <select name="add_restriction" class="form-control">
+                                        <option value="yes" [% IF add_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="no" [% IF add_restriction == "no" %]selected="selected"[% END %]>No</option>
+                                    </select>
+                                  </div>
+                              </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                      <label for="age_limitation">Remove minors from collections report</label>
-                      <select name="age_limitation" class="form-control">
-                        <option value="yes" [% IF age_limitation == "yes" %]selected="selected"[% END %]>Yes</option>
-                        <option value="no" [% IF age_limitation == "no" %]selected="selected"[% END %]>No</option>
-                      </select>
-                      <span class="help-block">If enabled, patrons under the age of 18 years old will not be included on the collections report.</span>
-                                                      </div>
+                                    <label for="remove_restriction">Remove restriction for patrons leaving collections <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons that have paid their debt will have any restrictions added when entering collections removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <select name="remove_restriction" class="form-control">
+                                        <option value="yes" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="no" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>
+                                      </select>
+                                  </div>
                               </div>
                           </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                      <label for="remove_restriction">Remove restriction for patrons leaving collections</label>
-                      <select name="remove_restriction" class="form-control">
-                        <option value="yes" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
-                        <option value="no" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>
-                      </select>
-                      <span class="help-block">If enabled, patrons that have paid their debt will have any restrictions added when entering collections removed automatically.</span>
-                                </div>
-                            </div>
-
-                    <fieldset>
-                    <legend>Email Information</legend>
-
-                        <span class="help-block">If email information is set, plugin will email files to the given email addresses</span>
-
+                                    <label for="age_limitation">Remove minors from collections report <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons under the age of 18 years old will not be included on the collections report." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <select name="age_limitation" class="form-control">
+                                        <option value="yes" [% IF age_limitation == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="no" [% IF age_limitation == "no" %]selected="selected"[% END %]>No</option>
+                                    </select>
+                                  </div>
+                              </div>
+                          </div>
+                        <div class="row">
+                            <div class="row">
+                        <legend>Email Information</legend>
+                              </div>
+                        <div class="row">
+                            <span class="help-block">If email information is set, plugin will email files to the given email addresses</span>
+                          </div>
                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                          <label for="unique_email">Unique email address</label>
-                          <input type="text" name="unique_email" class="form-control" value="[% unique_email %]">
-                          <span class="help-block">Email address provided to you by Unique Management Systems to email reports to.</span>
-                                </div>
-                            </div>
+                                    <label for="unique_email">Unique email address <i id="info_added" data-bs-toggle="tooltip" title="Email address provided to you by Unique Management Systems to email reports to.</" data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <input type="text" name="unique_email" class="form-control" value="[% unique_email %]">
+                                  </div>
+                              </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                          <label for="cc_email">Additional email address</label>
-                          <input type="text" name="cc_email" class="form-control" value="[% cc_email %]">
-                          <span class="help-block">If you would like to send the report to another email address as well, enter it here.</span>
-                        </div></div>
-                    </fieldset>
+                                    <label for="cc_email">Additional email address <i id="info_added" data-bs-toggle="tooltip" title="If you would like to send the report to another email address as well, enter it here." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <input type="text" name="cc_email" class="form-control" value="[% cc_email %]">
+                                  </div>
+                              </div>
+                          </div>
+                    </div>
 
-                    <fieldset>
-                        <legend>SFTP Information</legend>
-                        <span class="help-block">If SFTP host is set, plugin will upload files to the remote SFTP server</span>
+                    <div class="row">
+                        <div class="row">
+                            <legend>SFTP Information</legend>
+                            <span class="help-block">If SFTP host is set, plugin will upload files to the remote SFTP server</span>
+                          </div>
+                        <div class="row">
+                            <div class="col-md-11">
+                                <div class="form-group mb-3">
+                                    <label for="host">Host</label>
+                                    <input type="text" name="host" class="form-control" value="[% host %]">
+                                  </div>
+                              </div>
+                          </div>
 
-                        <div class="form-group">
-                          <label for="host">Host</label>
-                          <input type="text" name="host" class="form-control" value="[% host %]">
-                        </div>
-
-                        <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-11">
+                                <div class="form-group mb-3">
                           <label for="username">Username</label>
                           <input type="text" name="username" class="form-control" value="[% username %]">
-                        </div>
+                                  </div>
+                              </div>
+                          </div>
 
-                        <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-11">
+                                <div class="form-group mb-3">
                           <label for="password">Password</label>
                           <input type="password" name="password" class="form-control" value="[% password %]">
-                        </div>
+                                  </div>
+                              </div>
+                          </div>
 
-                        <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-11">
+                                <div class="form-group mb-3">
                           <label for="upload_path">Upload path</label>
                           <input type="text" name="upload_path" class="form-control" value="[% upload_path %]">
-                          <span class="hint">Leave blank to use the default upload path.</span>
-                        </div>
-                    </fieldset>
+                                  </div>
+                              </div>
+                          </div>
+                    </div>
 
                           </fieldset> <!-- /.rows -->
                       </div> <!-- /.modal-body -->
@@ -467,6 +482,7 @@
     [% Asset.css("css/humanmsg.css") | $raw %]
     [% Asset.js("lib/jquery/plugins/humanmsg.js") | $raw %]
     [% Asset.css("lib/jquery/plugins/multiple-select/multiple-select.min.css") | $raw %]
+    [% Asset.js("lib/jquery/plugins/multiple-select/multiple-select.min.js") | $raw %]
     [% INCLUDE 'datatables.inc' %]
     [% INCLUDE 'select2.inc' %]
     [% INCLUDE 'calendar.inc' %]
@@ -484,6 +500,8 @@
             var modalIDSelect = '.' + configtype + '_option';
             console.log('modaltitle: ' + modalTitle + ' / modalTypeInput: ' + modalTypeInput + ' / modalTypeSelector: '  + modalTypeSelector  + ' / modalIDSelect: ' + modalIDSelect);
             modalTitle.textContent = 'New ' + configtype + ' configuration'
+            var modalSelector = newUMSConfig.querySelector('.modal-select-type');
+            modalSelector.textContent = 'Select a ' + configtype
             
         //show the appropriate choices in the branch/group dropdown
            // Array.from(document.querySelectorAll("." + configtype +"_option")).forEach(e =>e.removeAttribute("hidden"));
@@ -499,18 +517,6 @@
           });
         });
 
-$(document).ready(function(){
-            $("select[multiple='multiple']").multipleSelect( {
-                placeholder: _("Please select ..."),
-                selectAllText: _("Select all"),
-                allSelected: _("All selected"),
-                countSelected: _("# of % selected"),
-                noMatchesFound: _("No matches found")
-            } );
-});
-
-      </script>
-    <script>
         let configTable;
         let branchTable;
         let groupTable;
@@ -553,11 +559,17 @@ $(document).ready(function(){
             // Load all data on page load
             loadConfigs();
             
+
+            // Event handlers
+  
+
             function loadConfigs() {
+            $('#config_loading').show();
             $('#config_table').hide();
 
+
             $.ajax({
-                url: '/api/v1/contrib/ums/configs',
+                url: '/api/v1/contrib/ums/configs#list',
                 method: 'GET',
                 success: function(data) {
                     populateConfigTable(data.configs);
@@ -565,7 +577,9 @@ $(document).ready(function(){
                 error: function(xhr, status, error) {
                     showMessage('Failed to load configs: ' + error, 'danger');
                     $('#config_table').show();
+                    $('#config_loading').hide();
                 }
+            });
         function populateConfigTable(config) {
             ConfigTable.clear();
 
@@ -633,8 +647,9 @@ $(document).ready(function(){
                 openDeleteModal(configId, configDesc);
             });
         }
-            });
+
         }
-        })
+        });
+</script>
 [% END %]
 [% END %]<!--wrapper-->

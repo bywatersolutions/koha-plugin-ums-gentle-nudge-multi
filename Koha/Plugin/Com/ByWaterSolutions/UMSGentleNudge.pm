@@ -12,6 +12,7 @@ use C4::Context;
 use C4::Installer qw(TableExists);
 use C4::Log         qw(logaction);
 use C4::Templates;
+use Koha::Account::DebitTypes;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Libraries;
 use Koha::Library::Groups;
@@ -145,13 +146,15 @@ sub configure {
     my $configs = Koha::UMSConfigs->get_configs();
     my $action = $cgi->param('op');
     my $config = $cgi->param('config');
-    
+    my $groups = Koha::Library::Groups->search({branchcode => undef}, { order_by => ['title'] } );
+    my @debit_types = Koha::Account::DebitTypes->search()->as_list;
+
     if ( $action eq 'cud-save' ) {
         $self->store_data(
             {
                 config_id => scalar $cgi->param('config_id'),
             }
-        );;
+        );
         }
 
     #   elsif ( $action eq 'delete' ) {
@@ -164,7 +167,7 @@ sub configure {
     #             authorized_users => $auth_users
     #         });
     #   }
-    $template->param( configs => $configs );
+    $template->param( configs => $configs, groups => $groups, debit_types => \@debit_types);
     $self->output_html( $template->output() );
     }
 
@@ -251,7 +254,6 @@ sub configure {
 
 #     my $today = dt_from_string();
 #     $params->{date} = $today->ymd();
-
 #     ### Process new submissions
 #     if ( $run_weeklys && !$params->{send_sync_report} ) {
 #         $self->run_submissions_report($params);
@@ -749,35 +751,50 @@ sub configure {
 #     };
 # }
 
-sub clear_patron_from_collections {
-    warn "warn clear patron";
-    my ( $self, $params, $borrowernumber ) = @_;
+# sub clear_patron_from_collections {
+#     warn "warn clear patron";
+#     my ( $self, $params, $borrowernumber ) = @_;
 
-    log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
+#     log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
 
-    my $patron = Koha::Patrons->find($borrowernumber);
-    next unless $patron;
+#     my $patron = Koha::Patrons->find($borrowernumber);
+#     next unless $patron;
 
-    if ( $params->{flag_type} eq 'borrower_field' ) {
-        $patron->_result->update( { $params->{collections_flag} => 'no' } );
-    }
-    if ( $params->{flag_type} eq 'attribute_field' ) {
-        my $a = Koha::Patron::Attributes->find(
-            {
-                borrowernumber => $patron->id,
-                code           => $params->{collections_flag},
-            }
-        );
+#     if ( $params->{flag_type} eq 'borrower_field' ) {
+#         $patron->_result->update( { $params->{collections_flag} => 'no' } );
+#     }
+#     if ( $params->{flag_type} eq 'attribute_field' ) {
+#         my $a = Koha::Patron::Attributes->find(
+#             {
+#                 borrowernumber => $patron->id,
+#                 code           => $params->{collections_flag},
+#             }
+#         );
 
-        # At the time of this writing it is not possible to update a repeatable
-        # attribute. Instead, it must be deleted and recreated.
-        if ($a) {
-            $a->delete();
-            $a->attribute(0);
-            Koha::Patron::Attribute->new( $a->unblessed )->store();
-        }
-    }
-    warn "warn clear patron end";
+#         # At the time of this writing it is not possible to update a repeatable
+#         # attribute. Instead, it must be deleted and recreated.
+#         if ($a) {
+#             $a->delete();
+#             $a->attribute(0);
+#             Koha::Patron::Attribute->new( $a->unblessed )->store();
+#         }
+#     }
+#     warn "warn clear patron end";
+# }
+
+sub api_routes {
+    my ($self) = @_;
+
+    my $spec_str = $self->mbf_read('lib/api/openapi.json');
+    my $spec     = decode_json($spec_str);
+
+    return $spec;
+}
+
+sub api_namespace {
+    my ($self) = @_;
+
+    return 'ums';
 }
 
 =head3 install
@@ -821,6 +838,7 @@ sub install() {
                     `sftp_password` mediumtext NULL DEFAULT NULL,
                     `enabled` INT(1) NOT NULL DEFAULT '0' COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
                     `config_type` VARCHAR(15) NOT NULL DEFAULT 'global' COMMENT 'Options are global (can only have 1 global), branch, or group',
+                    `debit_type` VARCHAR(191) NOT NULL DEFAULT 'Manual',
                     PRIMARY KEY (`config_id`)
                     ) ENGINE=INNODB;
        " );

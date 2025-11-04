@@ -1,7 +1,4 @@
-use utf8;
-
-package Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::REST::V1::Configs;
-
+package Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::ConfigController;
 use C4::Context;
 use C4::Log qw( logaction );
 use Modern::Perl;
@@ -12,7 +9,7 @@ use Koha::UMSConfigs;
 
 =head1 NAME
 
-Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::REST::V1::Configs
+ Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::ConfigController
 
 =head1 API
 
@@ -26,11 +23,11 @@ List all configs
 
 sub list {
     my $c = shift->openapi->valid_input or return;
-    my ($configs, $UMSGentleNudge) = @_;
+    my ($configs) = @_;
     try {
         my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
         my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new(
-            { UMSGentleNudge => $UMSGentleNudge }
+            { plugin => $plugin }
         );
 
         my @config_data = map {
@@ -149,7 +146,7 @@ Create a new config
 
 sub add {
     my $c = shift->openapi->valid_input or return;
-
+    my $config_id = '';
     my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
     my $logging = $plugin->retrieve_data('enable_logging') // 1;
 
@@ -180,7 +177,7 @@ sub add {
             sub {
                 my ($ct) = @_;
 
-                my $block = $config_model->create_config_block(
+                my $config = $config_model->create_config(
                     {
                 config_id          => $body->{config_id},
                 day_of_week        => $body->{day_of_week},
@@ -208,7 +205,7 @@ sub add {
                     }
                 );
 
-                $ct->last($block);
+                $ct->last($config);
                 return 1;
             }
         );
@@ -280,14 +277,10 @@ sub update {
         my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::->new(
             { UMSGentleNudge => $UMSGentleNudge }
         );
-        my $script_model =
-          Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config>new(
-            { UMSGentleNudge => $UMSGentleNudge }
-          );
 
         # Validate command if it's being updated
         if ( defined $body->{command} ) {
-            my $validation = $script_model->validate_command( $body->{command} );
+            my $validation = $config_model->validate_command( $body->{command} );
             unless ( $validation->{valid} ) {
                 return $c->render(
                     status  => 400,
@@ -302,8 +295,8 @@ sub update {
             sub {
                 my ($ct) = @_;
 
-                my $block = $config_model->find_config_block( $ct, $config_id );
-                unless ($block) {
+                my $config = $config_model->find_config( $ct, $config_id );
+                unless ($config) {
                     die "Configruration not found";
                 }
 
@@ -319,27 +312,8 @@ sub update {
                 $updates{environment} = $body->{environment}
                   if defined $body->{environment};
 
-                $config_model->update_config_block( $block, \%updates );
 
-                # Get updated config data for response
-                my $metadata = $config_model->parse_config_metadata($block);
-                my @events   = $block->select( -type => 'event' );
-                my %env;
-                for my $env_var ( $block->select( -type => 'env' ) ) {
-                    $env{ $env_var->name } = $env_var->value;
-                }
 
-                $updated_config = {
-                    id          => $metadata->{'UMSGentleNudge-manager-id'},
-                    name        => $metadata->{name}        || '',
-                    description => $metadata->{description} || '',
-                    schedule    => $events[0] ? $events[0]->datetime : '',
-                    command     => $events[0] ? $events[0]->command  : '',
-                    enabled     => @events    ? 1                    : 0,
-                    environment => \%env,
-                    created_at  => $metadata->{created} || '',
-                    updated_at  => $metadata->{updated} || '',
-                };
 
                 return 1;
             }
@@ -412,13 +386,13 @@ sub delete {
             sub {
                 my ($ct) = @_;
 
-                my $block = $config_model->find_config_block( $ct, $config_id );
-                unless ($block) {
+                my $config = $config_model->find_config( $ct, $config_id );
+                unless ($config) {
                     die "Configuraiton not found";
                 }
 
-                # Remove the block from UMSGentleNudge
-                $ct->remove($block);
+                # Remove the config from UMSGentleNudge
+                $ct->remove($config);
 
                 return 1;
             }
@@ -462,7 +436,7 @@ sub enable {
 
     my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
     my $logging = $plugin->retrieve_data('enable_logging') // 1;
-
+    my $config_name='';
     my $config_id = $c->validation->param('config_id');
 
     try {
@@ -476,12 +450,6 @@ sub enable {
         my $result = $UMSGentleNudge->modify_UMSGentleNudge(
             sub {
                 my ($ct) = @_;
-
-                # Enable event by setting active flag
-                my @events = $block->select( -type => 'event' );
-                for my $event (@events) {
-                    $event->active(1);
-                }
 
                 return 1;
             }
@@ -542,18 +510,9 @@ sub disable {
             sub {
                 my ($ct) = @_;
 
-                my $block = $config_model->find_config( $ct, $config_id );
-                unless ($block) {
+                my $config = $config_model->find_config( $ct, $config_id );
+                unless ($config) {
                     die "Configuration not found";
-                }
-
-                my $metadata = $config_model->parse_config_metadata($block);
-                $config_id = $metadata->{config_id} || '';
-
-                # Disable event by setting active flag to 0
-                my @events = $block->select( -type => 'event' );
-                for my $event (@events) {
-                    $event->active(0);
                 }
 
                 return 1;
@@ -583,58 +542,6 @@ sub disable {
         return $c->render(
             status  => 500,
             openapi => { error => "Failed to disable configuration: $_" }
-        );
-    };
-}
-
-=head3 backup
-
-Download the most recent UMSGentleNudge backup file
-
-=cut
-
-sub backup {
-    my $c = shift->openapi->valid_input or return;
-
-    my $plugin = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new;
-
-    try {
-        my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config>new(
-            { plugin => $plugin, }
-        );
-
-        # Get the most recent backup
-        my $backups = $UMSGentleNudge->list_backups();
-
-        unless ($backups && @$backups) {
-            return $c->render(
-                status  => 404,
-                openapi => { error => "No backups available" }
-            );
-        }
-
-        my $latest_backup = $backups->[0];
-        my $backup_file = $latest_backup->{filename};
-
-        # Read the backup file content
-        open my $fh, '<', $backup_file or die "Cannot open backup file: $!";
-        my $content = do { local $/; <$fh> };
-        close $fh;
-
-        # Extract just the filename from the full path
-        my $filename = ( split( '/', $backup_file ) )[-1];
-
-        # Return as downloadable file
-        return $c->render(
-            data => $content,
-            format => 'txt',
-            content_disposition => "attachment; filename=\"$filename.txt\""
-        );
-    }
-    catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to download backup: $_" }
         );
     };
 }
