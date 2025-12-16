@@ -227,7 +227,7 @@ __PACKAGE__->add_columns(
   "sftp_password",
   { data_type => "mediumtext", is_nullable => 1 },
   "enabled",
-  { data_type => "integer", default_value => 0, is_nullable => 0 },
+  { is_boolean => 1 },
   "config_type",
   {
     data_type => "varchar",
