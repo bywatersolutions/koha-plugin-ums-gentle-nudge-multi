@@ -22,53 +22,17 @@ List all configs
 =cut
 
 sub list {
-    my $c = shift->openapi->valid_input or return;
-    my ($configs) = @_;
-    try {
-        my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
-        my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new(
-            { plugin => $plugin }
-        );
+my $c = shift->openapi->valid_input or return;
 
-        my @config_data = map {
-            {
-                config_id          => $_->{config_id},
-                day_of_week        => $_->{day_of_week},
-                patron_categories => $_->{patron_categories},
-                threshold    => $_->{threshold},
-                processing_fee     => $_->{processing_fee},
-                enabled => $_->{enabled} ? Mojo::JSON->true : Mojo::JSON->false,
-                collections_flag => $_->{collections_flag},
-                exemptions_flag => $_->{exemptions_flag},
-                fees_newer => $_->{fees_newer},
-                fees_older => $_->{fees_older},
-                ignore_before => $_->{ignore_before},
-                clear_below => $_->{clear_below},
-                clear_threshold => $_->{clear_threshold},
-                restriction => $_->{restriction},
-                remove_minors => $_->{remove_minors},
-                unique_email => $_->{unique_email},
-                additional_email => $_->{additional_email},
-                sftp_host => $_->{sftp_host},
-                sftp_user => $_->{sftp_user},
-                sftp_password => $_->{sftp_password},
-                config_type => $_->{config_type},
-                created_at  => $_->{created},
-                updated_at  => $_->{updated}
-            }
-        } @$configs;
-
-        return $c->render(
-            status  => 200,
-            openapi => { configs => \@config_data }
-        );
-    }
-    catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to fetch configs: $_" }
-        );
-    };
+return try {
+    return $c->render(
+	    status  => 200,
+        openapi => $c->objects->search( Koha::UMSConfigs->new ),
+    );
+}
+catch {
+    $c->unhandled_exception;
+};
 }
 
 =head3 get

@@ -22,21 +22,6 @@ sub _type {
     return 'KohaPluginComBywatersolutionsUmsgentlenudgeConfig';
 }
 
-=head3 get_configs
-
-my @configs = $self->get_configs()
-
-=cut
-
-sub get_configs {
-    my ($self) = @_;
-warn "umsconfigs_getconfigs";
-    return $self->search( { }, { order_by => ''});
-
-}
-
-
-
 =head3 object_class
 
 =cut
