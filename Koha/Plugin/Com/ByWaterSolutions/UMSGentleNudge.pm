@@ -818,6 +818,7 @@ sub install() {
          C4::Context->dbh->do("
         CREATE TABLE IF NOT EXISTS $configuration (
                     `config_id` VARCHAR(15) NULL DEFAULT NULL COMMENT 'library group id from the library groups table or branchcode from branches',
+                    `config_name` VARCHAR(15) NULL DEFAULT NULL COMMENT 'Name of the group or library',
                     `day_of_week` INT(1) NOT NULL DEFAULT '0' COMMENT 'Which day of the week',
                     `patron_categories` VARCHAR(191) NULL DEFAULT NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
                     `threshold` INT(11) NOT NULL DEFAULT '25.00' COMMENT 'Minimum amount owed to be sent to collections.',
@@ -832,7 +833,7 @@ sub install() {
                     `restriction` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Newly flagged patrons will have a restriction added to their account.',
                     `remove_minors` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
                     `unique_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
-                    `additional_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to anotehr email address as well',
+                    `additional_email` VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to another email address as well',
                     `sftp_host` VARCHAR(191) NULL DEFAULT NULL,
                     `sftp_user` VARCHAR(191) NULL DEFAULT NULL,
                     `sftp_password` mediumtext NULL DEFAULT NULL,
@@ -845,7 +846,7 @@ sub install() {
                     ) ENGINE=INNODB;
        " );
     }
-    $dbh->do("INSERT IGNORE INTO $configuration (config_id) VALUES ('global' )"); #Create default configuration
+    $dbh->do("INSERT IGNORE INTO $configuration (config_id, config_name) VALUES ('global', 'Global' )"); #Create default configuration
 
         my $default_config  = $dbh->selectcol_arrayref( "SELECT config_id FROM $configuration" );
     return 1;

@@ -10,6 +10,71 @@
             "produces": [
                 "application/json"
             ],
+            "parameters": [{
+        "description": "Matching criteria",
+        "enum": [
+          "contains",
+          "exact",
+          "starts_with",
+          "ends_with"
+        ],
+        "in": "query",
+        "name": "_match",
+        "required": false,
+        "type": "string"
+      }, {
+        "collectionFormat": "csv",
+        "description": "Sorting criteria",
+        "in": "query",
+        "items": {
+          "type": "string"
+        },
+        "name": "_order_by",
+        "required": false,
+        "type": "array"
+      }, {
+        "description": "Page number, for paginated object listing",
+        "in": "query",
+        "name": "_page",
+        "required": false,
+        "type": "integer"
+      }, {
+        "description": "Number per page, for paginated object listing",
+        "in": "query",
+        "name": "_per_page",
+        "required": false,
+        "type": "integer"
+      }, {
+        "description": "Query filter sent through request\"s body",
+        "in": "body",
+        "name": "query",
+        "required": false,
+        "schema": {
+          "type": "object"
+        }
+      }, {
+        "description": "Query filter sent as a request header",
+        "in": "header",
+        "name": "x-koha-query",
+        "required": false,
+        "type": "string"
+      }, {
+        "description": "Query filter sent as a request parameter",
+        "in": "query",
+        "name": "q",
+        "required": false,
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "collectionFormat": "multi"
+      }, {
+        "description": "Request id header",
+        "in": "header",
+        "name": "x-koha-request-id",
+        "required": false,
+        "type": "integer"
+      }],
             "responses": {
                 "200": {
                     "description": "A list of configurations",
@@ -23,6 +88,10 @@
                                         "config_id": {
                                             "type": "string",
                                             "description": "Unique configuration identifier"
+                                        },
+                                        "config_name": {
+                                            "type": "string",
+                                            "description": "Name of the configuration"
                                         },
                                         "day_of_week": {
                                             "type": "string",

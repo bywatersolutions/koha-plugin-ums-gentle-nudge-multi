@@ -43,7 +43,10 @@
                             <table class="table table-striped" id="config_table"
                                 <thead>
                                     <tr>
-                                        <th>Configuration ID</th>
+                                        <th>Configuration</th>
+                                        <th>Type</th>
+                                        <th>Enabled</th>
+
                                       </tr>
                                   </thead>
                                 <tbody id="all-tbody">
@@ -521,13 +524,15 @@ If using another category, the authorized values should be 0 and 1, but the desc
             //Initialize DataTables
                 $('#config_table').kohaTable({
                 "ajax": {
-                    url: '/api/v1/contrib/ums/configs/list'
+                    url: '/api/v1/contrib/ums/configs/list',
+                    method: 'GET'
                 },
-                "serverSide": false,
                 "columns": [
-                    {data: "additional_email",
-                    searchable: false,
-                    orderable:false,
+                    {data: "config_name"
+                    },
+                    {data: "config_type"
+                    },
+                    {data: "enabled"
                     },
                 ]
             });

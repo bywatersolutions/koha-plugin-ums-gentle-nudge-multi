@@ -31,6 +31,14 @@ __PACKAGE__->table("koha_plugin_com_bywatersolutions_umsgentlenudge_config");
 
 library group id from the library groups table or branchcode from branches
 
+=head2 config_name
+
+  data_type: 'varchar'
+  is_nullable: 0
+  size: 15
+
+library group id from the library groups table or branchcode from branches
+
 =head2 day_of_week
 
   data_type: 'integer'

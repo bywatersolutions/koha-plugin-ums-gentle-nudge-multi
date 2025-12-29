@@ -69,6 +69,7 @@ sub get {
             status  => 200,
             openapi => {
                 config_id          => $_->{config_id},
+                config_name          => $_->{config_name},
                 day_of_week        => $_->{day_of_week},
                 patron_categories => $_->{patron_categories},
                 threshold    => $_->{threshold},
