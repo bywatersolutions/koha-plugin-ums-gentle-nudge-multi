@@ -7,14 +7,14 @@
 <div id="message"></div>
     <body>
         <div id="toolbar" class="btn-toolbar">
-            <button type="button" data-bs-toggle="modal" data-bs-target="#newUMSConfig" data-bs-type="branch"class="btn btn-default" id="newconfig">
-                <i class="fa fa-plus"></i> New branch configuration
-              </button>
             <button type="button" data-bs-toggle="modal" data-bs-target="#newUMSConfig" data-bs-type="group"class="btn btn-default" id="newconfig">
                 <i class="fa fa-plus"></i> New group configuration
               </button>
+            <button type="button" data-bs-toggle="modal" data-bs-target="#newUMSConfig" data-bs-type="branch"class="btn btn-default" id="newconfig">
+                <i class="fa fa-plus"></i> New branch configuration
+              </button>
           </div>
-        <div >
+       <div >
         <div class="page-section">
             <div class="card">
                 <div class="card-header">
@@ -25,13 +25,13 @@
                               </button>
                           </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="branch-tab" data-bs-toggle="tab" data-bs-target="#branch-configs" type="button" role="tab">
-                                <i class="fa fa-server"></i> Branch configurations
+                            <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group-configs" type="button" role="tab">
+                                <i class="fa fa-server"></i> Group configurations
                               </button>
                           </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group-configs" type="button" role="tab">
-                                <i class="fa fa-server"></i> Group configurations
+                            <button class="nav-link" id="branch-tab" data-bs-toggle="tab" data-bs-target="#branch-configs" type="button" role="tab">
+                                <i class="fa fa-server"></i> Branch configurations
                               </button>
                           </li>
                       </ul>
@@ -39,6 +39,7 @@
                         <div class="tab-pane fade show active" id="all-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">All configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                <p class="text-muted">Configurations are checked from most specific (branches) to least specific (global)</p>
                               </div>
                             <table class="table table-striped" id="config_table"
                                 <thead>
@@ -46,7 +47,6 @@
                                         <th>Configuration</th>
                                         <th>Type</th>
                                         <th>Enabled</th>
-<th data-class-name="actions no-export">Actions</th>
                                       </tr>
                                   </thead>
                                 <tbody id="all-tbody">
@@ -54,40 +54,39 @@
                                   </tbody>
                               </table>
                           </div>
-                        <div class="tab-pane fade" id="branch-configs" role="tabpanel">
+                        <div class="tab-pane fade" id="group-configs" role="tabpanel">
                             <div class="page-section">
-                                <p class="text-muted">Branch configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                <p class="text-muted">Configurations are checked from most specific (branches) to least specific (global)</p>
                               </div>
-                            <table class="table table-striped" id="branch_table"
+                            <table class="table table-striped" id="group_table"
                                 <thead>
                                     <tr>
                                         <th>Configuration ID</th>
                                         <th>Type</th>
                                         <th>Enabled</th>
-                                        <th>SFTP Information</th>
-                                        <th data-class-name="actions no-export">Actions</th>
                                       </tr>
                                   </thead>
-                                <tbody id="branch-tbody">
+                                <tbody id="group-tbody">
                                     <!-- configs will be loaded dynamically -->
                                   </tbody>
                               </table>
                           </div>
-                        <div class="tab-pane fade" id="group-configs" role="tabpanel">
+                        <div class="tab-pane fade" id="branch-configs" role="tabpanel">
                             <div class="page-section">
-                                <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                <p class="text-muted">Branch configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                
                               </div>
-                              <table class="table table-striped" id="group_table"
+                              <table class="table table-striped" id="branch_table"
                                 <thead>
                                     <tr>
                                         <th>Configuration ID</th>
                                         <th>Type</th>
                                         <th>Enabled</th>
-                                        <th>SFTP Information</th>
-                                        <th data-class-name="actions no-export">Actions</th>
+                                        <th>Actions</th>
                                       </tr>
                                   </thead>
-                                <tbody id="group-tbody">
+                                <tbody id="branch-tbody">
                                     <!-- configs will be loaded dynamically -->
                                   </tbody>
                               </table>
@@ -97,52 +96,6 @@
               </div>
           </div>
 </div>
-        <div id="doc3" class="panel panel-default" style="padding:10px;">
-            <h1 class="panel-title">UMS Gentle Nudge Configuration</h1>
-            <div id="toolbar" class="btn-toolbar">
-                <button type="button" class="btn btn-default" data-bs-toggle="modal" data-bs-target="#newUMSConfig" data-bs-type="branch" id="new_branch_config"><i class="fa fa-plus"></i> New branch configuration</button>
-                <button type="button" class="btn btn-default" data-bs-toggle="modal" data-bs-target="#newUMSConfig" data-bs-type="group" id="new_group_config" ><i class="fa fa-plus"></i> New group configuration</button>
-              </div><!--end toolbar div-->
-            [% IF configs %]
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Configuration ID</th>
-                            <th>Type</th>
-                            <th>Enabled</th>
-                            <th>SFTP Information</th>
-                            <th data-class-name="actions no-export">Actions</th>
-                        <tr>
-                    </thead>
-                    <tbody>
-                        
-                    [% FOREACH config IN configs %]
-                        [% IF config.config_id == 'global' %]
-                            [% SET config_id = "Global" %]
-                            [% SET config_type = "Global configuration" %]
-                        [% ELSIF config.config_type=="branch"  %]
-                            [% SET config_id = Branches.GetName(config.config_id) %]
-                            [% SET config_type = "Branch configuration" %]
-                        [% ELSIF config.config_type=="group" %]
-                            [% SET config_id = LibraryGroups.GetTitle(config.config_id) %]
-                            [% SET config_type = "Library group configuration" %]
-                        [% END %]
-                            <tr>
-                                <td>[% config_id %]</td>
-                                <td>[% config_type %]</td>
-                                <td>[% IF config.enabled == 1 %]Enabled[% ELSE %]Disabled[% END %]</td>
-                                <td>[% config.sftp_host | html %]</td>
-                                <td><button type="button" class="btn btn-default btn-xs" data-bs-toggle="modal" data-bs-target="#edit_umsconfig_modal" data-bs-type="[% config.config_type %]"><i class="fa fa-pencil"></i> Edit</button> 
-                                <button type="button" class="btn btn-default btn-xs" data-bs-toggle="modal" data-bs-target="#deleteModal" data-bs-type="[% config.config_type %]"><i class="fa fa-trash"></i> Delete</button>
-
-                              </tr>
-
-                     [% END %]<!--   foreach config in configs-->
-                    </tbody>
-                </table>
-            [% ELSE %]
-            [% END %]
-            <!--end if configs-->
  <!-- New Config modal -->
     <div class="modal fade modal-lg" id="newUMSConfig" aria-labelledby="newUMSConfigLabel" aria-hidden="true">
         <form  id="config_form" method="post" class="form">
@@ -476,7 +429,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
     </div>
     </div><!--end panel div-->
   </body>
-      [% MACRO jsinclude BLOCK %]
+
+            [% MACRO jsinclude BLOCK %]
     [% Asset.js("js/admin-menu.js") | $raw %]
     [% Asset.css("css/humanmsg.css") | $raw %]
     [% Asset.js("lib/jquery/plugins/humanmsg.js") | $raw %]
@@ -485,7 +439,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
     [% INCLUDE 'datatables.inc' %]
     [% INCLUDE 'select2.inc' %]
     [% INCLUDE 'calendar.inc' %]
-    <script>
+        <script>
         var newUMSConfig = document.getElementById('newUMSConfig')
         newUMSConfig.addEventListener('show.bs.modal', function (event){
             //Button that triggered the modal
@@ -516,146 +470,48 @@ If using another category, the authorized values should be 0 and 1, but the desc
           });
         });
 
-        let configTable;
-        let branchTable;
-        let groupTable;
 
         $(document).ready(function() {
             //Initialize DataTables
                 $('#config_table').kohaTable({
                 "ajax": {
-                    url: '/api/v1/contrib/ums/configs/list',
+                    url: '/api/v1/contrib/ums/configs',
                     method: 'GET'
                 },
-                "info": true,
-                "paging": false,
-                "bKohaColumnsUseNames": true,
                 "columns": [
-                    {data: "config_id"
+                    {data: "config_id",
+                    title: "Configuration ID"
                     },
-                    {data: "config_type"
+                    {data: "config_type",
+                    render: function (data, type, row) {
+                        if (data === "global") {
+                            return 'Global configuration'}
+                        if (data === "branch") {
+                            return 'Branch configuration'}
+                        if (data === "group") {
+                            return 'Group configuration'}
+                        },
+                    title: "Configuration Type"
                     },
-                    {data: "enabled"
+                    {data: "enabled",
+                    render: function (data, type, row) {
+                        if (data === true) {
+                            return '<span class="badge bg-success">Enabled</span>'
+                        }
+                        if (data === false) {
+                            return '<span class="badge bg-secondary">Disabled</span>'
+                        }
+                    } ,
+                    title: "Enabled"
+                    },
+                    {data: "config_id",
+                    render: function (data, type, row, meta) {
+                        return '<button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-edit"></i> Edit </button>'
                     },
 
-                ],
-                "columnDefs": [
-                    {"orderable": false, "targets": -1} //Disable sorting on Actions column
-                ]
+                    title: "Actions"}]
             });
         });
-            // branchTable = $('#branch_table').kohaTable({
-            //     "paging": false,
-            //     "lengthChange": true,
-            //     "searching": true,
-            //     "ordering": true,
-            //     "info": true,
-            //     "autoWidth": false,
-            //     "columnDefs": [
-            //         {"orderable": false, "targets": -1} //Disable sorting on Actions column
-            //     ]
-            // });
-            // groupTable = $('#group_table').kohaTable({
-            //     "paging": true,
-            //     "lengthChange": true,
-            //     "searching": true,
-            //     "ordering": true,
-            //     "info": true,
-            //     "autoWidth": false,
-            //     "columnDefs": [
-            //         {"orderable": false, "targets": -1} //Disable sorting on Actions column
-            //     ]
-            // });
-            // Load all data on page load
-             loadConfigs();
-            
-
-            // // Event handlers
-  
-
-             function loadConfigs() {
-             $('#config_loading').show();
-             $('#config_table').hide();
-
-
-             $.ajax({
-                 url: '/api/v1/contrib/ums/configs/list',
-                 method: 'GET',
-                 success: function(data) {
-                     populateConfigTable(data.configs);
-                 },
-                 error: function(xhr, status, error) {
-                     showMessage('Failed to load configs: ' + error, 'danger');
-                     $('#config_table').show();
-                     $('#config_loading').hide();
-                 }
-             });
-         function populateConfigTable(config) {
-             ConfigTable.clear();
-
-             config.forEach(function(config) {
-                 let statusBadge = config.enabled
-                     ? '<span class="badge bg-success">Enabled</span>'
-                     : '<span class="badge bg-secondary">Disabled</span>';
-
-                 // Use name, description, or command snippet for identification
-                 let configIdentifier = config.config_id;
-                 let configType= config.config_type;
-
-                 // Build description cell with name at top if present
-                 let descriptionHtml = '';
-                 if (config.name) {
-                     descriptionHtml += '<strong>' + config.config_name + '</strong><br>';
-                 }
-
-                 let actions = `
-                     <button class="btn btn-xs btn-primary edit-config" data-config-id="${config.config_id}">
-                        <i class="fa fa-edit"></i> Edit
-                    </button>
-                     <button class="btn btn-xs ${config.enabled ? 'btn-warning disable-config' : 'btn-success enable-config'}" data-config-id="${config.id}">
-                        <i class="fa ${config.enabled ? 'fa-pause' : 'fa-play'}"></i> ${config.enabled ? 'Disable' : 'Enable'}
-                     </button>
-                     <button class="btn btn-xs btn-danger delete-config" data-config-id="${config.config_id}" data-config-desc="${config.config_id}">
-                         <i class="fa fa-trash"></i> Delete
-                     </button>
-                 `;
-
-                 configTable.row.add([
-                     
-                     descriptionHtml,
-                     configType,
-                     statusBadge,
-                     actions
-                 ]);
-             });
-
-             configTable.draw();
-
-             // Hide spinner and show table
-             $('#config_table').show();
-
-             // Bind action handlers
-             bindActionHandlers();
-         }
-
-         function bindActionHandlers() {
-             $('.edit-config').off('click').on('click', function() {
-                 let configId = $(this).data('config-id');
-                 openConfigModal(configId);
-                     });
-
-             $('.enable-config, .disable-config').off('click').on('click', function() {
-                 let configId = $(this).data('config-id');
-                 let enable = $(this).hasClass('enable-config');
-                 toggleconfigStatus(configId, enable);
-             });
-
-             $('.delete-config').off('click').on('click', function() {
-                 let configId = $(this).data('config-id');
-                 let configDesc = $(this).data('config-desc');
-                 openDeleteModal(configId, configDesc);
-             });
-         };}
 </script>
 [% END %]
 [% END %]<!--wrapper-->

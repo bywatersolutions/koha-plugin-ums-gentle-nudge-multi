@@ -139,7 +139,7 @@ sub new {
 sub configure {
     my ( $self, $args ) = @_;
     my $cgi = $self->{'cgi'};
-    my $template = $self->get_template( { file => 'templates/umshome.tt' } );
+    my $template = $self->get_template( { file => 'templates/ums2.tt' } );
     my $dbh = C4::Context->dbh;
 
     my $config_table = $self->get_qualified_table_name('config');

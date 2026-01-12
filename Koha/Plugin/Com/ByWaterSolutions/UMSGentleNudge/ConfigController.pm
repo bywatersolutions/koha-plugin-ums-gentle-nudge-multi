@@ -7,6 +7,7 @@ use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::UMSConfigs;
 
 
+
 =head1 NAME
 
  Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::ConfigController
@@ -43,63 +44,17 @@ Get a specific config
 
 sub get {
     my $c = shift->openapi->valid_input or return;
-
     my $config_id = $c->validation->param('config_id');
 
-    try {
-        my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
-        my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new(
-            { plugin => $plugin, }
-        );
-        my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new(
-            { UMSGentleNudge => $UMSGentleNudge }
-        );
-
-        my $configs = $config_model->get_plugin_branch_configs();
-        my ($config) = grep { $_->{confg_id} eq $config_id } @$configs;
-
-        unless ($config) {
-            return $c->render(
-                status  => 404,
-                openapi => { error => "Configuration not found" }
-            );
-        }
-
+    return try {
+        my $config = Koha::UMSConfigs->find({ config_id => $config_id });
         return $c->render(
-            status  => 200,
-            openapi => {
-                config_id          => $_->{config_id},
-                config_name          => $_->{config_name},
-                day_of_week        => $_->{day_of_week},
-                patron_categories => $_->{patron_categories},
-                threshold    => $_->{threshold},
-                processing_fee     => $_->{processing_fee},
-                enabled => $_->{enabled} ? Mojo::JSON->true : Mojo::JSON->false,
-                collections_flag => $_->{collections_flag},
-                exemptions_flag => $_->{exemptions_flag},
-                fees_newer => $_->{fees_newer},
-                fees_older => $_->{fees_older},
-                ignore_before => $_->{ignore_before},
-                clear_below => $_->{clear_below},
-                clear_threshold => $_->{clear_threshold},
-                restriction => $_->{restriction},
-                remove_minors => $_->{remove_minors},
-                unique_email => $_->{unique_email},
-                additional_email => $_->{additional_email},
-                sftp_host => $_->{sftp_host},
-                sftp_user => $_->{sftp_user},
-                sftp_password => $_->{sftp_password},
-                config_type => $_->{config_type},
-                created_at  => $_->{created},
-                updated_at  => $_->{updated}
-            }
+            status =>200,
+            openapi => $config,
         );
     }
     catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to fetch configuration: $_" }
-        );
+        $c->unhandled_exception($_);
     };
 }
 
@@ -111,115 +66,67 @@ Create a new config
 
 sub add {
     my $c = shift->openapi->valid_input or return;
-    my $config_id = '';
-    my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
-    my $logging = $plugin->retrieve_data('enable_logging') // 1;
 
-    my $body = $c->req->json;
+    my $config_id = $c->valadation->param('body')->{'config_id'};
+    my $day_of_week = $c->validation->param('body')->{'day_of_week'};
+    my $patron_categories = $c->validation->param('body')->{'day_of_week'};
+    my $threshold = $c->validation->param('body')->{'threshold'};
+    my $processing_fee = $c->validation->param('body')->{'processing_fee'};
+    my $enabled = $c->validation->param('body')->{'enabled'};
+    my $collections_flag = $c->validation->param('body')->{'collections_flag'};
+    my $exemptions_flag = $c->validation->param('body')->{'exemptions_flag'};
+    my $fees_newer = $c->validation->param('body')->{'fees_newer'};
+    my $fees_older = $c->validation->param('body')->{'fees_older'};
+    my $ignore_before = $c->validation->param('body')->{'ignore_before'};
+    my $clear_below = $c->validation->param('body')->{'clear_below'};
+    my $clear_threshold = $c->validation->param('body')->{'clear_threshold'};
+    my $restriction = $c->validation->param('body')->{'restriction'};
+    my $remove_minors = $c->validation->param('body')->{'remove_minors'};
+    my $unique_email = $c->validation->param('body')->{'unique_email'};
+    my $additional_email = $c->validation->param('body')->{'additional_email'};
+    my $sftp_host = $c->validation->param('body')->{'sftp_host'};
+    my $sftp_user = $c->validation->param('body')->{'sftp_user'};
+    my $sftp_password = $c->validation->param('body')->{'sftp_password'};
+    my $config_type = $c->validation->param('body')->{'config_type'};
+    my $config_name = $c->validation->param('body')->{'config_name'};
 
-    # Validate required fields
-    for my $field (qw/day_of_week /) {
-        unless ( $body->{$field} ) {
-            return $c->render(
-                status  => 400,
-                openapi => { error => "Missing required field: $field" }
-            );
-        }
-    }
+    return try {
+        my $config = Koha::UMSConfig->new({
+            config_id => $config_id,
+            day_of_week => $day_of_week,
+            patron_categories => $patron_categories,
+            threshold => $threshold,
+            processing_fee => $processing_fee,
+            enabled => $enabled,
+            collections_flag => $collections_flag,
+            exemptions_flag => $exemptions_flag,
+            fees_newer => $fees_newer,
+            fees_older => $fees_older,
+            ignore_before => $ignore_before,
+            clear_below => $clear_below,
+            clear_threshold => $clear_threshold,
+            restriction => $restriction,
+            remove_minors => $remove_minors,
+            unique_email => $unique_email,
+            additional_email => $additional_email,
+            sftp_host => $sftp_host,
+            sftp_user => $sftp_user,
+            sftp_password => $sftp_password,
+            config_type => $config_type,
+            # config_name => $config_name
+        });
 
-    try {
-        my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new(
-            { plugin => $plugin, }
-        );
-        my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
-            { UMSGentleNudge => $UMSGentleNudge }
-        );
-
-
-        my $now    = strftime( "%Y-%m-%d %H:%M:%S", localtime );
-
-        my $result = $UMSGentleNudge->modify_UMSGentleNudge(
-            sub {
-                my ($ct) = @_;
-
-                my $config = $config_model->create_config(
-                    {
-                config_id          => $body->{config_id},
-                day_of_week        => $body->{day_of_week},
-                patron_categories => $body->{patron_categories},
-                threshold    => $body->{threshold},
-                processing_fee     => $body->{processing_fee},
-                enabled => $body->{enabled} ? Mojo::JSON->true : Mojo::JSON->false,
-                collections_flag => $body->{collections_flag},
-                exemptions_flag => $body->{exemptions_flag},
-                fees_newer => $body->{fees_newer},
-                fees_older => $body->{fees_older},
-                ignore_before => $body->{ignore_before},
-                clear_below => $body->{clear_below},
-                clear_threshold => $body->{clear_threshold},
-                restriction => $body->{restriction},
-                remove_minors => $body->{remove_minors},
-                unique_email => $body->{unique_email},
-                additional_email => $body->{additional_email},
-                sftp_host => $body->{sftp_host},
-                sftp_user => $body->{sftp_user},
-                sftp_password => $body->{sftp_password},
-                config_type => $body->{config_type},
-                created_at  => $now,
-                updated_at  => $now
-                    }
-                );
-
-                $ct->last($config);
-                return 1;
-            }
-        );
-
-        unless ( $result->{success} ) {
-            die $result->{error};
-        }
-
-        logaction( 'SYSTEMPREFERENCE', 'ADD', $config_id,
-            "UMSGentleNudgePlugin: Created configuration '" . $body->{name} . "'" )
-          if $logging;
+        $config->store;
 
         return $c->render(
-            status  => 201,
-            openapi => {
-                config_id          => $body->{config_id},
-                day_of_week        => $body->{day_of_week},
-                patron_categories => $body->{patron_categories},
-                threshold    => $body->{threshold},
-                processing_fee     => $body->{processing_fee},
-                enabled => $body->{enabled} ? Mojo::JSON->true : Mojo::JSON->false,
-                collections_flag => $body->{collections_flag},
-                exemptions_flag => $body->{exemptions_flag},
-                fees_newer => $body->{fees_newer},
-                fees_older => $body->{fees_older},
-                ignore_before => $body->{ignore_before},
-                clear_below => $body->{clear_below},
-                clear_threshold => $body->{clear_threshold},
-                restriction => $body->{restriction},
-                remove_minors => $body->{remove_minors},
-                unique_email => $body->{unique_email},
-                additional_email => $body->{additional_email},
-                sftp_host => $body->{sftp_host},
-                sftp_user => $body->{sftp_user},
-                sftp_password => $body->{sftp_password},
-                config_type => $body->{config_type},
-                created_at  => $now,
-                updated_at  => $now
-            }
+            status => 200,
+            openapi => $config
         );
     }
     catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to create configuration: $_" }
-        );
-    };
+        $c->unhandled_exception($_);
+    }
 }
-
 =head3 update
 
 Update an existing config

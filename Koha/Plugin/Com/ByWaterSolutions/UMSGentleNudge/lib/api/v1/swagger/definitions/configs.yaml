@@ -1,0 +1,81 @@
+---
+type: object
+properties:
+  config_id: 
+      type: string,
+      description: Unique configuration identifier
+  config_name: 
+      type: string,
+      description: Name of the configuration
+  day_of_week: 
+      type: string,
+      description: Day of week to run
+  patron_categories: 
+      type: string,
+      description: Email from unique
+  threshold: 
+      type: string,
+      description: Email from unique
+  processing_fee: 
+      type: string,
+      description: Email from unique
+  collections_flag: 
+      type: string,
+      description: Email from unique
+  exemptions_flag: 
+      type: string,
+      description: Email from unique
+  fees_newer: 
+      type: string,
+      description: Email from unique
+  fees_older: 
+      type: string,
+      description: Email from unique
+  ignore_before: 
+      type: string,
+      description: Email from unique
+  clear_below: 
+      type: string,
+      description: Email from unique
+  clear_threshold: 
+      type: string,
+      description: Email from unique
+  restriction: 
+      type: string,
+      description: Email from unique
+  remove_minors: 
+      type: boolean,
+      description: Will minors be removed
+  unique_email: 
+      type: string,
+      description: Email from unique
+  additional_email: 
+      type: string,
+      description: Optional email to send to
+  sftp_host: 
+      type: string,
+      description: The host for SFTP
+  sftp_user: 
+      type: string,
+      description: The user for SFTP
+  sftp_password: 
+      type: string,
+      description: The password for SFTP
+  enabled: 
+      type: boolean,
+      description: Whether the job is enabled
+  config_type: 
+      type: string,
+      description: What type of config is it
+  debit_type: 
+      type: string,
+      description: What debit type should be used
+  created_at: 
+      type: string,
+      description: Job creation timestamp
+  updated_at: 
+      type: string,
+      description: Job last update timestamp
+additionalProperties: false
+required:
+  - config_id
