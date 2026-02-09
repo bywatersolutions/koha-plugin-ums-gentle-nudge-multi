@@ -817,7 +817,7 @@ sub install() {
     unless ($self->_table_exists('config') ) {
          C4::Context->dbh->do("
         CREATE TABLE IF NOT EXISTS $configuration (
-                    `config_id` int(11) NOT NULL IS_AUTO_INCREMENT COMMENT 'unique id for each config',
+                    `config_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'unique id for each config',
                     `config_name` VARCHAR(15) NULL DEFAULT NULL COMMENT 'Name of the group or library',
                     `branch` VARCHAR(10) NULL DEFAULT NULL COMMENT 'Selected branch',
                     `config_group` int(11) NULL DEFAULT NULL COMMENT 'Selected group',
