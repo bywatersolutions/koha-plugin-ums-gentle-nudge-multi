@@ -5,7 +5,7 @@ use Modern::Perl;
 use Mojo::Base 'Mojolicious::Controller';
 use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::UMSConfigs;
-
+use Data::Dumper qw( Dumper );
 
 
 =head1 NAME
@@ -44,7 +44,7 @@ Get a specific config
 
 sub get {
     my $c = shift->openapi->valid_input or return;
-    my $config_id = $c->validation->param('config_id');
+    my $config_id = $c->param('config_id');
 
     return try {
         my $config = Koha::UMSConfigs->find({ config_id => $config_id });
@@ -67,53 +67,59 @@ Create a new config
 sub add {
     my $c = shift->openapi->valid_input or return;
 
-    my $config_id = $c->valadation->param('body')->{'config_id'};
-    my $day_of_week = $c->validation->param('body')->{'day_of_week'};
-    my $patron_categories = $c->validation->param('body')->{'day_of_week'};
-    my $threshold = $c->validation->param('body')->{'threshold'};
-    my $processing_fee = $c->validation->param('body')->{'processing_fee'};
-    my $enabled = $c->validation->param('body')->{'enabled'};
-    my $collections_flag = $c->validation->param('body')->{'collections_flag'};
-    my $exemptions_flag = $c->validation->param('body')->{'exemptions_flag'};
-    my $fees_newer = $c->validation->param('body')->{'fees_newer'};
-    my $fees_older = $c->validation->param('body')->{'fees_older'};
-    my $ignore_before = $c->validation->param('body')->{'ignore_before'};
-    my $clear_below = $c->validation->param('body')->{'clear_below'};
-    my $clear_threshold = $c->validation->param('body')->{'clear_threshold'};
-    my $restriction = $c->validation->param('body')->{'restriction'};
-    my $remove_minors = $c->validation->param('body')->{'remove_minors'};
-    my $unique_email = $c->validation->param('body')->{'unique_email'};
-    my $additional_email = $c->validation->param('body')->{'additional_email'};
-    my $sftp_host = $c->validation->param('body')->{'sftp_host'};
-    my $sftp_user = $c->validation->param('body')->{'sftp_user'};
-    my $sftp_password = $c->validation->param('body')->{'sftp_password'};
-    my $config_type = $c->validation->param('body')->{'config_type'};
-    my $config_name = $c->validation->param('body')->{'config_name'};
-
+warn (Dumper($c->param('sftp_host') ));
+    my $additional_email = $c->param('additional_email');
+    my $branch = $c->param('branch');
+    my $clear_below = $c->param('clear_below');
+    my $clear_threshold = $c->param('clear_threshold');
+    my $collections_flag = $c->param('collections_flag');
+    my $config_group = $c->param('config_group');
+    my $config_id = $c->param('config_id');
+    my $config_name = $c->param('config_name');
+    my $config_type = $c->param('config_type');
+    my $day_of_week = $c->param('day_of_week');
+    my $debit_type = $c->param('debit_type');
+    my $enabled = $c->param('enabled');
+    my $exemptions_flag = $c->param('exemptions_flag');
+    my $fees_newer = $c->param('fees_newer');
+    my $fees_older = $c->param('fees_older');
+    my $ignore_before = $c->param('ignore_before');
+    my $patron_categories = $c->param('day_of_week');
+    my $processing_fee = $c->param('processing_fee');
+    my $remove_minors = $c->param('remove_minors');
+    my $restriction = $c->param('restriction');
+    my $sftp_host = $c->param('sftp_host');
+    my $sftp_password = $c->param('sftp_password');
+    my $sftp_user = $c->param('sftp_user');
+    my $threshold = $c->param('threshold');
+    my $unique_email = $c->param('unique_email');
     return try {
         my $config = Koha::UMSConfig->new({
-            config_id => $config_id,
-            day_of_week => $day_of_week,
-            patron_categories => $patron_categories,
-            threshold => $threshold,
-            processing_fee => $processing_fee,
-            enabled => $enabled,
+            additional_email => $additional_email,
+            branch    => $branch,
+            clear_below => $clear_below,
+            clear_threshold => $clear_threshold,
             collections_flag => $collections_flag,
+            config_group => $config_group,
+            config_id => $config_id,
+            config_name => $config_name,
+            config_type => $config_type,
+            day_of_week => $day_of_week,
+            debit_type => $debit_type,
+            enabled => $enabled,
             exemptions_flag => $exemptions_flag,
             fees_newer => $fees_newer,
             fees_older => $fees_older,
             ignore_before => $ignore_before,
-            clear_below => $clear_below,
-            clear_threshold => $clear_threshold,
-            restriction => $restriction,
+            patron_categories => $patron_categories,
+            processing_fee => $processing_fee,
             remove_minors => $remove_minors,
-            unique_email => $unique_email,
-            additional_email => $additional_email,
+            restriction => $restriction,
             sftp_host => $sftp_host,
-            sftp_user => $sftp_user,
             sftp_password => $sftp_password,
-            config_type => $config_type,
-            # config_name => $config_name
+            sftp_user => $sftp_user,
+            threshold => $threshold,
+            unique_email => $unique_email
         });
 
         $config->store;
@@ -126,296 +132,263 @@ sub add {
     catch {
         $c->unhandled_exception($_);
     }
-}
-=head3 update
+};
+# =head3 update
 
-Update an existing config
+# Update an existing config
 
-=cut
+# =cut
 
-sub update {
-    my $c = shift->openapi->valid_input or return;
+# sub _update_config {
+#     my $c = shift->openapi->valid_input or return;
 
-    my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
-    my $logging = $plugin->retrieve_data('enable_logging') // 1;
+#     my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
+#     my $logging = $plugin->retrieve_data('enable_logging') // 1;
 
-    my $config_id = $c->validation->param('config_id');
-    my $body   = $c->req->json;
+#     my $config_id = $c->param('config_id');
+#     my $body   = $c->req->json;
 
-    try {
-        my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::File->new(
-            { plugin => $plugin, }
-        );
-        my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::->new(
-            { UMSGentleNudge => $UMSGentleNudge }
-        );
+#     try {
+#         my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::File->new(
+#             { plugin => $plugin, }
+#         );
+#         my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::->new(
+#             { UMSGentleNudge => $UMSGentleNudge }
+#         );
 
-        # Validate command if it's being updated
-        if ( defined $body->{command} ) {
-            my $validation = $config_model->validate_command( $body->{command} );
-            unless ( $validation->{valid} ) {
-                return $c->render(
-                    status  => 400,
-                    openapi => { error => $validation->{error} }
-                );
-            }
-        }
+#         # Validate command if it's being updated
+#         if ( defined $body->{command} ) {
+#             my $validation = $config_model->validate_command( $body->{command} );
+#             unless ( $validation->{valid} ) {
+#                 return $c->render(
+#                     status  => 400,
+#                     openapi => { error => $validation->{error} }
+#                 );
+#             }
+#         }
 
-        my $updated_config;
+#         my $updated_config;
 
-        my $result = $UMSGentleNudge->modify_UMSGentleNudge(
-            sub {
-                my ($ct) = @_;
+#         my $result = $UMSGentleNudge->modify_UMSGentleNudge(
+#             sub {
+#                 my ($ct) = @_;
 
-                my $config = $config_model->find_config( $ct, $config_id );
-                unless ($config) {
-                    die "Configruration not found";
-                }
+#                 my $config = $config_model->find_config( $ct, $config_id );
+#                 unless ($config) {
+#                     die "Configruration not found";
+#                 }
 
-                # Build updates hash from body
-                my %updates;
-                $updates{name}        = $body->{name} if defined $body->{name};
-                $updates{description} = $body->{description}
-                  if defined $body->{description};
-                $updates{schedule} = $body->{schedule}
-                  if defined $body->{schedule};
-                $updates{command} = $body->{command}
-                  if defined $body->{command};
-                $updates{environment} = $body->{environment}
-                  if defined $body->{environment};
-
-
+#                 # Build updates hash from body
+#                 my %updates;
+#                 $updates{name}        = $body->{name} if defined $body->{name};
+#                 $updates{description} = $body->{description}
+#                   if defined $body->{description};
+#                 $updates{schedule} = $body->{schedule}
+#                   if defined $body->{schedule};
+#                 $updates{command} = $body->{command}
+#                   if defined $body->{command};
+#                 $updates{environment} = $body->{environment}
+#                   if defined $body->{environment};
 
 
-                return 1;
-            }
-        );
 
-        unless ( $result->{success} ) {
-            if ( $result->{error} =~ /Configuration not found/ ) {
-                return $c->render(
-                    status  => 404,
-                    openapi => { error => "Configuration not found" }
-                );
-            }
-            die $result->{error};
-        }
 
-        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
-            "UMSGentleNudgePlugin: Updated configuration '" . $updated_config->{name} . "'" )
-          if $logging;
+#                 return 1;
+#             }
+#         );
 
-        return $c->render(
-            status  => 200,
-            openapi => {
-                id          => $updated_config->{id},
-                name        => $updated_config->{name},
-                description => $updated_config->{description},
-                schedule    => $updated_config->{schedule},
-                command     => $updated_config->{command},
-                enabled     => $updated_config->{enabled}
-                ? Mojo::JSON->true
-                : Mojo::JSON->false,
-                environment => $updated_config->{environment},
-                created_at  => $updated_config->{created_at},
-                updated_at  => $updated_config->{updated_at}
-            }
-        );
-    }
-    catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to update configruation: $_" }
-        );
-    };
-}
+#         unless ( $result->{success} ) {
+#             if ( $result->{error} =~ /Configuration not found/ ) {
+#                 return $c->render(
+#                     status  => 404,
+#                     openapi => { error => "Configuration not found" }
+#                 );
+#             }
+#             die $result->{error};
+#         }
 
-=head3 delete
+#         logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
+#             "UMSGentleNudgePlugin: Updated configuration '" . $updated_config->{name} . "'" )
+#           if $logging;
 
-Delete a config
+#         return $c->render(
+#             status  => 200,
+#             openapi => {
+#                 id          => $updated_config->{id},
+#                 name        => $updated_config->{name},
+#                 description => $updated_config->{description},
+#                 schedule    => $updated_config->{schedule},
+#                 command     => $updated_config->{command},
+#                 enabled     => $updated_config->{enabled}
+#                 ? Mojo::JSON->true
+#                 : Mojo::JSON->false,
+#                 environment => $updated_config->{environment},
+#                 created_at  => $updated_config->{created_at},
+#                 updated_at  => $updated_config->{updated_at}
+#             }
+#         );
+#     }
+#     catch {
+#         return $c->render(
+#             status  => 500,
+#             openapi => { error => "Failed to update configruation: $_" }
+#         );
+#     };
+# }
 
-=cut
+# =head3 delete
 
-sub delete {
-    my $c = shift->openapi->valid_input or return;
+# Delete a config
 
-    my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
-    my $logging = $plugin->retrieve_data('enable_logging') // 1;
+# =cut
 
-    my $config_id = $c->validation->param('config_id');
+# sub delete {
+#     my $c = shift->openapi->valid_input or return;
 
-    try {
-        my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
-            { plugin => $plugin, }
-        );
-        my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
-            { UMSGentleNudge => $UMSGentleNudge }
-        );
 
-        my $config_name;
 
-        my $result = $UMSGentleNudge->modify_UMSGentleNudge(
-            sub {
-                my ($ct) = @_;
+#     my $config_id = $c->param('config_id');
 
-                my $config = $config_model->find_config( $ct, $config_id );
-                unless ($config) {
-                    die "Configuraiton not found";
-                }
+#     return try {
+#         my $config = Koha::UMSConfigs->find({  config_id => $config_id });
 
-                # Remove the config from UMSGentleNudge
-                $ct->remove($config);
+#         $config->delete;
 
-                return 1;
-            }
-        );
+#         logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id,
+#             "UMSGentleNudgePlugin: Deleted configuration '$config_id'" );
 
-        unless ( $result->{success} ) {
-            if ( $result->{error} =~ /Configuration not found/ ) {
-                return $c->render(
-                    status  => 404,
-                    openapi => { error => "Configuration not found" }
-                );
-            }
-            die $result->{error};
-        }
+#         return $c->render(
+#             status  => 204,
+#             openapi => { success => Mojo::JSON->true }
+#         );
+#     }
+#     catch {
+#         return $c->render(
+#             status  => 500,
+#             openapi => { error => "Failed to delete configuration: $_" }
+#         );
+#     };
+# }
 
-        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id,
-            "UMSGentleNudgePlugin: Deleted configuration '$config_id'" )
-          if $logging;
+# =head3 enable
 
-        return $c->render(
-            status  => 204,
-            openapi => { success => Mojo::JSON->true }
-        );
-    }
-    catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to delete configuration: $_" }
-        );
-    };
-}
+# Enable a config
 
-=head3 enable
+# =cut
 
-Enable a config
+# sub enable {
+#     my $c = shift->openapi->valid_input or return;
 
-=cut
+#     my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
+#     my $logging = $plugin->retrieve_data('enable_logging') // 1;
+#     my $config_name='';
+#     my $config_id = $c->param('config_id');
 
-sub enable {
-    my $c = shift->openapi->valid_input or return;
+#     try {
+#         my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
+#             { plugin => $plugin, }
+#         );
+#         my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
+#             { UMSGentleNudge => $UMSGentleNudge }
+#         );
 
-    my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
-    my $logging = $plugin->retrieve_data('enable_logging') // 1;
-    my $config_name='';
-    my $config_id = $c->validation->param('config_id');
+#         my $result = $UMSGentleNudge->modify_UMSGentleNudge(
+#             sub {
+#                 my ($ct) = @_;
 
-    try {
-        my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
-            { plugin => $plugin, }
-        );
-        my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
-            { UMSGentleNudge => $UMSGentleNudge }
-        );
+#                 return 1;
+#             }
+#         );
 
-        my $result = $UMSGentleNudge->modify_UMSGentleNudge(
-            sub {
-                my ($ct) = @_;
+#         unless ( $result->{success} ) {
+#             if ( $result->{error} =~ /Configuration not found/ ) {
+#                 return $c->render(
+#                     status  => 404,
+#                     openapi => { error => "Configuration not found" }
+#                 );
+#             }
+#             die $result->{error};
+#         }
 
-                return 1;
-            }
-        );
+#         logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
+#             "UMSGentleNudgePlugin: Enabled configuration '$config_name'" )
+#           if $logging;
 
-        unless ( $result->{success} ) {
-            if ( $result->{error} =~ /Configuration not found/ ) {
-                return $c->render(
-                    status  => 404,
-                    openapi => { error => "Configuration not found" }
-                );
-            }
-            die $result->{error};
-        }
+#         return $c->render(
+#             status  => 200,
+#             openapi => { success => Mojo::JSON->true }
+#         );
+#     }
+#     catch {
+#         return $c->render(
+#             status  => 500,
+#             openapi => { error => "Failed to enable configuration: $_" }
+#         );
+#     };
+# }
 
-        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
-            "UMSGentleNudgePlugin: Enabled configuration '$config_name'" )
-          if $logging;
+# =head3 disable
 
-        return $c->render(
-            status  => 200,
-            openapi => { success => Mojo::JSON->true }
-        );
-    }
-    catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to enable configuration: $_" }
-        );
-    };
-}
+# Disable a config
 
-=head3 disable
+# =cut
 
-Disable a config
+# sub disable {
+#     my $c = shift->openapi->valid_input or return;
 
-=cut
+#     my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
+#     my $logging = $plugin->retrieve_data('enable_logging') // 1;
 
-sub disable {
-    my $c = shift->openapi->valid_input or return;
+#     my $config_id = $c->param('config_id');
 
-    my $plugin  = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new( {} );
-    my $logging = $plugin->retrieve_data('enable_logging') // 1;
+#     try {
+#         my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
+#             { plugin => $plugin, }
+#         );
+#         my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new(
+#             { UMSGentleNudge => $UMSGentleNudge }
+#         );
 
-    my $config_id = $c->validation->param('config_id');
+#         my $config_name;
 
-    try {
-        my $UMSGentleNudge = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::Config->new(
-            { plugin => $plugin, }
-        );
-        my $config_model = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new(
-            { UMSGentleNudge => $UMSGentleNudge }
-        );
+#         my $result = $UMSGentleNudge->modify_UMSGentleNudge(
+#             sub {
+#                 my ($ct) = @_;
 
-        my $config_name;
+#                 my $config = $config_model->find_config( $ct, $config_id );
+#                 unless ($config) {
+#                     die "Configuration not found";
+#                 }
 
-        my $result = $UMSGentleNudge->modify_UMSGentleNudge(
-            sub {
-                my ($ct) = @_;
+#                 return 1;
+#             }
+#         );
 
-                my $config = $config_model->find_config( $ct, $config_id );
-                unless ($config) {
-                    die "Configuration not found";
-                }
+#         unless ( $result->{success} ) {
+#             if ( $result->{error} =~ /Configuration not found/ ) {
+#                 return $c->render(
+#                     status  => 404,
+#                     openapi => { error => "Configuration not found" }
+#                 );
+#             }
+#             die $result->{error};
+#         }
 
-                return 1;
-            }
-        );
+#         logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
+#             "UMSGentleNudgePlugin: Disabled configuration '$config_id'" )
+#           if $logging;
 
-        unless ( $result->{success} ) {
-            if ( $result->{error} =~ /Configuration not found/ ) {
-                return $c->render(
-                    status  => 404,
-                    openapi => { error => "Configuration not found" }
-                );
-            }
-            die $result->{error};
-        }
-
-        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
-            "UMSGentleNudgePlugin: Disabled configuration '$config_id'" )
-          if $logging;
-
-        return $c->render(
-            status  => 200,
-            openapi => { success => Mojo::JSON->true }
-        );
-    }
-    catch {
-        return $c->render(
-            status  => 500,
-            openapi => { error => "Failed to disable configuration: $_" }
-        );
-    };
-}
+#         return $c->render(
+#             status  => 200,
+#             openapi => { success => Mojo::JSON->true }
+#         );
+#     }
+#     catch {
+#         return $c->render(
+#             status  => 500,
+#             openapi => { error => "Failed to disable configuration: $_" }
+#         );
+#     };
+# }
 
 1;
