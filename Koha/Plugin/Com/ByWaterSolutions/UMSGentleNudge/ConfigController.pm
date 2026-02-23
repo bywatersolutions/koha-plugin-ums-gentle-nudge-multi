@@ -87,9 +87,6 @@ sub add {
     my $processing_fee = $c->req->json->{'processing_fee'};
     my $remove_minors = $c->req->json->{'remove_minors'};
     my $restriction = $c->req->json->{'restriction'};
-    my $sftp_host = $c->req->json->{'sftp_host'};
-    my $sftp_password = $c->req->json->{'sftp_password'};
-    my $sftp_user = $c->req->json->{'sftp_user'};
     my $threshold = $c->req->json->{'threshold'};
     my $unique_email = $c->req->json->{'unique_email'};
     return try {
@@ -114,9 +111,6 @@ sub add {
             processing_fee => $processing_fee,
             remove_minors => $remove_minors,
             restriction => $restriction,
-            sftp_host => $sftp_host,
-            sftp_password => $sftp_password,
-            sftp_user => $sftp_user,
             threshold => $threshold,
             unique_email => $unique_email
         });
@@ -162,9 +156,6 @@ sub add {
     my $processing_fee = $c->req->json->{'processing_fee'};
     my $remove_minors = $c->req->json->{'remove_minors'};
     my $restriction = $c->req->json->{'restriction'};
-    my $sftp_host = $c->req->json->{'sftp_host'};
-    my $sftp_password = $c->req->json->{'sftp_password'};
-    my $sftp_user = $c->req->json->{'sftp_user'};
     my $threshold = $c->req->json->{'threshold'};
     my $unique_email = $c->req->json->{'unique_email'};
     return try {
@@ -191,9 +182,6 @@ sub add {
             processing_fee => $processing_fee,
             remove_minors => $remove_minors,
             restriction => $restriction,
-            sftp_host => $sftp_host,
-            sftp_password => $sftp_password,
-            sftp_user => $sftp_user,
             threshold => $threshold,
             unique_email => $unique_email
         };

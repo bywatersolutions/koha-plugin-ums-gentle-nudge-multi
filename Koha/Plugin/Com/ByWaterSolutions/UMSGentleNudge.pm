@@ -462,10 +462,6 @@ sub configure {
 #         write_file( $file_path, $csv );
 #         log_info("ARCHIVE WRITTEN TO $file_path");
 
-#         my $sftp_host        = $self->retrieve_data('host');
-#         my $sftp_username    = $self->retrieve_data('username');
-#         my $sftp_password    = $self->retrieve_data('password');
-#         my $sftp_upload_path = $self->retrieve_data('upload_path');
 
 #         my $email_to   = $self->retrieve_data('unique_email');
 #         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
@@ -477,30 +473,7 @@ sub configure {
 #             file_path => $file_path,
 #         };
 
-#         if ($sftp_host) {
-#             $info->{sftp_host}     = $sftp_host;
-#             $info->{sftp_username} = $sftp_username;
 
-#             my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || $sftp_upload_path || 'incoming';
-
-#             my $sftp = Net::SFTP::Foreign->new(
-#                 host     => $sftp_host,
-#                 user     => $sftp_username,
-#                 port     => 22,
-#                 password => $sftp_password
-#             );
-
-#             try {
-#                 $sftp->die_on_error("Unable to establish SFTP connection");
-#                 $sftp->setcwd($directory)
-#                     or die "unable to change cwd: " . $sftp->error;
-#                 $sftp->put( $file_path, $filename )
-#                     or die "put failed: " . $sftp->error;
-#             } catch {
-#                 $info->{sftp_failed} = 'true';
-#                 $info->{sftp_error}  = $_;
-#             }
-#         }
 
 #         foreach my $email_address ( $email_to, $email_cc ) {
 #             next unless $email_address;
@@ -658,38 +631,9 @@ sub configure {
 #         log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv")
 #             if $archive_dir;
 
-#         my $sftp_host     = $self->retrieve_data('host');
-#         my $sftp_username = $self->retrieve_data('username');
-#         my $sftp_password = $self->retrieve_data('password');
-
 #         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
 #         my $email_to   = $self->retrieve_data('unique_email');
 #         my $email_cc   = $self->retrieve_data('cc_email');
-
-#         if ($sftp_host) {
-#             $info->{sftp_host}     = $sftp_host;
-#             $info->{sftp_username} = $sftp_username;
-
-#             my $directory = $ENV{GENTLENUDGE_SFTP_DIR} || 'incoming';
-
-#             my $sftp = Net::SFTP::Foreign->new(
-#                 host     => $sftp_host,
-#                 user     => $sftp_username,
-#                 port     => 22,
-#                 password => $sftp_password
-#             );
-
-#             try {
-#                 $sftp->die_on_error("Unable to establish SFTP connection");
-#                 $sftp->setcwd($directory)
-#                     or die "unable to change cwd: " . $sftp->error;
-#                 $sftp->put( $file_path, $filename )
-#                     or die "put failed: " . $sftp->error;
-#             } catch {
-#                 $info->{sftp_failed} = 'true';
-#                 $info->{sftp_error}  = $_;
-#             }
-#         }
 
 #         foreach my $email_address ( $email_to, $email_cc ) {
 #             next unless $email_address;
@@ -836,9 +780,6 @@ sub install() {
                     remove_minors tinyint(1) NULL COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
                     unique_email VARCHAR(191) NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
                     additional_email VARCHAR(191) NULL COMMENT 'If you would like to send to another email address as well',
-                    sftp_host VARCHAR(191) NULL,
-                    sftp_user VARCHAR(191) NULL,
-                    sftp_password mediumtext NULL,
                     enabled int(1) NOT NULL DEFAULT 0 COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
                     config_type VARCHAR(15) DEFAULT 'global' NOT NULL COMMENT 'Options are global (can only have 1 global), branch, or group',
                     debit_type VARCHAR(191) NOT NULL DEFAULT 'manual',
@@ -893,9 +834,6 @@ sub upgrade {
                     remove_minors TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
                     unique_email VARCHAR(191) NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
                     additional_email VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to another email address as well',
-                    sftp_host VARCHAR(191) NULL DEFAULT NULL,
-                    sftp_user VARCHAR(191) NULL DEFAULT NULL,
-                    sftp_password mediumtext NULL DEFAULT NULL,
                     enabled INT(1) NOT NULL DEFAULT '0' COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
                     config_type VARCHAR(15) NOT NULL DEFAULT 'global' COMMENT 'Options are global (can only have 1 global), branch, or group'
                     PRIMARY KEY (config_id)

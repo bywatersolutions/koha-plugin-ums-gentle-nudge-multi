@@ -173,23 +173,6 @@ If email information is set, plugin will email files to the given addresses.
 
 If you would like to send to another email address as well
 
-=head2 sftp_host
-
-  data_type: 'varchar'
-  is_nullable: 1
-  size: 191
-
-=head2 sftp_user
-
-  data_type: 'varchar'
-  is_nullable: 1
-  size: 191
-
-=head2 sftp_password
-
-  data_type: 'mediumtext'
-  is_nullable: 1
-
 =head2 enabled
 
   data_type: 'integer'
@@ -255,12 +238,6 @@ __PACKAGE__->add_columns(
   { data_type => "varchar", is_nullable => 1, size => 191 },
   "additional_email",
   { data_type => "varchar", is_nullable => 1, size => 191 },
-  "sftp_host",
-  { data_type => "varchar", is_nullable => 1, size => 191 },
-  "sftp_user",
-  { data_type => "varchar", is_nullable => 1, size => 191 },
-  "sftp_password",
-  { data_type => "mediumtext", is_nullable => 1 },
   "enabled",
   { data_type => "integer", default_value => 0, is_nullable => 0 },
   "config_type",

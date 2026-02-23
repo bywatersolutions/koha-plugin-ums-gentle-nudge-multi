@@ -207,27 +207,6 @@
                                             ],
                                             "description": "Optional email to send to"
                                         },
-                                        "sftp_host": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ],
-                                            "description": "The host for SFTP"
-                                        },
-                                        "sftp_user": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ],
-                                            "description": "The user for SFTP"
-                                        },
-                                        "sftp_password": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ],
-                                            "description": "The password for SFTP"
-                                        },
                                         "enabled": {
                                             "type": "boolean",
                                             "description": "Whether the job is enabled"
