@@ -340,49 +340,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                               </div>
                           </div>
                     </div>
-
-                    <div class="row">
-                        <div class="row">
-                            <legend>SFTP Information</legend>
-                            <span class="help-block">If SFTP host is set, plugin will upload files to the remote SFTP server</span>
-                          </div>
-                        <div class="row">
-                            <div class="col-md-11">
-                                <div class="form-group mb-3">
-                                    <label for="host">Host</label>
-                                    <input type="text" name="host" class="form-control" value="[% host %]">
-                                  </div>
-                              </div>
-                          </div>
-
-                        <div class="row">
-                            <div class="col-md-11">
-                                <div class="form-group mb-3">
-                          <label for="username">Username</label>
-                          <input type="text" name="username" class="form-control" value="[% username %]">
-                                  </div>
-                              </div>
-                          </div>
-
-                        <div class="row">
-                            <div class="col-md-11">
-                                <div class="form-group mb-3">
-                          <label for="password">Password</label>
-                          <input type="password" name="password" class="form-control" value="[% password %]">
-                                  </div>
-                              </div>
-                          </div>
-
-                        <div class="row">
-                            <div class="col-md-11">
-                                <div class="form-group mb-3">
-                          <label for="upload_path">Upload path</label>
-                          <input type="text" name="upload_path" class="form-control" value="[% upload_path %]">
-                                  </div>
-                              </div>
-                          </div>
-                    </div>
-
                           </fieldset> <!-- /.rows -->
                       </div> <!-- /.modal-body -->
                     <fieldset class="action">
@@ -445,7 +402,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
             //Button that triggered the modal
             var button = event.relatedTarget
             // Extract info from data-bs-* attributes
-             configtype = button.getAttribute('data-bs-type')
+            var configtype = button.getAttribute('data-bs-type')
             var umsmode = button.getAttribute('data-bs-mode')
 
             //update the modal content
@@ -490,7 +447,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
             $('#editconfig').on('click', function() {
                 let configId = $(this).data('data-config-id');
-                openConfigModal;
+                warn ("editconfig");
+                openConfigModal();
             });
 
             // Form submissions
@@ -535,8 +493,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         },
                         {data: "config_id",
                         render: function (data, type, row, meta) {
-                            return '<button type= "button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-edit"></i> Edit </button>  <button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-trash"></i> Delete </button>'
-
+                            if (data === 1) 
+                                {return '<button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSToggleModel" data-bs-mode="Toggle" id="toggleconfig" class= "btn btn-xs btn-primary toggle-config" data-toggle-id="' + data+ '"><i class="fa fa-toggle-on"></i> Toggle </button>'
+                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>  <button data-bs-toggle="modal" data-bs-target="#UMSToggleModel" data-bs-mode="Toggle" id="toggleconfig" class= "btn btn-xs btn-primary toggle-config" data-toggle-id="' + data+ '"><i class="fa fa-toggle-on"></i> Toggle </button>  <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>'
+                            }
                         },
 
                         title: "Actions"}]
@@ -577,7 +537,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         },
                         {data: "config_id",
                         render: function (data, type, row, meta) {
-                            return '<button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-edit"></i> Edit </button>  <button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-trash"></i> Delete </button>'
+                            return '<button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-edit"></i> Edit </button>  <button data-bs-toggle="modal" data-bs-target="#UMSToggleModel" data-bs-mode="Toggle" id="toggleconfig" class= "btn btn-xs btn-primary toggle-config" data-toggle-id="' + data+ '"><i class="fa fa-toggle-on"></i> Toggle </button> <button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-trash"></i> Delete </button>'
                         },
 
                         title: "Actions"}]
@@ -593,6 +553,9 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     "columns": [
                         {data: "config_id",
                         title: "Configuration ID"
+                        },
+                        {data: "config_name",
+                        title: "Configuration Name"
                         },
                         {data: "config_type",
                         render: function (data, type, row) {
@@ -618,7 +581,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         },
                         {data: "config_id",
                         render: function (data, type, row, meta) {
-                            return '<button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-edit"></i> Edit </button>  <button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-trash"></i> Delete </button>'
+                            return '<button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-edit"></i> Edit </button>  <button data-bs-toggle="modal" data-bs-target="#UMSToggleModel" data-bs-mode="Toggle" id="toggleconfig" class= "btn btn-xs btn-primary toggle-config" data-toggle-id="' + data+ '"><i class="fa fa-toggle-on"></i> Toggle </button> <button class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"> <i class="fa fa-trash"></i> Delete </button>'
                         },
 
                         title: "Actions"}]
@@ -653,9 +616,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     remove_minors: $('#age_limitation').val(),
                     require_lost_fee: $('#require_lost_fee').val(),
                     restriction: $('#add_restriction').val(),
-                    sftp_host: $('#sftp_host').val(),
-                    sftp_password: $('#sftp_password').val(),
-                    sftp_user: $('#sftp_user').val(),
                     threshold: $('#threshold').val(),
                     unique_email: $('#unique_email').val()
                 };
@@ -685,6 +645,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
             function openConfigModal(configId = null) {
                 console.log(configId);
+                console.log('testing');
                 if (configId) {
                     //Edit existing configs
                     loadConfigForEdit(configId);
@@ -717,9 +678,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         $('#processing_fee').val(config.processing_fee);
                         $('#remove_minors').val(config.remove_minors);
                         $('#restriction').val(config.restriction);
-                        $('#sftp_host').val(config.sftp_host);
-                        $('#sftp_password').val(config.sftp_password);
-                        $('#sftp_user').val(config.sftp_user);
                         $('#threshold').val(config.threshold);
                         $('#unique_email').val(config.unique_email);
                         $('#require_lost_fee').val(config.require_lost_fee);
