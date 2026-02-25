@@ -310,7 +310,7 @@
  "/config/{config_id}": {
     "get": {
       "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#get",
-      "operationId": "getConfig",
+      "operationId": "getUMSConfig",
       "tags": ["configs"],
       "produces": [
         "application/json"
@@ -318,20 +318,20 @@
       "parameters": [{
           "name": "config_id",
           "in": "path",
-          "description": "Search on permission id",
+          "description": "Search on config id",
           "required": true,
           "type": "integer"
         }
       ],
       "responses": {
         "200": {
-          "description": "A list of configs"
+          "description": "A single config"
         }
       }
     },
     "put": {
       "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#update",
-      "operationId": "udpateConfig",
+      "operationId": "updateUMSConfig",
       "tags": ["configs"],
       "produces": [
         "application/json"
@@ -350,14 +350,142 @@
           "schema": {
             "type": "object",
             "properties": {
-              "contract_id": {
+              "config_id": {
                 "description": "config id",
                 "type": "integer"
               },
-              "config_type": {
-                "description": "Search on config type",
-                "type": "string"
-              }
+                "config_name": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Name of the configuration"
+                },
+                "day_of_week": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Day of week to run"
+                },
+                "patron_categories": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "threshold": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "processing_fee": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "collections_flag": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "exemptions_flag": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "fees_newer": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "fees_older": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "ignore_before": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "clear_below": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "clear_threshold": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "restriction": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "remove_minors": {
+                    "type": "boolean",
+                    "description": "Will minors be removed"
+                },
+                "unique_email": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                },
+                "additional_email": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Optional email to send to"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the job is enabled"
+                },
+                "config_type": {
+                    "type": "string",
+                    "description": "What type of config is it"
+                },
+                "debit_type": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "What debit type should be used"
+                },
+
+                "updated_at": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Job last update timestamp"
+                }
             }
           }
         }

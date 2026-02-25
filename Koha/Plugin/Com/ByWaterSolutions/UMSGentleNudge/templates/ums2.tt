@@ -101,7 +101,7 @@
         <form  id="config_form" method="post" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
             <input type="hidden" name="method" value="[% METHOD %]"/>
-            <input type="hidden" name="action" value="add"/>
+            <input type="hidden" name="action" id="modal_button" value="add"/>
             <input type="hidden" class="modal-type" name="type"/>
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -292,8 +292,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 <div class="form-group mb-3">
                                     <label for="add_restriction">Add restriction for patrons entering collections <i id="info_added" data-bs-toggle="tooltip" title="If enabled, newly flag patrons will have a restriction added to their record." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="add_restriction" id="add_restriction" class="form-control">
-                                        <option value="yes" [% IF add_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
-                                        <option value="no" [% IF add_restriction == "no" %]selected="selected"[% END %]>No</option>
+                                        <option value="1" [% IF add_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="0" [% IF add_restriction == "no" %]selected="selected"[% END %]>No</option>
                                     </select>
                                   </div>
                               </div>
@@ -301,8 +301,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 <div class="form-group mb-3">
                                     <label for="remove_restriction">Remove restriction for patrons leaving collections <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons that have paid their debt will have any restrictions added when entering collections removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="remove_restriction" id="remove_restriction" class="form-control">
-                                        <option value="yes" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
-                                        <option value="no" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>
+                                        <option value="1" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="0" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>
                                       </select>
                                   </div>
                               </div>
@@ -312,8 +312,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 <div class="form-group mb-3">
                                     <label for="age_limitation">Remove minors from collections report <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons under the age of 18 years old will not be included on the collections report." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="age_limitation" id="age_limitation" class="form-control">
-                                        <option value="yes" [% IF age_limitation == "yes" %]selected="selected"[% END %]>Yes</option>
-                                        <option value="no" [% IF age_limitation == "no" %]selected="selected"[% END %]>No</option>
+                                        <option value="1" [% IF age_limitation == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="0" [% IF age_limitation == "no" %]selected="selected"[% END %]>No</option>
                                     </select>
                                   </div>
                               </div>
@@ -409,8 +409,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
             var button = event.relatedTarget
             // Extract info from data-bs-* attributes
              configtype = button.getAttribute('data-bs-type')
-            var umsmode = button.getAttribute('data-bs-mode')
-            var ums_id = button.getAttribute('data-config-id')
+             umsmode = button.getAttribute('data-bs-mode')
+             ums_id = button.getAttribute('data-config-id')
 
             //update the modal content
             //These get information from the button that was clicked
@@ -418,6 +418,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
             var modalTypeInput = UMSConfigModel.querySelector('.modal-type')
             var modalTypeSelector = modalTypeSelector + configtype
             var modalIDSelect = '.' + configtype + '_option';
+            var modalButton =  UMSConfigModel.querySelector('#modal_button')
+            console.log('button' + modalButton);
             console.log('id:' + ums_id +' /mode:' + umsmode + '/modaltitle: ' + modalTitle + ' / modalTypeInput: ' + modalTypeInput + ' / modalTypeSelector: '  + modalTypeSelector  + ' / modalIDSelect: ' + modalIDSelect);
             //Sets the title dynamicly: Mode (New/Edit) type(global, group, or branch) configuration
             modalTitle.textContent = umsmode + ' ' + configtype + ' configuration'
@@ -687,7 +689,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     fees_newer: $('#fees_starting_age').val(),
                     fees_older: $('#fees_ending_age').val(),
                     ignore_before: $('#fees_created_before_date_filter').val(),
-                    patron_categories: $('#umsconfig_categories').val(),
+                    //patron_categories: $('#umsconfig_categories').val(),
                     processing_fee: $('#processing_fee').val(),
                     remove_minors: $('#age_limitation').val(),
                     require_lost_fee: $('#require_lost_fee').val(),
@@ -695,8 +697,16 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     threshold: $('#threshold').val(),
                     unique_email: $('#unique_email').val()
                 };
+                method = '';
                 let url = '/api/v1/contrib/ums/configs'
-                let method = 'POST';
+                if (umsmode == "New") {
+                 method = 'POST';
+                };
+                if (umsmode =="Edit"){
+                     url = '/api/v1/contrib/ums/config/' + ums_id;
+                     method = 'PUT';
+                };
+                console.log(method);
 
 
                 $.ajax({

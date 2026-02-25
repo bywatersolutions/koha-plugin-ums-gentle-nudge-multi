@@ -132,7 +132,7 @@ sub add {
 
 =cut
 
- sub _update_config {
+ sub update {
     my $c = shift->openapi->valid_input or return;
 
 
@@ -152,7 +152,7 @@ sub add {
     my $fees_newer = $c->req->json->{'fees_newer'};
     my $fees_older = $c->req->json->{'fees_older'};
     my $ignore_before = $c->req->json->{'ignore_before'};
-    my $patron_categories = $c->req->json->{'day_of_week'};
+    #my $patron_categories = $c->req->json->{'patron_categories'};
     my $processing_fee = $c->req->json->{'processing_fee'};
     my $remove_minors = $c->req->json->{'remove_minors'};
     my $restriction = $c->req->json->{'restriction'};
@@ -178,7 +178,7 @@ sub add {
             fees_newer => $fees_newer,
             fees_older => $fees_older,
             ignore_before => $ignore_before,
-            patron_categories => $patron_categories,
+            #patron_categories => $patron_categories,
             processing_fee => $processing_fee,
             remove_minors => $remove_minors,
             restriction => $restriction,
