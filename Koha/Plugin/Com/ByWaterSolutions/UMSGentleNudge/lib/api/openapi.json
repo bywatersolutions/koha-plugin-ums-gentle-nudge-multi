@@ -124,77 +124,77 @@
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Patron categories to include"
                                         },
                                         "threshold": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Minimum threshold "
                                         },
                                         "processing_fee": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "A processing fee for when patrons are sent to collections"
                                         },
                                         "collections_flag": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Patron attribute to use as a flag for collections"
                                         },
                                         "exemptions_flag": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Patron attribute to use for exempting patrons from collections"
                                         },
                                         "fees_newer": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Only include fees newer than x days"
                                         },
                                         "fees_older": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Only include fees at least x days old"
                                         },
                                         "ignore_before": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Fines before this date are ignored"
                                         },
                                         "clear_below": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Are patrons cleared from the report if they go below a threshold"
                                         },
                                         "clear_threshold": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Threshold to clear patrons if the total drops below"
                                         },
                                         "restriction": {
                                             "type": [
                                                 "string",
                                                 "null"
                                             ],
-                                            "description": "Email from unique"
+                                            "description": "Do we add a restriction to the patron"
                                         },
                                         "remove_minors": {
                                             "type": "boolean",
@@ -345,15 +345,15 @@
         },{
           "name": "body",
           "in": "body",
-          "description": "Updated config id",
+          "description": "Updated config information",
           "required": true,
           "schema": {
             "type": "object",
             "properties": {
-              "config_id": {
-                "description": "config id",
-                "type": "integer"
-              },
+                "config_id": {
+                    "description": "config id",
+                    "type": "integer"
+                },
                 "config_name": {
                     "type": [
                         "string",
@@ -454,7 +454,7 @@
                         "string",
                         "null"
                     ],
-                    "description": "Email from unique"
+                    "description": "Email to unique"
                 },
                 "additional_email": {
                     "type": [
@@ -492,7 +492,7 @@
       ],
       "responses": {
         "200": {
-          "description": "A list of configurations"
+          "description": "Configuration updated"
         },
         "403": {
           "description": "You are not authorized to update configurations"
@@ -523,5 +523,47 @@
         }
       }
     }
-  }
-}
+  },
+   "/config/{config_id}/enable": {
+    "post": {
+        "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#enable",
+        "operationId": "enableUMSConfig",
+        "tags": [
+            "configs"
+        ],
+        "produces": [
+            "application/json"
+        ],
+        "parameters": [{
+          "name": "config_id",
+          "in": "path",
+          "description": "Search on config id",
+          "required": true,
+          "type": "integer"
+        }],
+        "responses": {
+            "200": {
+                "description": "Config enabled successfully",
+                "schema":{
+                    "type":"object",
+                    "properties": {
+                        "success": {
+                            "type": "boolean"
+                        }
+                    }
+                }            
+            },
+            "401": {
+                "description": "Authentication required"
+            },
+            "403": {
+                "description": "Access forbidden"
+            },
+            "500": {
+                "description": "Internal server error"
+            }
+            }
+        }
+    }
+   }
+
