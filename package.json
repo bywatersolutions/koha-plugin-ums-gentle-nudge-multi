@@ -1,6 +1,6 @@
 {
   "name": "koha-plugin-ums-gentle-nudge-multi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "UMS Gentle nudge plugin for multi-branch systems",
   "main": "index.js",
   "scripts": {
