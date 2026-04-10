@@ -222,6 +222,10 @@
                                             "type": "string",
                                             "description": "What type of config is it"
                                         },
+                                        "require_lost": {
+                                            "type": "string",
+                                            "description": "Does the patron need to have a lost fee to be sent to collections"
+                                        },
                                         "debit_type": {
                                             "type": [
                                                 "string",
@@ -280,6 +284,10 @@
               "branch": {
                 "description": "Optional branch code",
                 "type": "string"
+              },
+              "require_lost": {
+                  "type": "string",
+                  "description": "Does the patron need to have a lost fee to be sent to collections"
               },
               "additional_email": {
                 "description": "Optional additional email",
@@ -374,6 +382,10 @@
                         "null"
                     ],
                     "description": "Email from unique"
+                },
+                "require_lost": {
+                    "type": "string",
+                    "description": "Does the patron need to have a lost fee to be sent to collections"
                 },
                 "threshold": {
                     "type": [

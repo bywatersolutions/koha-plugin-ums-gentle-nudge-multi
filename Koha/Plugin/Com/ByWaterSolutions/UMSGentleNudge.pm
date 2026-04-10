@@ -784,6 +784,7 @@ sub install() {
                     config_type VARCHAR(15) DEFAULT 'global' NOT NULL COMMENT 'Options are global (can only have 1 global), branch, or group',
                     debit_type VARCHAR(191) NOT NULL DEFAULT 'manual',
                     # updated_at timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'When the config was last updated',
+                    require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections',
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
                     KEY config_group (config_group)
@@ -817,28 +818,7 @@ sub upgrade {
 
     unless ($self->_table_exists('config') ) {
          C4::Context->dbh->do("
-        CREATE TABLE IF NOT EXISTS $configuration (
-                    config_id VARCHAR(15) NULL COMMENT 'library group id from the library groups table or branchcode from branches',
-                    day_of_week INT(1) NOT_NULL,
-                    patron_categories VARCHAR(191) NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
-                    threshold INT(11) NOT NULL DEFAULT '25.00' COMMENT 'Minimum amount owed to be sent to collections.',
-                    processing_fee INT(11) NULL DEFAULT '10.00' COMMENT 'Amount of the processing fee added to the patron account',
-                    collections_flag VARCHAR(191) NULL COMMENT 'Specify how the patron is flagged as being in collections. If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO category.',
-                    exemptions_flag VARCHAR (191) NULL COMMENT 'Patrons with the selected attribute will not be flagged.',
-                    fees_newer INT(11) NOT NULL DEFAULT '60' COMMENT 'fees newer than this number of days will be totaled to check if a patron should be sent to collections',
-                    fees_older INT(11) NOT NULL DEFAULT '90' COMMENT 'fees older than this number of days will be totaled to check if a patron should be sent to collections',
-                    ignore_before DATE NULL COMMENT 'fees created before this date will not be part of the total to check if a patron should be sent to collections',
-                    clear_below TINYINT(1) NOT NULL DEFAULT '0' COMMENT '0, patrons who have paid their fines to below the threshold will not be removed from collections.',
-                    clear_threshold INT(11) NOT NULL DEFAULT '0' COMMENT 'The patron will be cleared from collections if if they do not exceed this threshold.',
-                    restriction TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Newly flagged patrons will have a restriction added to their account.',
-                    remove_minors TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
-                    unique_email VARCHAR(191) NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
-                    additional_email VARCHAR(191) NULL DEFAULT NULL COMMENT 'If you would like to send to another email address as well',
-                    enabled INT(1) NOT NULL DEFAULT '0' COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
-                    config_type VARCHAR(15) NOT NULL DEFAULT 'global' COMMENT 'Options are global (can only have 1 global), branch, or group'
-                    PRIMARY KEY (config_id)
-                    ) ENGINE=INNODB;
-       " );
+        INSERT IGNORE INTO $configuration (require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections" );
     }
     $self->store_data();
 warn "warn upgrade end";

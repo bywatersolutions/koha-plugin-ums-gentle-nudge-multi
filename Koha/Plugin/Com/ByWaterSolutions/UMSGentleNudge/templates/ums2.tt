@@ -4,14 +4,23 @@
 [% USE Categories %]
 
 [% WRAPPER "wrapper-staff-tool-plugin.inc" method="configure" plugin_title="UMS Collections" %]
-<div id="message"></div>
+<div id="message">
+<div class="alert alert-danger" role="alert"><h2>Beta! In testing for user experience testing only right now.</h2>
+<h3>Known ui issues</h3>
+<ul>
+<li>Delete button - not yet functional</li>
+<li>Can create multiple configurations for the same branch or group</li>
+<li>Patron categories don't currently save/load due to multiselect complication</li>
+</ul>
+</div>
+</div>
     <body>
         <div id="toolbar" class="btn-toolbar">
             <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode ="New" data-bs-type="group" class="btn btn-default" id="newconfig">
                 <i class="fa fa-plus"></i> New group configuration
               </button>
-            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="New" data-bs-type="branch"class="btn btn-default" id="newconfig">
-                <i class="fa fa-plus"></i> New branch configuration
+            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="New" data-bs-type="library"class="btn btn-default" id="newconfig">
+                <i class="fa fa-plus"></i> New library configuration
               </button>
           </div>
        <div >
@@ -30,8 +39,8 @@
                               </button>
                           </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="branch-tab" data-bs-toggle="tab" data-bs-target="#branch-configs" type="button" role="tab">
-                                <i class="fa fa-server"></i> Branch configurations
+                            <button class="nav-link" id="library-tab" data-bs-toggle="tab" data-bs-target="#library-configs" type="button" role="tab">
+                                <i class="fa fa-server"></i> Library configurations
                               </button>
                           </li>
                       </ul>
@@ -39,7 +48,7 @@
                         <div class="tab-pane fade show active" id="all-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">All configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (branches) to least specific (global)</p>
+                                <p class="text-muted">Configurations are checked from most specific (libraryes) to least specific (global)</p>
                               </div>
                             <table class="table table-striped" id="config_table"
                                 <thead>
@@ -57,7 +66,7 @@
                         <div class="tab-pane fade" id="group-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (branches) to least specific (global)</p>
+                                <p class="text-muted">Configurations are checked from most specific (libraries) to least specific (global)</p>
                               </div>
                             <table class="table table-striped" id="group_table"
                                 <thead>
@@ -72,12 +81,12 @@
                                   </tbody>
                               </table>
                           </div>
-                        <div class="tab-pane fade" id="branch-configs" role="tabpanel">
+                        <div class="tab-pane fade" id="library-configs" role="tabpanel">
                             <div class="page-section">
-                                <p class="text-muted">Branch configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (branches) to least specific (global)</p>
+                                <p class="text-muted">Library configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                <p class="text-muted">Configurations are checked from most specific (libraries) to least specific (global)</p>
                               </div>
-                              <table class="table table-striped" id="branch_table"
+                              <table class="table table-striped" id="library_table"
                                 <thead>
                                     <tr>
                                         <th>Configuration ID</th>
@@ -86,7 +95,7 @@
                                         <th>Actions</th>
                                       </tr>
                                   </thead>
-                                <tbody id="branch-tbody">
+                                <tbody id="library-tbody">
                                     <!-- configs will be loaded dynamically -->
                                   </tbody>
                               </table>
@@ -117,7 +126,7 @@
                                     <select name="umsconfig_selector" id="umsconfig_id_select" class="form-control">
                                     <option class="modal-select-type">Select a</option>
                                     [% FOREACH l IN Branches.all() %]
-                                        <option class="branch_option" value="[% l.branchcode %]" [% IF umsconfig_id == l.branchcode %]selected="selected" [% END %]hidden="" >[% l.branchname | html %]</option>
+                                        <option class="library_option" value="[% l.branchcode %]" [% IF umsconfig_id == l.branchcode %]selected="selected" [% END %]hidden="" >[% l.branchname | html %]</option>
                                     [% END %]
                                         [% FOREACH g IN groups %]
                                             <option class="group_option" value="[% g.id %]" [% IF umsconfig_id == g.id %]selected="selected" hidden[% END %]hidden="" >[% IF g.parent_id > 0 %][% LibraryGroups.GetTitle(g.parent_id) %] - [% END %][% g.title %]</option>
@@ -171,7 +180,7 @@
                                     <label for="fees_threshold">Threshold <i id="info_added" data-bs-toggle="tooltip" title="Minimum amount owed to be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i><label>
                                     <div class="input-group">
                                         <div class="input-group-addon">$</div> 
-                                            <input type="fees_threshold" name="fees_threshold" id="fees_threshold" class="form-control">
+                                            <input type="text" name="fees_threshold" id="fees_threshold" class="form-control">
                                       </div>
                                   </div>
                               </div>
@@ -180,7 +189,7 @@
                                     <label for="processing_fee">Processing fee <i id="info_added" data-bs-toggle="tooltip" title="Amount of the processing fee added to the patron's account." data-bs-placement="right" class="fa fa-info-circle"></i><label>
                                     <div class="input-group">
                                         <div class="input-group-addon">$ </div>
-                                        <input type="processing_fee" name="processing_fee" id="processing_fee" class="form-control">
+                                        <input type="text" name="processing_fee" id="processing_fee" class="form-control">
                                       </div>
                                   </div>
                               </div>
@@ -190,8 +199,8 @@
                                 <div class="form-group mb-3">
                                     <label for="require_lost_fee">Require lost fee <i id="info_added" data-bs-toggle="tooltip" title="If enabled, a patron will not be sent to collections unless at least one of their outstanding fees is a lost fee of any amount." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="require_lost_fee" id="require_lost_fee" class="form-control">
-                                        <option value="no" [% IF require_lost_fee == "no" %]selected="selected"[% END %]>No</option>
-                                        <option value="yes" [% IF require_lost_fee == "yes" %]selected="selected"[% END %]>Yes</option>
+                                        <option value="0">No</option>
+                                        <option value="1">Yes</option>
                                     </select>
                                     <span class="help-block"></span>
                                   </div>
@@ -202,7 +211,6 @@
                                 <div class="form-group mb-3">
                                     <label for="processing_debit">Processing fee debit type <i id="info_added" data-bs-toggle="tooltip" title="Which debit type will be used" data-bs-placement="right" class="fa fa-info-circle"></i><label>
                                     <select name="processing_debit" id="processing_debit" class="form-control">
-                                            <option value="" selected="selected"> Select an attribute</option>
                                         [% FOREACH debit_type IN debit_types %]
                                             <option value="[% debit_type.code | html %]" selected="selected">[% debit_type.description | html %]</option>
                                           [% END %]
@@ -219,11 +227,10 @@
 
 If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="collections_flag" id="collections_flag" class="form-control">
-                                        <option value="" selected="selected"> Select an attribute</option>
-                                        <option value="sort1" [% IF collections_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
-                                        <option value="sort2" [% IF collections_flag == "sort2" %]selected="selected"[% END %]>sort2</option>
+                                        <option value="sort1"> sort1</option>
+                                        <option value="sort2">sort2</option>
                                         [% FOREACH a IN attributes %]
-                                            <option value="[% a.code %]" [% IF collections_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
+                                            <option value="[% a.code %]">[% a.description | html %]</option>
                                         [% END %]
                                       </select>
                                   </div>
@@ -236,11 +243,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
  If using another category, the authorized values should be 0 and 1, but the descriptions can be set to your preference." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="exemption_flag" id="exemption_flag" class="form-control">
-                                        <option value="" selected="selected"> Select an attribute</option>
-                                        <option value="sort1" [% IF exemption_flag == "sort1" %]selected="selected"[% END %]>sort1</option>
-                                        <option value="sort2" [% IF exemption_flag == "sort2" %]selected="selected"[% END %]>sort2</option>
+                                        <option value="sort1">sort1</option>
+                                        <option value="sort2">sort2</option>
                                         [% FOREACH a IN attributes %]
-                                            <option value="[% a.code %]" [% IF exemption_flag == a.code %]selected="selected"[% END %]>[% a.description | html %]</option>
+                                            <option value="[% a.code %]">[% a.description | html %]</option>
                                         [% END %]
                                     </select>
                             </div>
@@ -249,13 +255,13 @@ If using another category, the authorized values should be 0 and 1, but the desc
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="fees_starting_age">Count fees newer than <i id="info_added" data-bs-toggle="tooltip" title="Fees newer than this number of days will be totaled to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
-                                    <input type="text" name="fees_starting_age" id="fees_starting_age" class="form-control" value="[% fees_starting_age %]">
+                                    <input type="number" name="fees_starting_age" id="fees_starting_age" class="form-control">
                                   </div>
                               </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="fees_ending_age">Count fees older than <i id="info_added" data-bs-toggle="tooltip" title="Fees older than this number of days will be totaled to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
-                                    <input type="text" name="fees_ending_age" id="fees_ending_age" class="form-control" value="[% fees_ending_age %]">
+                                    <input type="number" name="fees_ending_age" id="fees_ending_age" class="form-control">
                                    </div>
                               </div>
                           </div>
@@ -263,7 +269,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                             <div class="col-md-12">
                                 <div class="form-group mb-3">
                                     <label for="fees_created_before_date_filter">Ignore fees created before this date <i id="info_added" data-bs-toggle="tooltip" title="Fees created before this date will not be part of the total used to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
-                                    <input type="text" id="fees_created_before_date_filter" size="10" id=" fees_created_before_date_filter" name="fees_created_before_date_filter" class="flatpickr" value="[% fees_created_before_date_filter | html %]"/>
+                                    <input type="text" id="fees_created_before_date_filter" size="10" id=" fees_created_before_date_filter" name="fees_created_before_date_filter" class="flatpickr" />
                                   </div>
                               </div>
                           </div>
@@ -272,8 +278,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 <div class="form-group mb-3">
                                     <label for="clear_below">Clear flag when balance at or below threshold <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons who have paid off all they owe will have the collections flag removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select class="form-control" id="clear_below">
-                                        <option value="1" [% IF auto_clear_paid == "yes" %]selected="selected"[% END %]>Yes</option>
-                                        <option value="0" [% IF auto_clear_paid == "no" %]selected="selected"[% END %]>No</option>
+                                        <option value="1">Yes</option>
+                                        <option value="0">No</option>
                                     </select>
                                   </div>
                               </div>
@@ -329,7 +335,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="unique_email">Unique email address <i id="info_added" data-bs-toggle="tooltip" title="Email address provided to you by Unique Management Systems to email reports to.</" data-bs-placement="right" class="fa fa-info-circle"></i></label>
-                                    <input type="text" name="unique_email" id="unique_email" class="form-control" value="[% unique_email %]">
+                                    <input type="text" name="unique_email" id="unique_email" class="form-control" >
                                   </div>
                               </div>
                             <div class="col-md-6">
@@ -359,11 +365,15 @@ If using another category, the authorized values should be 0 and 1, but the desc
         </form> <!-- /#config_form -->
       </div> <!-- /#newConfigModal -->    
         <!-- Delete Configuration Modal -->
-    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="delete-modal-label">
-      <form id="deleteForm">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
+    <div class="modal fade modal-lg" id="UMSDeleteModel" aria-labelledby="UMSDeleteLabel" aria-hidden="true">
+        <form  id="deleteForm" method="post" class="form">
+            <input type="hidden" name="class" value="[% CLASS %]"/>
+            <input type="hidden" name="method" value="[% METHOD %]"/>
+            <input type="hidden" name="action" id="modal_button" value="add"/>
+            <input type="hidden" class="modal-type" name="type"/>
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
                         <h1 class="modal-title" id="delete-modal-label">Delete Configuration</h1>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -386,13 +396,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
     </div>
     </div><!--end panel div-->
   </body>
-<style>
-    .hideme {
-        display:none;
-    }
-
-</style>
-            [% MACRO jsinclude BLOCK %]
+    [% MACRO jsinclude BLOCK %]
     [% Asset.js("js/admin-menu.js") | $raw %]
     [% Asset.css("css/humanmsg.css") | $raw %]
     [% Asset.js("lib/jquery/plugins/humanmsg.js") | $raw %]
@@ -401,8 +405,16 @@ If using another category, the authorized values should be 0 and 1, but the desc
     [% INCLUDE 'datatables.inc' %]
     [% INCLUDE 'select2.inc' %]
     [% INCLUDE 'calendar.inc' %]
-        <script>
+        <script  nonce="[% Koha.CSPNonce | $raw %]">
+        var UMSDeleteModel = document.getElementById('UMSDeleteModel')
         var UMSConfigModel = document.getElementById('UMSConfigModel')
+
+         UMSDeleteModel.addEventListener('show.bs.modal', function(event){
+             var delbutton = event.relatedTarget
+             del_ums_id=delbutton.getAttribute('data-delete-id')
+             confirm('Are you sure? This cannot be undone!')
+             deleteConfig()
+         });
         UMSConfigModel.addEventListener('show.bs.modal', function (event){
             //Button that triggered the modal
             var button = event.relatedTarget
@@ -419,7 +431,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
             var modalButton =  UMSConfigModel.querySelector('#modal_button')
             console.log('button' + modalButton);
             console.log('id:' + ums_id +' /mode:' + umsmode + '/modaltitle: ' + modalTitle + ' / modalTypeInput: ' + modalTypeInput + ' / modalTypeSelector: '  + modalTypeSelector  + ' / modalIDSelect: ' + modalIDSelect);
-            //Sets the title dynamicly: Mode (New/Edit) type(global, group, or branch) configuration
+            //Sets the title dynamicly: Mode (New/Edit) type(global, group, or library) configuration
             modalTitle.textContent = umsmode + ' ' + configtype + ' configuration'
             var modalSelector = UMSConfigModel.querySelector('.modal-select-type');
             modalSelector.textContent = 'Select a ' + configtype
@@ -427,9 +439,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 modalSelector.textContent = 'Global'
             };
             if (umsmode == "Edit") loadConfigForEdit();
+            else setDefaults();
 
             
-        //show the appropriate choices in the branch/group dropdown
+        //show the appropriate choices in the library/group dropdown
 
            // Array.from(document.querySelectorAll("." + configtype +"_option")).forEach(e =>e.removeAttribute("hidden"));
            $("." + configtype +"_option").each(function(){
@@ -443,14 +456,30 @@ If using another category, the authorized values should be 0 and 1, but the desc
               );
           });
         });
+            function setDefaults() {
+                        document.getElementById("clear_below").value = '1';
+                        document.getElementById("clear_threshold").value = '0';
+                        document.getElementById("processing_debit").value = 'MANUAL';
+                        document.getElementById("run_on_dow").value ='0';
+                        document.getElementById("config-enabled").value = '0';
+                        document.getElementById("fees_starting_age").value = '90';
+                        document.getElementById("fees_ending_age").value = '60';
+                        document.getElementById("processing_fee").value = '10';
+                        document.getElementById("age_limitation").value = '0';
+                        document.getElementById("add_restriction").value = '0'
+                        document.getElementById("remove_restriction").value = '0';
+                        document.getElementById("fees_threshold").value = '0';
+            }
 
             function loadConfigForEdit() {
-                                console.log("edit clicked");
                 $.ajax({
                     url: '/api/v1/contrib/ums/config/' + event.relatedTarget.getAttribute('data-config-id'),
                     method: 'GET',
                     success: function(config) {
 
+                        if (config.config_type == "library") {
+                            document.getElementById("umsconfig_id_select").value = config.branch;
+                        } 
                         if (config.config_type == "branch") {
                             document.getElementById("umsconfig_id_select").value = config.branch;
                         } 
@@ -463,7 +492,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("collections_flag").value = config.collections_flag;
                         document.getElementById("processing_debit").value = config.debit_type;
                         document.getElementById("run_on_dow").value = config.day_of_week;
-                        document.getElementById("processing_debit").value = config.debit_type;
                         document.getElementById("config-enabled").value = config.enabled;
                         document.getElementById("exemption_flag").value = config.exemptions_flag;
                         document.getElementById("fees_starting_age").value = config.fees_newer;
@@ -476,8 +504,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("remove_restriction").value = config.remove_restriction;
                         document.getElementById("fees_threshold").value = config.threshold;
                         document.getElementById("unique_email").value = config.unique_email;
-                        document.getElementById("require_lost_fee").value = config.require_lost_fee;
-                        
+                        document.getElementById("require_lost_fee").value = config.require_lost;
                     }
                 })
             }
@@ -490,7 +517,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
             $('#group-tab').on('click', function() {
                 loadGroups();
             });
-            $('#branch-tab').on('click', function() {
+            $('#library-tab').on('click', function() {
                 loadBranches();
             });
 
@@ -503,7 +530,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 e.preventDefault();
                 saveConfig();
             })
-
+            // $('#delete').on('click', function() {
+            //     let configId = $(this).data('data-config-id');
+            //     openDeleteModal();
+            // });
             //Initialize DataTables
                 function loadAll() {
                 $('#config_table').kohaTable({
@@ -520,8 +550,11 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         render: function (data, type, row) {
                             if (data === "global") {
                                 return 'Global configuration'}
+                            if (data === "library") {
+                                return 'Library configuration'}
                             if (data === "branch") {
-                                return 'Branch configuration'}
+                                return 'Library configuration'
+                            }
                             if (data === "group") {
                                 return 'Group configuration'}
                             },
@@ -532,7 +565,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                             if (data) {
                             return '$' + data
                             } else {
-                                return 'Not configured'
+                                return '$0'
                             }
                         },
                         title: "Threshold"},
@@ -541,7 +574,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                             if (data) {
                             return '$' + data
                             } else {
-                                return 'Not configured'
+                                return '$0'
                             }
                         },
                         title: "Processing Fee"},
@@ -559,7 +592,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="branchTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>'
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>'
                             } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>'
                             }
                         },
@@ -583,8 +616,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         render: function (data, type, row) {
                             if (data === "global") {
                                 return 'Global configuration'}
+                            if (data === "library") {
+                                return 'Library configuration'}
                             if (data === "branch") {
-                                return 'Branch configuration'}
+                                return 'Library configuration'}
                             if (data === "group") {
                                 return 'Group configuration'}
                             },
@@ -622,7 +657,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="branchTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>'
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>'
                             } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>'
                             }
                         },
@@ -631,10 +666,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
             });
                 }
                 function loadBranches() {
-                $('#branch_table').kohaTable({
+                $('#library_table').kohaTable({
                     "bDestroy": true,
                     "ajax": {
-                        url: '/api/v1/contrib/ums/configs/?config_type=branch',
+                        url: '/api/v1/contrib/ums/configs/?config_type=library',
                         method: 'GET'
                     },
                     "columns": [
@@ -645,8 +680,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         render: function (data, type, row) {
                             if (data === "global") {
                                 return 'Global configuration'}
+                            if (data === "library") {
+                                return 'Library configuration'}
                             if (data === "branch") {
-                                return 'Branch configuration'}
+                                return 'Library configuration'}
                             if (data === "group") {
                                 return 'Group configuration'}
                             },
@@ -684,7 +721,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="branchTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>'
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>'
                             } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>'
                             }
                         },
@@ -692,19 +729,31 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         title: "Actions"}]
             });
                 };
+
+            function deleteConfig() {
+                $.ajax({
+                    url: '/api/v1/contrib/ums/config/' + del_ums_id,
+                    method: 'delete',
+                    })};
+
             function saveConfig() {
+                if ($configtype = "library") {
+                    umslibrary = $('#umsconfig_id_select').val();
+                };
                 if ($configtype = "branch") {
-                    umsbranch =$('#umsconfig_id_select').val();
+                    umslibrary = $('#umsconfig_id_select').val();
                 };
                 if ($configtype = "group") {
                     umsgroup = $('#umsconfig_id_select').val();
                 }
-                console.log(configtype);
+                if ($configtype = "global") {
+                }
                 var debit_type_select = document.getElementById('processing_debit');
                 var debit_type = debit_type_select.value;
+                var exemption_select = document.getElementById('processing_debit');
                 let configData = {
-                    additional_email: $('#additional_email').val(),
-                    branch: umsbranch,
+                    additional_email: $('#cc_email').val(),
+                    branch: umslibrary,
                     clear_below: $('#clear_below').val(),
                     clear_threshold: $('#clear_threshold').val(),
                     collections_flag: $('#collections_flag').val(),
@@ -714,7 +763,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     day_of_week: $('#run_on_dow').val(),
                     debit_type: debit_type,
                     enabled: $('#config-enabled').val(),
-                    exemption_flag: $('#exemption_flag').val(),
+                    exemptions_flag: $('#exemption_flag').val(),
                     fees_newer: $('#fees_starting_age').val(),
                     fees_older: $('#fees_ending_age').val(),
                     ignore_before: $('#fees_created_before_date_filter').val(),
@@ -722,12 +771,11 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     processing_fee: $('#processing_fee').val(),
                     remove_minors: $('#age_limitation').val(),
                     remove_restriction:$('#remove_restriction').val(),
-                    require_lost_fee: $('#require_lost_fee').val(),
+                    require_lost: $('#require_lost_fee').val(),
                     restriction: $('#add_restriction').val(),
-                    threshold: $('#threshold').val(),
+                    threshold: $('#fees_threshold').val(),
                     unique_email: $('#unique_email').val()
                 };
-                console.log(configData);
                 method = '';
                 let url = '/api/v1/contrib/ums/configs'
                 if (umsmode == "New") {
@@ -737,16 +785,13 @@ If using another category, the authorized values should be 0 and 1, but the desc
                      url = '/api/v1/contrib/ums/config/' + ums_id;
                      method = 'PUT';
                 };
-                console.log(method);
-
-
-                $.ajax({
-                        url: url,
+                 $.ajax({
+                    url: url,
                     method: method,
                     data: JSON.stringify(configData),
                     contentType: 'application/json',
                     success: function(data) {
-                        //showMessage(configId ? 'Config updated successfully' : 'Config created successfully', 'success');
+                    //showMessage(configId ? 'Config updated successfully' : 'Config created successfully', 'success');
                         $('#UMSConfigModel').modal('hide');
                         loadAll();
                     },
@@ -761,14 +806,14 @@ If using another category, the authorized values should be 0 and 1, but the desc
               }
 
             function openConfigModal() {
-                console.log(ums_id);
-                console.log('testing');
                 if (ums_id) {
                     //Edit existing configs
                     loadConfigForEdit(ums_id);
                 }
             }
-        });
+            function openDeleteModal() {
+            }
+        })
 </script>
 [% END %]
 [% END %]<!--wrapper-->
