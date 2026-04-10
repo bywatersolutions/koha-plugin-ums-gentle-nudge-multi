@@ -234,6 +234,8 @@ __PACKAGE__->add_columns(
   { data_type => "tinyint", is_nullable => 1 },
   "remove_minors",
   { data_type => "tinyint", is_nullable => 1 },
+  "require_lost",
+  { data_type => "tinyint", is_nullable => 1 },
   "unique_email",
   { data_type => "varchar", is_nullable => 1, size => 191 },
   "additional_email",

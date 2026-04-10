@@ -87,13 +87,18 @@ sub add {
     my $patron_categories = $c->req->json->{'day_of_week'};
     my $processing_fee = $c->req->json->{'processing_fee'};
     my $remove_minors = $c->req->json->{'remove_minors'};
+    my $require_lost = $c->req->json->{'require_lost'};
     my $restriction = $c->req->json->{'restriction'};
     my $threshold = $c->req->json->{'threshold'};
     my $unique_email = $c->req->json->{'unique_email'};
 
-    if ($config_type == "group") {
+    if ($config_type eq "group") {
         my $group = Koha::Library::Groups->find($config_group);
         $config_name = $group->title;
+    }
+    if ($config_type eq "library") {
+        my $branch_name = Koha::Libraries->find($branch);
+        $config_name = $branch_name->branchname;
     }
     return try {
         my $config = Koha::UMSConfig->new({
@@ -117,6 +122,7 @@ sub add {
             processing_fee => $processing_fee,
             remove_minors => $remove_minors,
             restriction => $restriction,
+            require_lost => $require_lost,
             threshold => $threshold,
             unique_email => $unique_email
         });
@@ -143,7 +149,6 @@ sub add {
     my $c = shift->openapi->valid_input or return;
     my $config_id = $c->param('config_id');
     my $config = Koha::UMSConfigs->find({ config_id => $config_id });
-
     my $additional_email = $c->req->json->{'additional_email'};
     my $branch = $c->req->json->{'branch'};
     my $clear_below = $c->req->json->{'clear_below'};
@@ -163,9 +168,17 @@ sub add {
     my $processing_fee = $c->req->json->{'processing_fee'};
     my $remove_minors = $c->req->json->{'remove_minors'};
     my $restriction = $c->req->json->{'restriction'};
+    my $require_lost = $c->req->json->{'require_lost'};
     my $threshold = $c->req->json->{'threshold'};
     my $unique_email = $c->req->json->{'unique_email'};
-
+    if ($config_type eq "group") {
+        my $group = Koha::Library::Groups->find($config_group);
+        $config_name = $group->title;
+    }
+    if ($config_type eq "library") {
+        my $branch_name = Koha::Libraries->find($branch);
+        $config_name = $branch_name->branchname;
+    }
     return try {
         my $old_config = $config;
         {
