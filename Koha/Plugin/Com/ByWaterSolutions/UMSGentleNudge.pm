@@ -43,9 +43,9 @@ our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;
 
 our $metadata = {
     name            => 'Unique Management Services - Gentle Nudge Multi-Configuration',
-    author          => 'Kyle M Hall',
-    date_authored   => '2021-09-27',
-    date_updated    => "2025-09-25",
+    author          => 'Lisette Scheer',
+    date_authored   => '2026-04-23',
+    date_updated    => "2026-04-23",
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
@@ -138,39 +138,54 @@ sub new {
 =cut
 
 sub configure {
+    warn 'configure';
     my ( $self, $args ) = @_;
     my $cgi = $self->{'cgi'};
     my $template = $self->get_template( { file => 'templates/ums2.tt' } );
     my $dbh = C4::Context->dbh;
-
     my $config_table = $self->get_qualified_table_name('config');
     my $configs = Koha::UMSConfigs->search();
     my $action = $cgi->param('op');
     my $config = $cgi->param('config');
     my $groups = Koha::Library::Groups->search({branchcode => undef}, { order_by => ['title'] } );
     my @debit_types = Koha::Account::DebitTypes->search()->as_list;
-
-    if ( $action eq 'cud-save' ) {
-        $self->store_data(
-            {
-                config_id => scalar $cgi->param('config_id'),
-            }
-        );
-        }
-
-    #   elsif ( $action eq 'delete' ) {
-    #     my $ums_config = Koha::UMSConfigs->find($config);
-    #     $ums_config->delete() if $ums_config;
-    # }
-    #   elsif ( $action eq 'edit' ) {
-    #     my $ums_config = Koha::UMSConfigs->find($config);
-    #     $self->store_data({
-    #             authorized_users => $auth_users
-    #         });
-    #   }
+    warn 'action if';
+    if ($action){
+        if ( $action eq 'cud-save' ) {
+            $self->store_data(
+                {
+                    config_id => scalar $cgi->param('config_id'),
+              }
+              );
+          }
+             };
     $template->param( configs => $configs, groups => $groups, debit_types => \@debit_types);
     $self->output_html( $template->output() );
     }
+
+# =head3 intranet_js
+
+# Get the configure.js file 
+
+# =cut
+
+# sub intranet_js {
+#     my ( $self ) = @_;
+
+#     return q|
+#     <script src="/api/v1/contrib/ums/static/js/configure.js"></script>
+#     |;
+# }
+
+
+sub static_routes {
+    my ( $self, $args ) = @_;
+
+    my $spec_str = $self->mbf_read('staticapi.json');
+    my $spec     = decode_json($spec_str);
+
+    return $spec;
+}
 
 =head3 cronjob_nightly
 
@@ -780,11 +795,11 @@ sub install() {
                     remove_minors tinyint(1) NULL COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
                     unique_email VARCHAR(191) NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
                     additional_email VARCHAR(191) NULL COMMENT 'If you would like to send to another email address as well',
-                    enabled int(1) NOT NULL DEFAULT 0 COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
-                    config_type VARCHAR(15) DEFAULT 'global' NOT NULL COMMENT 'Options are global (can only have 1 global), branch, or group',
-                    debit_type VARCHAR(191) NOT NULL DEFAULT 'manual',
-                    # updated_at timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'When the config was last updated',
-                    require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections',
+                    enabled int(1) NOT NULL COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
+                    config_type VARCHAR(15) NOT NULL COMMENT 'Options are global (can only have 1 global), branch, or group',
+                    debit_type VARCHAR(191) NOT NULL,
+                    # updated_at timestamp NOT NULL COMMENT 'When the config was last updated',
+                    require_lost TINYINT(1) NOT NULL COMMENT 'Does patron require a lost fee to go to collections',
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
                     KEY config_group (config_group)
@@ -794,7 +809,7 @@ sub install() {
 
        " );
     }
-    $dbh->do("INSERT IGNORE INTO $configuration (config_name) VALUES ('Global' )"); #Create default configuration
+    $dbh->do("INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, debit_type, require_lost) VALUES ('Global', 'global', 0, '10', 'manual', 0)"); #Create default configuration
 
         my $default_config  = $dbh->selectcol_arrayref( "SELECT config_id FROM $configuration" );
     return 1;
