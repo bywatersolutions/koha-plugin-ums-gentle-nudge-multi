@@ -7,110 +7,131 @@
 [% USE Koha %]
 [% USE raw %]
 [% WRAPPER "wrapper-staff-tool-plugin.inc" method="configure" plugin_title="UMS Collections" %]
+
+
+<!-- Modal -->
+<div class="modal fade" id="UMSDeleteModal" tabindex="-1" role="dialog" aria-labelledby="UMSDeleteModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="UMSDeleteModalTitle">Delete</h5>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Close" style="margin-left: auto;">
+          <span aria-hidden="true"><i class="fa fa-times"></i></span>
+        </button>
+      </div>
+      <div class="modal-body">
+            <p>Are you sure you want to delete the configuration? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirm-delete"><i class="fa fa-trash"></i> Delete Config</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="message">
-<div class="alert alert-danger" role="alert"><h2>Beta! In testing for user experience testing only right now.</h2>
-<h3>Known ui issues</h3>
-<ul>
-<li>Delete button - not yet functional</li>
-<li>Can create multiple configurations for the same branch or group</li>
-<li>Patron categories don't currently save/load due to multiselect complication</li>
-        <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a></li>
-</ul>
-      </div> <!-- /alert -->
+    <div class="alert alert-danger" role="alert"><h2>Beta! In testing for user experience testing only right now.</h2>
+        <h3>Known ui issues</h3>
+        <ul>
+            <li>Delete button - not yet functional</li>
+            <li>Can create multiple configurations for the same branch or group</li>
+            <li>Patron categories don't currently save/load due to multiselect complication</li>
+        </ul>
+    </div> <!-- /alert -->
   </div> <!-- /message -->
     <body>
         <div id="toolbar" class="btn-toolbar">
-            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="New" data-bs-type="group" class="btn btn-default" id="newconfig">
+            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="New" data-bs-type="group" class="btn btn-default" id="newconfig">
                 <i class="fa fa-plus"></i> New group configuration
-          </button><!-- /New Group button -->
-            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="New" data-bs-type="library"class="btn btn-default" id="newconfig">
+            </button><!-- /New Group button -->
+            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="New" data-bs-type="library"class="btn btn-default" id="newconfig">
                 <i class="fa fa-plus"></i> New library configuration
-          </button><!-- /New library button -->
-      </div> <!-- /toolbar -->
-    <div>
-        <div class="page-section">
-            <div class="card">
-                <div class="card-header">
-                    <ul class="nav nav-tabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-configs" type="button" role="tab">
-                                <i class="fa fa-server"></i> All configurations
-                              </button>
-                          </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group-configs" type="button" role="tab">
-                                <i class="fa fa-server"></i> Group configurations
-                              </button>
-                          </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="library-tab" data-bs-toggle="tab" data-bs-target="#library-configs" type="button" role="tab">
-                                <i class="fa fa-server"></i> Library configurations
-                              </button>
-                          </li>
-                      </ul>
-                    <div class="tab-content">
-                        <div class="tab-pane fade show active" id="all-configs" role="tabpanel">
-                            <div class="page-section">
-                                <p class="text-muted">All configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
+            </button><!-- /New library button -->
+          </div> <!-- /toolbar -->
+        <div>
+            <div class="page-section">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-configs" type="button" role="tab">
+                                    <i class="fa fa-server"></i> All configurations
+                                </button>
+                              </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group-configs" type="button" role="tab">
+                                    <i class="fa fa-server"></i> Group configurations
+                                </button>
+                              </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="library-tab" data-bs-toggle="tab" data-bs-target="#library-configs" type="button" role="tab">
+                                    <i class="fa fa-server"></i> Library configurations
+                                </button>
+                              </li>
+                          </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="all-configs" role="tabpanel">
+                                <div class="page-section">
+                                    <p class="text-muted">All configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                    <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
+                                  </div>
+                                <table class="table table-striped" id="config_table"
+                                    <thead>
+                                        <tr>
+                                            <th>Configuration</th>
+                                            <th>Type</th>
+                                            <th>Enabled</th>
+                                          </tr>
+                                      </thead>
+                                    <tbody id="all-tbody">
+                                        <!-- configs will be loaded dynamically -->
+                                      </tbody>
+                                  </table>
                               </div>
-                            <table class="table table-striped" id="config_table"
-                                <thead>
-                                    <tr>
-                                        <th>Configuration</th>
-                                        <th>Type</th>
-                                        <th>Enabled</th>
-                                      </tr>
-                                  </thead>
-                                <tbody id="all-tbody">
-                                    <!-- configs will be loaded dynamically -->
-                                  </tbody>
-                              </table>
-                          </div>
-                        <div class="tab-pane fade" id="group-configs" role="tabpanel">
-                            <div class="page-section">
-                                <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
+                            <div class="tab-pane fade" id="group-configs" role="tabpanel">
+                                <div class="page-section">
+                                    <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                    <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
+                                  </div>
+                                <table class="table table-striped" id="group_table"
+                                    <thead>
+                                        <tr>
+                                            <th>Configuration ID</th>
+                                            <th>Type</th>
+                                            <th>Enabled</th>
+                                          </tr>
+                                      </thead>
+                                    <tbody id="group-tbody">
+                                        <!-- configs will be loaded dynamically -->
+                                      </tbody>
+                                  </table>
                               </div>
-                            <table class="table table-striped" id="group_table"
-                                <thead>
-                                    <tr>
-                                        <th>Configuration ID</th>
-                                        <th>Type</th>
-                                        <th>Enabled</th>
-                                      </tr>
-                                  </thead>
-                                <tbody id="group-tbody">
-                                    <!-- configs will be loaded dynamically -->
-                                  </tbody>
-                              </table>
-                          </div>
-                        <div class="tab-pane fade" id="library-configs" role="tabpanel">
-                            <div class="page-section">
-                                <p class="text-muted">Library configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
+                            <div class="tab-pane fade" id="library-configs" role="tabpanel">
+                                <div class="page-section">
+                                    <p class="text-muted">Library configurations. You can create, edit, enable/disable, and delete these configs.</p>
+                                    <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
+                                  </div>
+                                <table class="table table-striped" id="library_table">
+                                    <thead>
+                                        <tr>
+                                            <th>Configuration ID</th>
+                                            <th>Type</th>
+                                            <th>Enabled</th>
+                                            <th>Actions</th>
+                                          </tr>
+                                      </thead>
+                                    <tbody id="library-tbody">
+                                        <!-- configs will be loaded dynamically -->
+                                      </tbody>
+                                  </table>
                               </div>
-                              <table class="table table-striped" id="library_table"
-                                <thead>
-                                    <tr>
-                                        <th>Configuration ID</th>
-                                        <th>Type</th>
-                                        <th>Enabled</th>
-                                        <th>Actions</th>
-                                      </tr>
-                                  </thead>
-                                <tbody id="library-tbody">
-                                    <!-- configs will be loaded dynamically -->
-                                  </tbody>
-                              </table>
                           </div>
                       </div>
                   </div>
-              </div>
-          </div><!-- /page-section -->
+              </div><!-- /page-section -->
+</div> <!-- New Config modal -->
 </div>
- <!-- New Config modal -->
-    <div class="modal fade modal-lg" id="UMSConfigModel" aria-labelledby="UMSConfigLabel" aria-hidden="true">
+    <div class="modal fade modal-lg" id="UMSConfigModal" aria-labelledby="UMSConfigLabel" aria-hidden="true">
         <form  id="config_form" method="post" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
             <input type="hidden" name="method" value="[% METHOD %]"/>
@@ -119,7 +140,9 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h4 class="modal-title" id="UMSConfigLabel"></h4>
+                        <h4 class="modal-title" id="UMSConfigLabel"></h4><button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="Close" style="margin-left: auto;">
+          <span aria-hidden="true"><i class="fa fa-times"></i></span>
+        </button>
                       </div><!-- /config-modal-header -->
                     <div class="modal-body">
                         <div class="row">
@@ -377,46 +400,39 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                   </div>
                           </div>
                         [% END %]
-                    </div>
-                          </fieldset> <!-- /.rows -->
+                    </div><!-- /.rows -->
                       </div> <!-- /.modal-body -->
-                    <fieldset class="action">
+                    <div class="modal-footer" >
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                                            <fieldset class="action">
                          <input type="hidden" name="op" value="cud-save" />
-                         <input type="submit" value="Save" />
+                         <input class="btn btn-primary" type="submit" value="Save" />
                           [% INCLUDE 'csrf-token.inc' %]
-                         <a class="cancel" href="/cgi-bin/koha/plugins/run.pl?class=Koha%3A%3APlugin%3A%3ACom%3A%3AByWaterSolutions%3A%3AUMSGentleNudge&method=configure">Cancel</a>
                     </fieldset>
 
-
-                    <div class="modal-footer" hidden="">
-                        <button type="submit" class="btn btn-default">Confirm</button>
-                        <button type="button" class="btn btn-default" data-bs-dismiss="modal" id="cancel_config">Cancel</button>
                     </div> <!-- /.modal-footer -->
                 </div> <!-- /.modal-content -->
             </div> <!-- /.modal-dialog -->
         </form> <!-- /#config_form -->
       </div> <!-- /#newConfigModal -->    
-        <!-- Delete Configuration Modal -->
-    <div class="modal fade modal-lg" id="UMSDeleteModel" aria-labelledby="UMSDeleteLabel" aria-hidden="true">
-        <form  id="deleteForm" method="post" class="form">
-            <input type="hidden" name="class" value="[% CLASS %]"/>
-            <input type="hidden" name="method" value="[% METHOD %]"/>
-            <input type="hidden" name="action" id="modal_button" value="add"/>
-            <input type="hidden" class="modal-type" name="type"/>
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
+
+    <!-- Delete Configuration Modal -->
+   <div class="modal fade modal-lg" id="deleteModal" aria-labelledby="delete-modal-label" " role="dialog" aria-hidden="true">
+      <form id="deleteForm">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
                         <h1 class="modal-title" id="delete-modal-label">Delete Configuration</h1>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                        <p>Are you sure you want to delete the configuration "<span id="delete-config-name"></span>"?</p>
+                        <p>Are you sure you want to delete the configuration "<span id="delete-configuration-name"></span>"?</p>
                         <p class="text-muted">This action cannot be undone.</p>
             </div>
             <div class="modal-footer">
                         <input type="hidden" id="delete-config-id">
                         <button type="submit" class="btn btn-danger">
-                            <i class="fa fa-trash"></i> Delete configuration
+                            <i class="fa fa-trash"></i> Delete Config
                         </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fa fa-times"></i> Cancel
@@ -435,10 +451,16 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
           <script nonce="[% Koha.CSPNonce | $raw %]">
             $(document).ready(function() {
-                var UMSDeleteModel = document.getElementById('UMSDeleteModel');
-                var UMSConfigModel = document.getElementById('UMSConfigModel');
+                var UMSDeleteModal = document.getElementById('UMSDeleteModal');
+                var UMSConfigModal = document.getElementById('UMSConfigModal');
 
-            UMSConfigModel.addEventListener('show.bs.modal', function (event){
+            UMSDeleteModal.addEventListener('show.bs.modal', function (event){
+                var button = event.relatedTarget;
+                ums_delete_id = button.getAttribute('data-config-id');
+                console.log(ums_delete_id);
+            });
+
+            UMSConfigModal.addEventListener('show.bs.modal', function (event){
                 //Button that triggered the modal
                 var button = event.relatedTarget;
                 // Extract info from data-bs-* attributes
@@ -447,21 +469,22 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 ums_id = button.getAttribute('data-config-id');
                 //update the modal content
                 //These get information from the button that was clicked
-                var modalTitle = UMSConfigModel.querySelector('.modal-title');
-                var modalTypeInput = UMSConfigModel.querySelector('.modal-type');
+                var modalTitle = UMSConfigModal.querySelector('.modal-title');
+                var modalTypeInput = UMSConfigModal.querySelector('.modal-type');
                 var modalTypeSelector = modalTypeSelector + configtype;
                 var modalIDSelect = '.' + configtype + '_option';
-                var modalButton =  UMSConfigModel.querySelector('#modal_button');
+                var modalButton =  UMSConfigModal.querySelector('#modal_button');
                 console.log('button' + modalButton);
                 console.log('id:' + ums_id +' /mode:' + umsmode + ' /modaltitle: ' + modalTitle + ' / modalTypeInput: ' + modalTypeInput + ' / modalTypeSelector: '  + modalTypeSelector  + ' / modalIDSelect: ' + modalIDSelect);
                 //Sets the title dynamicly: Mode (New/Edit) type(global, group, or library) configuration
                 modalTitle.textContent = umsmode + ' ' + configtype + ' configuration';
-                var modalSelector = UMSConfigModel.querySelector('.modal-select-type');
+                var modalSelector = UMSConfigModal.querySelector('.modal-select-type');
                 modalSelector.textContent = 'Select a ' + configtype;
                 if (configtype == 'global'){
                     modalSelector.textContent = 'Global';
                 };
                 if (umsmode == "Edit") loadConfigForEdit();
+                
                 else setDefaults();
 
             
@@ -472,13 +495,15 @@ If using another category, the authorized values should be 0 and 1, but the desc
             $("." + configtype +"_option").removeAttr('hidden');
            }
            );
-           UMSConfigModel.addEventListener('hide.bs.modal', function (){
+           UMSConfigModal.addEventListener('hide.bs.modal', function (){
             $("." + configtype +"_option").each(function(){
                 $("." + configtype +"_option").attr("hidden", "true");
             }
               );
           });
                       });
+
+                      
             function setDefaults() {
                         document.getElementById("clear_below").value = '1';
                         document.getElementById("clear_threshold").value = '0';
@@ -609,8 +634,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
+                            } else {return '<button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button type="button" class="btn btn-xs btn-primary" data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-config-id="' + data +'"=><i class="fa fa-trash"></i>  Delete</button>';
                             }
                         },
 
@@ -672,8 +697,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
+                            } else {return '<button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button type="button" class="btn btn-xs btn-primary" data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-config-id="' + data +'"=><i class="fa fa-trash"></i>  Delete</button>';
                             }
                         },
 
@@ -734,8 +759,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
+                            } else {return '<button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button type="button" class="btn btn-xs btn-primary" data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-config-id="' + data +'"=><i class="fa fa-trash"></i>  Delete</button>';
                             }
                         },
 
@@ -745,7 +770,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
             function deleteConfig() {
                 $.ajax({
-                    url: '/api/v1/contrib/ums/config/' + del_ums_id,
+                    url: '/api/v1/contrib/ums/config/' + ums_delete_id,
                     method: 'delete',
                     });}
 
@@ -808,7 +833,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     contentType: 'application/json',
                     success: function(data) {
                     //showMessage(configId ? 'Config updated successfully' : 'Config created successfully', 'success');
-                        $('#UMSConfigModel').modal('hide');
+                        $('#UMSConfigModal').modal('hide');
                         loadAll();
                     },
                     error: function(xhr, status, error) {

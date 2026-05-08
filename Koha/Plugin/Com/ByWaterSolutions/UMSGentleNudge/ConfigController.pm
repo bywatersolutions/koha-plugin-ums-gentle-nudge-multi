@@ -222,4 +222,14 @@ sub update {
     }
 }
 
+=head3 delete
+
+Delete a configs
+
+=cut
+
+sub delete {
+    my $c = shift->openapi->valid_input or return;
+
+}
 1;
