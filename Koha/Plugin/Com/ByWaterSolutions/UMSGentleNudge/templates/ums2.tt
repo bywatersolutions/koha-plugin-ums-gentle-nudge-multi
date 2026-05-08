@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-[% USE Branches %]
-[% USE Dumper %]
-[% USE Categories %]
+
 [% USE Asset %]
+[% USE Branches %]
+[% USE Categories %]
+[% USE Dumper %]
+[% USE Koha %]
 [% USE raw %]
 [% WRAPPER "wrapper-staff-tool-plugin.inc" method="configure" plugin_title="UMS Collections" %]
 <div id="message">
@@ -13,7 +15,6 @@
 <li>Can create multiple configurations for the same branch or group</li>
 <li>Patron categories don't currently save/load due to multiselect complication</li>
         <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a></li>
-        <li>There is no validation</li>
 </ul>
       </div> <!-- /alert -->
   </div> <!-- /message -->
@@ -69,7 +70,7 @@
                         <div class="tab-pane fade" id="group-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (libraries) to least specific (global)</p>
+                                <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
                               </div>
                             <table class="table table-striped" id="group_table"
                                 <thead>
@@ -87,7 +88,7 @@
                         <div class="tab-pane fade" id="library-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">Library configurations. You can create, edit, enable/disable, and delete these configs.</p>
-                                <p class="text-muted">Configurations are checked from most specific (libraries) to least specific (global)</p>
+                                <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
                               </div>
                               <table class="table table-striped" id="library_table"
                                 <thead>
@@ -124,15 +125,15 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3" id="config_id_selector">
-                                    <label for="umsconfig_id">Configuration for: </label>
-                                    
-                                    <select name="umsconfig_selector" id="umsconfig_id_select" class="form-control">
-                                    <option class="modal-select-type">Select a</option>
+                                    <label for="umsconfig_id" class="required">Configuration for: </label>
+                                    <select name="umsconfig_selector" id="umsconfig_id_select" class="form-control" class="required" required="required">
+                                    <option class="modal-select-type" value="">Select a</option>
+                                        <option class="global_option" value="global" hidden="" >Global</option>
                                     [% FOREACH l IN Branches.all() %]
-                                        <option class="library_option" value="[% l.branchcode %]" [% IF umsconfig_id == l.branchcode %]selected="selected" [% END %]hidden="" >[% l.branchname | html %]</option>
+                                        <option class="library_option" value="[% l.branchcode %]" hidden="" >[% l.branchname | html %]</option>
                                     [% END %]
                                         [% FOREACH g IN groups %]
-                                            <option class="group_option" value="[% g.id %]" [% IF umsconfig_id == g.id %]selected="selected" hidden[% END %]hidden="" >[% g.title %]</option>
+                                            <option class="group_option" value="[% g.id %]" hidden="" >[% g.title %]</option>
                                         [% END %] 
                                       </select>
                                   </div> <!-- /config_id_selector -->
@@ -348,6 +349,34 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                   </div>
                               </div>
                           </div>
+                          [% count_servers = 0 %]
+                          [% FOREACH server IN servers %]
+                            [% count_servers = count_servers + 1 %]
+                          [% END %]
+                        [% IF (count_servers > 0) %]
+                            <div class="row">
+                                <div class="row">
+                                    <legend>SMPT Information</legend>
+                                  </div>
+                            <div class="row">
+                                <span class="help-block">If SMPT information is set, plugin will transfer files to the given SMTP server</span>
+                              </div>
+                        <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <div class="form-group mb-3" id="smpt_selector">
+                                            <label for="smpt_server" class="required">SMPT server to use: </label>
+                                            <select name="smpt_selector" id="smpt_selector_select" class="form-control">
+                                            <option class="modal-select-type" value="">Select a server</option>
+                                                [% FOREACH server IN servers %]
+                                                    <option value="[% server.id %]">[% server.name | html %]</option>
+                                                [% END %]
+                                            </select>
+                                          </div> <!-- /smpt_selector-->
+                                      </div>
+                                  </div>
+                          </div>
+                        [% END %]
                     </div>
                           </fieldset> <!-- /.rows -->
                       </div> <!-- /.modal-body -->
@@ -402,10 +431,12 @@ If using another category, the authorized values should be 0 and 1, but the desc
         [% END %]<!--wrapper-->
           [% INCLUDE 'datatables.inc' %]
           [% INCLUDE 'calendar.inc' %]
-          <script>        $(document).ready(function() {
-                    var UMSDeleteModel = document.getElementById('UMSDeleteModel');
-        var UMSConfigModel = document.getElementById('UMSConfigModel');
+          [% INCLUDE 'validator-strings.inc' %]
 
+          <script nonce="[% Koha.CSPNonce | $raw %]">
+            $(document).ready(function() {
+                var UMSDeleteModel = document.getElementById('UMSDeleteModel');
+                var UMSConfigModel = document.getElementById('UMSConfigModel');
 
             UMSConfigModel.addEventListener('show.bs.modal', function (event){
                 //Button that triggered the modal
@@ -429,7 +460,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 modalSelector.textContent = 'Select a ' + configtype;
                 if (configtype == 'global'){
                     modalSelector.textContent = 'Global';
-                }
+                };
                 if (umsmode == "Edit") loadConfigForEdit();
                 else setDefaults();
 
@@ -461,6 +492,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("add_restriction").value = '0';
                         document.getElementById("remove_restriction").value = '0';
                         document.getElementById("fees_threshold").value = '0';
+                        document.getElementById("umsconfig_id_select").value = '';
             }
 
             function loadConfigForEdit() {
@@ -471,10 +503,14 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
                         if (config.config_type == "library") {
                             document.getElementById("umsconfig_id_select").value = config.branch;
-                        } 
+                        }
                         if (config.config_type== "group") {
                             document.getElementById("umsconfig_id_select").value = config.config_group;
                         }
+                        if (config.config_type== "global") {
+                            document.getElementById("umsconfig_id_select").value = 'global';
+                        }
+                        document.getElementById("umsconfig_id_select").setAttribute("disabled","disabled");
                         document.getElementById("cc_email").value = config.additional_email;
                         document.getElementById("clear_below").value = config.clear_below;
                         document.getElementById("clear_threshold").value = config.clear_threshold;
@@ -599,8 +635,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 return 'Global configuration';}
                             if (data === "library") {
                                 return 'Library configuration';}
-                            if (data === "branch") {
-                                return 'Library configuration';}
                             if (data === "group") {
                                 return 'Group configuration';}
                             },
@@ -663,8 +697,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 return 'Global configuration';}
                             if (data === "library") {
                                 return 'Library configuration';}
-                            if (data === "branch") {
-                                return 'Library configuration';}
                             if (data === "group") {
                                 return 'Group configuration';}
                             },
@@ -719,24 +751,21 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
             function saveConfig() { 
                 console.log(configtype);
-                if( $(configtype = "library")) {
+                config_type = "global";
+                if( $(configtype === "library")) {
                     umslibrary = $('#umsconfig_id_select').val();
-                    configtype = "library";
+                    config_type = "library";
                     umsgroup='';
-                }
-                else if ($(configtype = "group")) {
+                };
+                if ($(configtype === "group")) {
                     umsgroup = $('#umsconfig_id_select').val();
-                    configtype= "group";
-                }
-                else {
-                    configtype="global";
-                }
+                    config_type= "group";
+                };
 
                 var debit_type_select = document.getElementById('processing_debit');
                 var debit_type = debit_type_select.value;
                 var exemption_select = document.getElementById('exemption_flag');
                 var exemption = exemption_select.value;
-                console.log(configtype);
                 let configData = {
                     additional_email: $('#cc_email').val(),
                     branch: umslibrary,
@@ -753,7 +782,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     fees_newer: $('#fees_starting_age').val(),
                     fees_older: $('#fees_ending_age').val(),
                     ignore_before: $('#fees_created_before_date_filter').val(),
-                    //patron_categories: $('#umsconfig_categories').val(),
+                    patron_categories: $('#umsconfig_categories').val(),
                     processing_fee: $('#processing_fee').val(),
                     remove_minors: $('#age_limitation').val(),
                     remove_restriction:$('#remove_restriction').val(),

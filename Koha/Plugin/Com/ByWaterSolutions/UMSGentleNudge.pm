@@ -10,7 +10,7 @@ use base qw(Koha::Plugins::Base);
 use C4::Auth;
 use C4::Context;
 use C4::Installer qw(TableExists);
-use C4::Log         qw(logaction);
+use C4::Log       qw(logaction);
 use C4::Templates;
 use Koha::Account::DebitTypes;
 use Koha::DateUtils qw(dt_from_string);
@@ -21,6 +21,7 @@ use Koha::Patron::Debarments qw(AddDebarment);
 use Koha::Patrons;
 use Koha::Plugins;
 use Koha::Schema;
+use Koha::SMTP::Servers;
 
 use File::Path qw( make_path );
 use JSON;
@@ -49,13 +50,14 @@ our $metadata = {
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
-    description     => 'Plugin to forward messages to Unique Collections for processing and sending with multiple configurations',
-    plugin_title    => "UMS Collections Multi-Configuration",
+    description     =>
+        'Plugin to forward messages to Unique Collections for processing and sending with multiple configurations',
+    plugin_title => "UMS Collections Multi-Configuration",
 };
 
 BEGIN {
     warn "warn begin";
-     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
+    my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
 
@@ -64,9 +66,11 @@ BEGIN {
     require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig;
 
     #register the additional schema classes
-    Koha::Schema->register_class(KohaPluginComBywatersolutionsUmsgentlenudgeConfig => 'Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig');
+    Koha::Schema->register_class( KohaPluginComBywatersolutionsUmsgentlenudgeConfig =>
+            'Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig' );
+
     # force a refresh of the database handle so that it includes the new classes
-    Koha::Database->schema({ new => 1 });
+    Koha::Database->schema( { new => 1 } );
     warn "warn begin end";
 }
 
@@ -140,32 +144,33 @@ sub new {
 sub configure {
     warn 'configure';
     my ( $self, $args ) = @_;
-    my $cgi = $self->{'cgi'};
-    my $template = $self->get_template( { file => 'templates/ums2.tt' } );
-    my $dbh = C4::Context->dbh;
+    my $cgi          = $self->{'cgi'};
+    my $template     = $self->get_template( { file => 'templates/ums2.tt' } );
+    my $dbh          = C4::Context->dbh;
     my $config_table = $self->get_qualified_table_name('config');
-    my $configs = Koha::UMSConfigs->search();
-    my $action = $cgi->param('op');
-    my $config = $cgi->param('config');
-    my $groups = Koha::Library::Groups->search({branchcode => undef}, { order_by => ['title'] } );
-    my @debit_types = Koha::Account::DebitTypes->search()->as_list;
-    warn 'action if';
-    if ($action){
+    my $configs      = Koha::UMSConfigs->search();
+    my $action       = $cgi->param('op');
+    my $config       = $cgi->param('config');
+    my $groups       = Koha::Library::Groups->search( { branchcode => undef }, { order_by => ['title'] } );
+    my @debit_types  = Koha::Account::DebitTypes->search()->as_list;
+    my @servers      = Koha::SMTP::Servers->search();
+
+    if ($action) {
         if ( $action eq 'cud-save' ) {
             $self->store_data(
                 {
                     config_id => scalar $cgi->param('config_id'),
-              }
-              );
-          }
-             };
-    $template->param( configs => $configs, groups => $groups, debit_types => \@debit_types);
-    $self->output_html( $template->output() );
+                }
+            );
+        }
     }
+    $template->param( configs => $configs, groups => $groups, debit_types => \@debit_types, servers => @servers );
+    $self->output_html( $template->output() );
+}
 
 # =head3 intranet_js
 
-# Get the configure.js file 
+# Get the configure.js file
 
 # =cut
 
@@ -176,7 +181,6 @@ sub configure {
 #     <script src="/api/v1/contrib/ums/static/js/configure.js"></script>
 #     |;
 # }
-
 
 sub static_routes {
     my ( $self, $args ) = @_;
@@ -477,7 +481,6 @@ sub static_routes {
 #         write_file( $file_path, $csv );
 #         log_info("ARCHIVE WRITTEN TO $file_path");
 
-
 #         my $email_to   = $self->retrieve_data('unique_email');
 #         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
 #         my $email_cc   = $self->retrieve_data('cc_email');
@@ -487,8 +490,6 @@ sub static_routes {
 #             filename  => $filename,
 #             file_path => $file_path,
 #         };
-
-
 
 #         foreach my $email_address ( $email_to, $email_cc ) {
 #             next unless $email_address;
@@ -773,8 +774,8 @@ sub install() {
 
     my $configuration = $self->get_qualified_table_name('config');
 
-    unless ($self->_table_exists('config') ) {
-         C4::Context->dbh->do("
+    unless ( $self->_table_exists('config') ) {
+        C4::Context->dbh->do( "
         CREATE TABLE IF NOT EXISTS $configuration (
                     config_id int(11) NOT NULL AUTO_INCREMENT COMMENT 'unique id for each config',
                     config_name VARCHAR(15) NULL COMMENT 'Name of the group or library',
@@ -809,9 +810,11 @@ sub install() {
 
        " );
     }
-    $dbh->do("INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, debit_type, require_lost) VALUES ('Global', 'global', 0, '10', 'manual', 0)"); #Create default configuration
+    $dbh->do(
+        "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, debit_type, require_lost) VALUES ('Global', 'global', 0, '10', 'manual', 0)"
+    );    #Create default configuration
 
-        my $default_config  = $dbh->selectcol_arrayref( "SELECT config_id FROM $configuration" );
+    my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
     return 1;
 }
 
@@ -831,16 +834,17 @@ sub upgrade {
 
         my $configuration = $self->get_qualified_table_name('config');
 
-    unless ($self->_table_exists('config') ) {
-         C4::Context->dbh->do("
-        INSERT IGNORE INTO $configuration (require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections" );
+        unless ( $self->_table_exists('config') ) {
+            C4::Context->dbh->do( "
+        INSERT IGNORE INTO $configuration (require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections"
+            );
+        }
+        $self->store_data();
+        warn "warn upgrade end";
+        return 1;
     }
-    $self->store_data();
-warn "warn upgrade end";
-    return 1;
-}
-$database_version = "3.00.0";
-        $self->store_data({ '__INSTALLED_VERSION__' => $database_version });
+    $database_version = "3.00.0";
+    $self->store_data( { '__INSTALLED_VERSION__' => $database_version } );
 }
 
 =head3 uninstall
