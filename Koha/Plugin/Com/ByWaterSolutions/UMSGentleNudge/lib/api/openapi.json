@@ -514,7 +514,7 @@
     "delete": {
       "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#delete",
       "operationId": "deleteConfig",
-      "tags": ["config"],
+      "tags": ["configs"],
       "produces": [
         "application/json"
       ],
@@ -528,7 +528,7 @@
       ],
       "responses": {
         "204": {
-          "description": "Config deleted"
+          "description": "Config deleted deleted"
         },
         "403": {
           "description": "You are not authorized to delete config"

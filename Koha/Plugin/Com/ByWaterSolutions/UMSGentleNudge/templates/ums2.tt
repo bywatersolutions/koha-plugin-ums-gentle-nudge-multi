@@ -8,23 +8,22 @@
 [% USE raw %]
 [% WRAPPER "wrapper-staff-tool-plugin.inc" method="configure" plugin_title="UMS Collections" %]
 <div id="message">
-<div class="alert alert-danger" role="alert"><h2>Beta! In testing for user experience testing only right now.</h2>
-<h3>Known ui issues</h3>
-<ul>
-<li>Delete button - not yet functional</li>
-<li>Can create multiple configurations for the same branch or group</li>
-<li>Patron categories don't currently save/load due to multiselect complication</li>
-        <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a></li>
-</ul>
+    <div class="alert alert-danger" role="alert"><h2>Beta! In testing for user experience testing only right now.</h2>
+        <h3>Known UI issues</h3>
+        <ul>
+            <li>Can create multiple configurations for the same branch or group</li>
+            <li>Patron categories don't currently save/load due to multiselect complication</li>
+            <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a>. It will not show as an option if there are no SFTP instances present.</li>
+          </ul>
       </div> <!-- /alert -->
   </div> <!-- /message -->
-    <body>
-        <div id="toolbar" class="btn-toolbar">
-            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="New" data-bs-type="group" class="btn btn-default" id="newconfig">
-                <i class="fa fa-plus"></i> New group configuration
+<body>
+    <div id="toolbar" class="btn-toolbar">
+        <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="New" data-bs-type="group" class="btn btn-default" id="newconfig">
+            <i class="fa fa-plus"></i> New group configuration
           </button><!-- /New Group button -->
-            <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="New" data-bs-type="library"class="btn btn-default" id="newconfig">
-                <i class="fa fa-plus"></i> New library configuration
+        <button type="button" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="New" data-bs-type="library"class="btn btn-default" id="newconfig">
+            <i class="fa fa-plus"></i> New library configuration
           </button><!-- /New library button -->
       </div> <!-- /toolbar -->
     <div>
@@ -35,26 +34,26 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-configs" type="button" role="tab">
                                 <i class="fa fa-server"></i> All configurations
-                              </button>
+                              </button><!-- /all-button -->
                           </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group-configs" type="button" role="tab">
                                 <i class="fa fa-server"></i> Group configurations
-                              </button>
+                              </button><!-- /group-button -->
                           </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="library-tab" data-bs-toggle="tab" data-bs-target="#library-configs" type="button" role="tab">
                                 <i class="fa fa-server"></i> Library configurations
-                              </button>
+                              </button><!-- /library-button -->
                           </li>
-                      </ul>
+                      </ul><!-- /nav-tabs -->
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="all-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">All configurations. You can create, edit, enable/disable, and delete these configs.</p>
                                 <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
-                              </div>
-                            <table class="table table-striped" id="config_table"
+                              </div><!-- /page-section -->
+                            <table class="table table-striped" id="config_table">
                                 <thead>
                                     <tr>
                                         <th>Configuration</th>
@@ -65,14 +64,14 @@
                                 <tbody id="all-tbody">
                                     <!-- configs will be loaded dynamically -->
                                   </tbody>
-                              </table>
-                          </div>
+                              </table><!-- /all-table -->
+                          </div><!-- /all-pannel -->
                         <div class="tab-pane fade" id="group-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">Group configurations. You can create, edit, enable/disable, and delete these configs.</p>
                                 <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
-                              </div>
-                            <table class="table table-striped" id="group_table"
+                              </div><!-- /group-section -->
+                            <table class="table table-striped" id="group_table">
                                 <thead>
                                     <tr>
                                         <th>Configuration ID</th>
@@ -84,33 +83,32 @@
                                     <!-- configs will be loaded dynamically -->
                                   </tbody>
                               </table>
-                          </div>
+                          </div><!-- /group-panel -->
                         <div class="tab-pane fade" id="library-configs" role="tabpanel">
                             <div class="page-section">
                                 <p class="text-muted">Library configurations. You can create, edit, enable/disable, and delete these configs.</p>
                                 <p class="text-muted">Configurations are checked from most specific (library) to least specific (global)</p>
-                              </div>
-                              <table class="table table-striped" id="library_table"
-                                <thead>
-                                    <tr>
-                                        <th>Configuration ID</th>
-                                        <th>Type</th>
-                                        <th>Enabled</th>
-                                        <th>Actions</th>
-                                      </tr>
-                                  </thead>
-                                <tbody id="library-tbody">
-                                    <!-- configs will be loaded dynamically -->
-                                  </tbody>
-                              </table>
-                          </div>
-                      </div>
-                  </div>
-              </div>
+                                <table class="table table-striped" id="library_table"
+                                    <thead>
+                                        <tr>
+                                            <th>Configuration ID</th>
+                                            <th>Type</th>
+                                            <th>Enabled</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="library-tbody">
+                                        <!-- configs will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                              </div><!-- /library-section -->
+                      </div><!-- /tab-content -->
+                  </div><!-- /card-header -->
+              </div><!-- /card -->
           </div><!-- /page-section -->
-</div>
+      </div>
  <!-- New Config modal -->
-    <div class="modal fade modal-lg" id="UMSConfigModel" aria-labelledby="UMSConfigLabel" aria-hidden="true">
+    <div class="modal fade modal-lg" id="UMSConfigModal" aria-labelledby="UMSConfigLabel" aria-hidden="true">
         <form  id="config_form" method="post" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
             <input type="hidden" name="method" value="[% METHOD %]"/>
@@ -120,6 +118,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h4 class="modal-title" id="UMSConfigLabel"></h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div><!-- /config-modal-header -->
                     <div class="modal-body">
                         <div class="row">
@@ -127,15 +126,15 @@
                                 <div class="form-group mb-3" id="config_id_selector">
                                     <label for="umsconfig_id" class="required">Configuration for: </label>
                                     <select name="umsconfig_selector" id="umsconfig_id_select" class="form-control" class="required" required="required">
-                                    <option class="modal-select-type" value="">Select a</option>
-                                        <option class="global_option" value="global" hidden="" >Global</option>
-                                    [% FOREACH l IN Branches.all() %]
-                                        <option class="library_option" value="[% l.branchcode %]" hidden="" >[% l.branchname | html %]</option>
-                                    [% END %]
-                                        [% FOREACH g IN groups %]
-                                            <option class="group_option" value="[% g.id %]" hidden="" >[% g.title %]</option>
-                                        [% END %] 
-                                      </select>
+                                        <option class="modal-select-type" value="">Select a</option>
+                                            <option class="global_option" value="global" hidden="" >Global</option>
+                                        [% FOREACH l IN Branches.all() %]
+                                            <option class="library_option" value="[% l.branchcode %]" hidden="" >[% l.branchname | html %]</option>
+                                        [% END %]
+                                            [% FOREACH g IN groups %]
+                                                <option class="group_option" value="[% g.id %]" hidden="" >[% g.title %]</option>
+                                            [% END %] 
+                                        </select>
                                   </div> <!-- /config_id_selector -->
                               </div><!-- /col-md-6 -->
                             <div class="col-md-6">
@@ -162,22 +161,22 @@
                                         <option value="6">Saturday</option>
                                       </select>
                                     
-                                  </div>
-                              </div>
-                          </div>
+                                  </div><!-- /form-group mb-6 -->
+                              </div><!-- /col-md-6 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group mb-12">
                                     <label for="umsconfig_categories">Patron categories <i id="info_added" data-bs-toggle="tooltip" title="Leave blank for all categories. multiple values can be selected with ctrl+click or shift+click." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="umsconfig_categories" id="umsconfig_categories" multiple="multiple">
-                                    [% FOREACH category IN Categories.all() %]
-                                        <option value="[% category.categorycode %]">[% category.description %]</option>
-                                    [% END %]
-                                    </select>
+                                        [% FOREACH category IN Categories.all() %]
+                                            <option value="[% category.categorycode %]">[% category.description %]</option>
+                                        [% END %]
+                                      </select>
                                     <br />
-                                  </div>
-                              </div>
-                          </div>
+                                  </div><!-- /form-group mb-12 -->
+                              </div><!-- /col-md-12 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
@@ -185,19 +184,19 @@
                                     <div class="input-group">
                                         <div class="input-group-addon">$</div> 
                                             <input type="text" name="fees_threshold" id="fees_threshold" class="form-control">
-                                      </div>
-                                  </div>
-                              </div>
+                                      </div><!-- /input-group -->
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="processing_fee">Processing fee <i id="info_added" data-bs-toggle="tooltip" title="Amount of the processing fee added to the patron's account." data-bs-placement="right" class="fa fa-info-circle"></i><label>
                                     <div class="input-group">
                                         <div class="input-group-addon">$ </div>
                                         <input type="text" name="processing_fee" id="processing_fee" class="form-control">
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
+                                      </div><!-- /input-group -->
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6-->
+                          </div><!-- /row-->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
@@ -205,23 +204,22 @@
                                     <select name="require_lost_fee" id="require_lost_fee" class="form-control">
                                         <option value="0">No</option>
                                         <option value="1">Yes</option>
-                                    </select>
+                                      </select>
                                     <span class="help-block"></span>
-                                  </div>
-                              </div>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- col-md-6-->
 
                             <div class="col-md-6">
-
                                 <div class="form-group mb-3">
                                     <label for="processing_debit">Processing fee debit type <i id="info_added" data-bs-toggle="tooltip" title="Which debit type will be used" data-bs-placement="right" class="fa fa-info-circle"></i><label>
                                     <select name="processing_debit" id="processing_debit" class="form-control">
                                         [% FOREACH debit_type IN debit_types %]
                                             <option value="[% debit_type.code | html %]" selected="selected">[% debit_type.description | html %]</option>
                                           [% END %]
-                                    </select>
-                                  </div>
-                              </div>
-                          </div>
+                                      </select>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
@@ -237,8 +235,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                             <option value="[% a.code %]">[% a.description | html %]</option>
                                         [% END %]
                                       </select>
-                                  </div>
-                            </div>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="exemption_flag">Exemption flag <i id="info_added" data-bs-toggle="tooltip" title=" Specify the how the patron is flagged as being in collections.
@@ -252,31 +250,31 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                         [% FOREACH a IN attributes %]
                                             <option value="[% a.code %]">[% a.description | html %]</option>
                                         [% END %]
-                                    </select>
-                            </div>
-                          </div>
+                                      </select>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6-->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="fees_starting_age">Count fees newer than <i id="info_added" data-bs-toggle="tooltip" title="Fees newer than this number of days will be totaled to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="number" name="fees_starting_age" id="fees_starting_age" class="form-control">
-                                  </div>
-                              </div>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="fees_ending_age">Count fees older than <i id="info_added" data-bs-toggle="tooltip" title="Fees older than this number of days will be totaled to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="number" name="fees_ending_age" id="fees_ending_age" class="form-control">
-                                   </div>
-                              </div>
-                          </div>
+                                   </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="form-group mb-3">
                                     <label for="fees_created_before_date_filter">Ignore fees created before this date <i id="info_added" data-bs-toggle="tooltip" title="Fees created before this date will not be part of the total used to check if a patron should be sent to collections." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="text" id="fees_created_before_date_filter" size="10" id=" fees_created_before_date_filter" name="fees_created_before_date_filter" class="flatpickr" />
-                                  </div>
-                              </div>
-                          </div>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-12 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
@@ -284,19 +282,19 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                     <select class="form-control" id="clear_below">
                                         <option value="1">Yes</option>
                                         <option value="0">No</option>
-                                    </select>
-                                  </div>
-                              </div>
+                                      </select>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="clear_threshold">Clear collections flag threshold <i id="info_added" data-bs-toggle="tooltip" title="If set, the patron will be cleared from collections if if they do not exceed this threshold." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <div class="input-group">
                                         <div class="input-group-addon">$ </div>
-                                    <input type="text" name="clear_threshold" id="clear_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
+                                        <input type="text" name="clear_threshold" id="clear_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
+                                      </div><!-- /input group-->
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
@@ -304,9 +302,9 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                     <select name="add_restriction" id="add_restriction" class="form-control">
                                         <option value="1" [% IF add_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
                                         <option value="0" [% IF add_restriction == "no" %]selected="selected"[% END %]>No</option>
-                                    </select>
-                                  </div>
-                              </div>
+                                      </select>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="remove_restriction">Remove restriction for patrons leaving collections <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons that have paid their debt will have any restrictions added when entering collections removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
@@ -314,9 +312,9 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                         <option value="1" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
                                         <option value="0" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>
                                       </select>
-                                  </div>
-                              </div>
-                          </div>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
@@ -324,44 +322,44 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                     <select name="age_limitation" id="age_limitation" class="form-control">
                                         <option value="1" [% IF age_limitation == "yes" %]selected="selected"[% END %]>Yes</option>
                                         <option value="0" [% IF age_limitation == "no" %]selected="selected"[% END %]>No</option>
-                                    </select>
-                                  </div>
-                              </div>
-                          </div>
+                                      </select>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
+                          </div><!-- /row -->
                         <div class="row">
                             <div class="row">
-                        <legend>Email Information</legend>
-                              </div>
+                                <legend>Email Information</legend>
+                              </div><!-- /row -->
                         <div class="row">
                             <span class="help-block">If email information is set, plugin will email files to the given email addresses</span>
-                          </div>
+                          </div><!-- /row -->
                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="unique_email">Unique email address <i id="info_added" data-bs-toggle="tooltip" title="Email address provided to you by Unique Management Systems to email reports to.</" data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="text" name="unique_email" id="unique_email" class="form-control" >
-                                  </div>
-                              </div>
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="cc_email">Additional email address <i id="info_added" data-bs-toggle="tooltip" title="If you would like to send the report to another email address as well, enter it here." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="text" name="cc_email" id="cc_email" class="form-control" value="[% cc_email %]">
-                                  </div>
-                              </div>
-                          </div>
-                          [% count_servers = 0 %]
-                          [% FOREACH server IN servers %]
+                                  </div><!-- /form-group mb-3 -->
+                              </div><!-- /col-md-6 -->
+                          </div><!-- /row -->
+                        [% count_servers = 0 %]
+                        [% FOREACH server IN servers %]
                             [% count_servers = count_servers + 1 %]
-                          [% END %]
+                        [% END %]
                         [% IF (count_servers > 0) %]
+                        <div class="row">
                             <div class="row">
-                                <div class="row">
-                                    <legend>SMPT Information</legend>
-                                  </div>
+                                <legend>SMPT Information</legend>
+                              </div><!-- /row-->
                             <div class="row">
                                 <span class="help-block">If SMPT information is set, plugin will transfer files to the given SMTP server</span>
-                              </div>
-                        <div class="row">
+                              </div><!-- /row-->
+                            <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group mb-3">
                                         <div class="form-group mb-3" id="smpt_selector">
@@ -371,62 +369,68 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                                 [% FOREACH server IN servers %]
                                                     <option value="[% server.id %]">[% server.name | html %]</option>
                                                 [% END %]
-                                            </select>
+                                            </select><!-- /smpt_selector-->
                                           </div> <!-- /smpt_selector-->
-                                      </div>
-                                  </div>
-                          </div>
-                        [% END %]
-                    </div>
-                          </fieldset> <!-- /.rows -->
+                                      </div><!-- /form-group mb-3-->
+                                  </div><!-- /form-group md-6"-->
+                              </div><!-- /row-->
+                            [% END %]
+                          </div><!-- /smpt-row -->
+                          </div> <!-- /.rows -->
                       </div> <!-- /.modal-body -->
+
+                    <div class="modal-footer">
                     <fieldset class="action">
-                         <input type="hidden" name="op" value="cud-save" />
-                         <input type="submit" value="Save" />
-                          [% INCLUDE 'csrf-token.inc' %]
-                         <a class="cancel" href="/cgi-bin/koha/plugins/run.pl?class=Koha%3A%3APlugin%3A%3ACom%3A%3AByWaterSolutions%3A%3AUMSGentleNudge&method=configure">Cancel</a>
-                    </fieldset>
-
-
-                    <div class="modal-footer" hidden="">
-                        <button type="submit" class="btn btn-default">Confirm</button>
-                        <button type="button" class="btn btn-default" data-bs-dismiss="modal" id="cancel_config">Cancel</button>
-                    </div> <!-- /.modal-footer -->
-                </div> <!-- /.modal-content -->
-            </div> <!-- /.modal-dialog -->
-        </form> <!-- /#config_form -->
-      </div> <!-- /#newConfigModal -->    
-        <!-- Delete Configuration Modal -->
-    <div class="modal fade modal-lg" id="UMSDeleteModel" aria-labelledby="UMSDeleteLabel" aria-hidden="true">
-        <form  id="deleteForm" method="post" class="form">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fa fa-times"></i> Cancel
+                          </button>
+                        <input type="hidden" name="op" value="cud-save" />
+                        <input type="submit" value="Save" />
+                        [% INCLUDE 'csrf-token.inc' %]
+                      </fieldset>
+                      </div> <!-- /.modal-footer -->
+                  </div> <!-- /.modal-content -->
+              </div> <!-- /.modal-dialog -->
+          </form> <!-- /#config_form -->
+      </div> <!-- /#newConfigModal -->
+<!-- Delete Configuration Modal -->
+    <div class="modal fade modal-lg" id="UMSDeleteModal" aria-labelledby="UMSDeleteLabel" aria-hidden="true">
+        <form  id="deleteForm" method="delete" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
             <input type="hidden" name="method" value="[% METHOD %]"/>
-            <input type="hidden" name="action" id="modal_button" value="add"/>
+            <input type="hidden" name="action" id="modal_button" value="delete"/>
             <input type="hidden" class="modal-type" name="type"/>
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title" id="delete-modal-label">Delete Configuration</h1>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                        <p>Are you sure you want to delete the configuration "<span id="delete-config-name"></span>"?</p>
-                        <p class="text-muted">This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer">
+                        <h4 class="modal-title" id="delete-modal-label">Delete Configuration</h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div><!-- /.modal-header -->
+                    <div class="modal-body">
+                        <div class="form-group" >
+                            <p>Are you sure you want to delete the configuration "<span id="delete-config-name"></span>"?</p>
+                            <p class="text-muted">This action cannot be undone.</p>
+                          </div><!-- /form-group -->
+                      </div><!-- /.modal-body -->
+                    <div class="modal-footer">
                         <input type="hidden" id="delete-config-id">
                         <button type="submit" class="btn btn-danger">
                             <i class="fa fa-trash"></i> Delete configuration
-                        </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <i class="fa fa-times"></i> Cancel
-                        </button>
-            </div>
-          </div>
-        </div>
-      </form>
-    </div>
-    </div><!--end panel div-->
+                          </button>
+                        <fieldset class="action">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fa fa-times"></i> Cancel
+                            </button>
+                            <input type="hidden" name="op" value="delete" />
+                            <input type="submit" value="Delete" />
+                            [% INCLUDE 'csrf-token.inc' %]
+                          </fieldset>
+                    </div><!-- /.modal-footer -->
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </form><!-- /#deleteForm -->
+      </div><!-- /#UMSDeleteModal -->
+      </div><!--end panel div-->
   </body>
         [% END %]<!--wrapper-->
           [% INCLUDE 'datatables.inc' %]
@@ -435,10 +439,18 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
           <script nonce="[% Koha.CSPNonce | $raw %]">
             $(document).ready(function() {
-                var UMSDeleteModel = document.getElementById('UMSDeleteModel');
-                var UMSConfigModel = document.getElementById('UMSConfigModel');
-
-            UMSConfigModel.addEventListener('show.bs.modal', function (event){
+                var UMSDeleteModal = document.getElementById('UMSDeleteModal');
+                var UMSConfigModal = document.getElementById('UMSConfigModal');
+            UMSDeleteModal.addEventListener('show.bs.modal', function (event){
+                var button = event.relatedTarget;
+                delete_id = button.getAttribute('data-delete-id');
+                delete_name = button.getAttribute('data-delete-name');
+                var modalTitle = UMSDeleteModal.querySelector('.modal-title');
+                modalTitle.textContent = 'Delete configuration for ' + delete_name;
+                var deleteName = UMSDeleteModal.querySelector('#delete-config-name');
+                deleteName.textContent = delete_name;
+            });
+            UMSConfigModal.addEventListener('show.bs.modal', function (event){
                 //Button that triggered the modal
                 var button = event.relatedTarget;
                 // Extract info from data-bs-* attributes
@@ -447,16 +459,14 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 ums_id = button.getAttribute('data-config-id');
                 //update the modal content
                 //These get information from the button that was clicked
-                var modalTitle = UMSConfigModel.querySelector('.modal-title');
-                var modalTypeInput = UMSConfigModel.querySelector('.modal-type');
+                var modalTitle = UMSConfigModal.querySelector('.modal-title');
+                var modalTypeInput = UMSConfigModal.querySelector('.modal-type');
                 var modalTypeSelector = modalTypeSelector + configtype;
                 var modalIDSelect = '.' + configtype + '_option';
-                var modalButton =  UMSConfigModel.querySelector('#modal_button');
-                console.log('button' + modalButton);
-                console.log('id:' + ums_id +' /mode:' + umsmode + ' /modaltitle: ' + modalTitle + ' / modalTypeInput: ' + modalTypeInput + ' / modalTypeSelector: '  + modalTypeSelector  + ' / modalIDSelect: ' + modalIDSelect);
+                var modalButton =  UMSConfigModal.querySelector('#modal_button');
                 //Sets the title dynamicly: Mode (New/Edit) type(global, group, or library) configuration
                 modalTitle.textContent = umsmode + ' ' + configtype + ' configuration';
-                var modalSelector = UMSConfigModel.querySelector('.modal-select-type');
+                var modalSelector = UMSConfigModal.querySelector('.modal-select-type');
                 modalSelector.textContent = 'Select a ' + configtype;
                 if (configtype == 'global'){
                     modalSelector.textContent = 'Global';
@@ -472,7 +482,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
             $("." + configtype +"_option").removeAttr('hidden');
            }
            );
-           UMSConfigModel.addEventListener('hide.bs.modal', function (){
+           UMSConfigModal.addEventListener('hide.bs.modal', function (){
             $("." + configtype +"_option").each(function(){
                 $("." + configtype +"_option").attr("hidden", "true");
             }
@@ -554,6 +564,11 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 e.preventDefault();
                 saveConfig();
             });
+            // Form submissions
+            $('#deleteForm').on('submit', function(e) {
+                e.preventDefault();
+                deleteConfig();
+            });
             //Initialize DataTables
                 function loadAll() {
                 $('#config_table').kohaTable({
@@ -609,8 +624,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
+                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
                             }
                         },
 
@@ -672,8 +687,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
+                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
                             }
                         },
 
@@ -734,8 +749,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModel" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModel" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
+                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
                             }
                         },
 
@@ -745,12 +760,24 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
             function deleteConfig() {
                 $.ajax({
-                    url: '/api/v1/contrib/ums/config/' + del_ums_id,
+                    url: '/api/v1/contrib/ums/config/' + delete_id,
                     method: 'delete',
+                    contentType: 'application/json',
+                    success: function(data) {
+                    //showMessage(configId ? 'Config updated successfully' : 'Config created successfully', 'success');
+                        $('#UMSDeleteModal').modal('hide');
+                        loadAll();
+                    },
+                    error: function(xhr, status, error) {
+                        let message = 'Failed to delete config';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            message += ': ' + xhr.responseJSON.error;
+                        }
+                        //showMessage(message, 'danger');
+                    }
                     });}
 
             function saveConfig() { 
-                console.log(configtype);
                 config_type = "global";
                 if( $(configtype === "library")) {
                     umslibrary = $('#umsconfig_id_select').val();
@@ -791,7 +818,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     threshold: $('#fees_threshold').val(),
                     unique_email: $('#unique_email').val()
                 };
-                console.log(configData);
                 method = '';
                 let url = '/api/v1/contrib/ums/configs';
                 if (umsmode == "New") {
@@ -808,7 +834,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     contentType: 'application/json',
                     success: function(data) {
                     //showMessage(configId ? 'Config updated successfully' : 'Config created successfully', 'success');
-                        $('#UMSConfigModel').modal('hide');
+                        $('#UMSConfigModal').modal('hide');
                         loadAll();
                     },
                     error: function(xhr, status, error) {

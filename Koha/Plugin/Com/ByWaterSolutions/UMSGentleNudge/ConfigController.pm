@@ -95,7 +95,7 @@ sub add {
         my $group = Koha::Library::Groups->find($config_group);
         $config_name = $group->title;
     }
-    if ( $config_type eq "branch" ) {
+    if ( $config_type eq "library" ) {
         my $branch_name = Koha::Libraries->find($branch);
         $config_name = $branch_name->branchname;
     }
@@ -220,6 +220,36 @@ sub update {
             $c->unhandled_exception($_);
         }
     }
+}
+
+=head3 delete
+
+Delete a configuration
+
+=cut
+
+sub delete {
+    my $c             = shift->openapi->valid_input or return;
+    my $config_id     = $c->param('config_id');
+    my $config_before = Koha::UMSConfigs->find({ config_id =>$config_id });
+    my $config_name   = $config_before->config_name;
+
+    try {
+        my $config = $config_before;
+        $config->delete;
+
+        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id,
+            $config, undef, $config_before ); 
+        warn $config_before;
+        return $c->render (
+            status  => 204,
+            openapi => $config
+        );
+    }
+    catch {
+        $c->unhandled_exception($_);
+    };
+
 }
 
 1;
