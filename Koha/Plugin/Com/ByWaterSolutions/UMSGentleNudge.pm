@@ -10,7 +10,7 @@ use base qw(Koha::Plugins::Base);
 use C4::Auth;
 use C4::Context;
 use C4::Installer qw(TableExists);
-use C4::Log         qw(logaction);
+use C4::Log       qw(logaction);
 use C4::Templates;
 use Koha::Account::DebitTypes;
 use Koha::DateUtils qw(dt_from_string);
@@ -21,6 +21,7 @@ use Koha::Patron::Debarments qw(AddDebarment);
 use Koha::Patrons;
 use Koha::Plugins;
 use Koha::Schema;
+use Koha::SMTP::Servers;
 
 use File::Path qw( make_path );
 use JSON;
@@ -43,19 +44,20 @@ our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;
 
 our $metadata = {
     name            => 'Unique Management Services - Gentle Nudge Multi-Configuration',
-    author          => 'Kyle M Hall',
-    date_authored   => '2021-09-27',
-    date_updated    => "2025-09-25",
+    author          => 'Lisette Scheer',
+    date_authored   => '2026-04-23',
+    date_updated    => "2026-04-23",
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
-    description     => 'Plugin to forward messages to Unique Collections for processing and sending with multiple configurations',
-    plugin_title    => "UMS Collections Multi-Configuration",
+    description     =>
+        'Plugin to forward messages to Unique Collections for processing and sending with multiple configurations',
+    plugin_title => "UMS Collections Multi-Configuration",
 };
 
 BEGIN {
     warn "warn begin";
-     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
+    my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
 
@@ -64,9 +66,11 @@ BEGIN {
     require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig;
 
     #register the additional schema classes
-    Koha::Schema->register_class(KohaPluginComBywatersolutionsUmsgentlenudgeConfig => 'Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig');
+    Koha::Schema->register_class( KohaPluginComBywatersolutionsUmsgentlenudgeConfig =>
+            'Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig' );
+
     # force a refresh of the database handle so that it includes the new classes
-    Koha::Database->schema({ new => 1 });
+    Koha::Database->schema( { new => 1 } );
     warn "warn begin end";
 }
 
@@ -138,39 +142,54 @@ sub new {
 =cut
 
 sub configure {
+    warn 'configure';
     my ( $self, $args ) = @_;
-    my $cgi = $self->{'cgi'};
-    my $template = $self->get_template( { file => 'templates/ums2.tt' } );
-    my $dbh = C4::Context->dbh;
-
+    my $cgi          = $self->{'cgi'};
+    my $template     = $self->get_template( { file => 'templates/ums2.tt' } );
+    my $dbh          = C4::Context->dbh;
     my $config_table = $self->get_qualified_table_name('config');
-    my $configs = Koha::UMSConfigs->search();
-    my $action = $cgi->param('op');
-    my $config = $cgi->param('config');
-    my $groups = Koha::Library::Groups->search({branchcode => undef}, { order_by => ['title'] } );
-    my @debit_types = Koha::Account::DebitTypes->search()->as_list;
+    my $configs      = Koha::UMSConfigs->search();
+    my $action       = $cgi->param('op');
+    my $config       = $cgi->param('config');
+    my $groups       = Koha::Library::Groups->search( { branchcode => undef }, { order_by => ['title'] } );
+    my @debit_types  = Koha::Account::DebitTypes->search()->as_list;
+    my @servers      = Koha::SMTP::Servers->search();
 
-    if ( $action eq 'cud-save' ) {
-        $self->store_data(
-            {
-                config_id => scalar $cgi->param('config_id'),
-            }
-        );
+    if ($action) {
+        if ( $action eq 'cud-save' ) {
+            $self->store_data(
+                {
+                    config_id => scalar $cgi->param('config_id'),
+                }
+            );
         }
-
-    #   elsif ( $action eq 'delete' ) {
-    #     my $ums_config = Koha::UMSConfigs->find($config);
-    #     $ums_config->delete() if $ums_config;
-    # }
-    #   elsif ( $action eq 'edit' ) {
-    #     my $ums_config = Koha::UMSConfigs->find($config);
-    #     $self->store_data({
-    #             authorized_users => $auth_users
-    #         });
-    #   }
-    $template->param( configs => $configs, groups => $groups, debit_types => \@debit_types);
-    $self->output_html( $template->output() );
     }
+    $template->param( configs => $configs, groups => $groups, debit_types => \@debit_types, servers => @servers );
+    $self->output_html( $template->output() );
+}
+
+# =head3 intranet_js
+
+# Get the configure.js file
+
+# =cut
+
+# sub intranet_js {
+#     my ( $self ) = @_;
+
+#     return q|
+#     <script src="/api/v1/contrib/ums/static/js/configure.js"></script>
+#     |;
+# }
+
+sub static_routes {
+    my ( $self, $args ) = @_;
+
+    my $spec_str = $self->mbf_read('staticapi.json');
+    my $spec     = decode_json($spec_str);
+
+    return $spec;
+}
 
 =head3 cronjob_nightly
 
@@ -462,7 +481,6 @@ sub configure {
 #         write_file( $file_path, $csv );
 #         log_info("ARCHIVE WRITTEN TO $file_path");
 
-
 #         my $email_to   = $self->retrieve_data('unique_email');
 #         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
 #         my $email_cc   = $self->retrieve_data('cc_email');
@@ -472,8 +490,6 @@ sub configure {
 #             filename  => $filename,
 #             file_path => $file_path,
 #         };
-
-
 
 #         foreach my $email_address ( $email_to, $email_cc ) {
 #             next unless $email_address;
@@ -758,8 +774,8 @@ sub install() {
 
     my $configuration = $self->get_qualified_table_name('config');
 
-    unless ($self->_table_exists('config') ) {
-         C4::Context->dbh->do("
+    unless ( $self->_table_exists('config') ) {
+        C4::Context->dbh->do( "
         CREATE TABLE IF NOT EXISTS $configuration (
                     config_id int(11) NOT NULL AUTO_INCREMENT COMMENT 'unique id for each config',
                     config_name VARCHAR(15) NULL COMMENT 'Name of the group or library',
@@ -780,11 +796,11 @@ sub install() {
                     remove_minors tinyint(1) NULL COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
                     unique_email VARCHAR(191) NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
                     additional_email VARCHAR(191) NULL COMMENT 'If you would like to send to another email address as well',
-                    enabled int(1) NOT NULL DEFAULT 0 COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
-                    config_type VARCHAR(15) DEFAULT 'global' NOT NULL COMMENT 'Options are global (can only have 1 global), branch, or group',
-                    debit_type VARCHAR(191) NOT NULL DEFAULT 'manual',
-                    # updated_at timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'When the config was last updated',
-                    require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections',
+                    enabled int(1) NOT NULL COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
+                    config_type VARCHAR(15) NOT NULL COMMENT 'Options are global (can only have 1 global), branch, or group',
+                    debit_type VARCHAR(191) NOT NULL,
+                    # updated_at timestamp NOT NULL COMMENT 'When the config was last updated',
+                    require_lost TINYINT(1) NOT NULL COMMENT 'Does patron require a lost fee to go to collections',
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
                     KEY config_group (config_group)
@@ -794,9 +810,11 @@ sub install() {
 
        " );
     }
-    $dbh->do("INSERT IGNORE INTO $configuration (config_name) VALUES ('Global' )"); #Create default configuration
+    $dbh->do(
+        "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, debit_type, require_lost) VALUES ('Global', 'global', 0, '10', 'manual', 0)"
+    );    #Create default configuration
 
-        my $default_config  = $dbh->selectcol_arrayref( "SELECT config_id FROM $configuration" );
+    my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
     return 1;
 }
 
@@ -816,16 +834,17 @@ sub upgrade {
 
         my $configuration = $self->get_qualified_table_name('config');
 
-    unless ($self->_table_exists('config') ) {
-         C4::Context->dbh->do("
-        INSERT IGNORE INTO $configuration (require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections" );
+        unless ( $self->_table_exists('config') ) {
+            C4::Context->dbh->do( "
+        INSERT IGNORE INTO $configuration (require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections"
+            );
+        }
+        $self->store_data();
+        warn "warn upgrade end";
+        return 1;
     }
-    $self->store_data();
-warn "warn upgrade end";
-    return 1;
-}
-$database_version = "3.00.0";
-        $self->store_data({ '__INSTALLED_VERSION__' => $database_version });
+    $database_version = "3.00.0";
+    $self->store_data( { '__INSTALLED_VERSION__' => $database_version } );
 }
 
 =head3 uninstall
