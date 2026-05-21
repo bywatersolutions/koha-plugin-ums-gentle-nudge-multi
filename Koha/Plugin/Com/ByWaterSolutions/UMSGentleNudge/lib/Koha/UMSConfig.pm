@@ -18,6 +18,14 @@ Koha::UMSConfig - Koha UMS Configuration Object set class
 
 =head2 Internal methods
 
+=head3 enabled
+
+=cut
+
+sub _enabled {
+    return 'KohaPluginComBywatersolutionsUmsgentlenudgeConfig';
+}
+
 =head3 _type
 
 =cut

@@ -154,6 +154,8 @@ sub configure {
     my $groups       = Koha::Library::Groups->search( { branchcode => undef }, { order_by => ['title'] } );
     my @debit_types  = Koha::Account::DebitTypes->search()->as_list;
     my @servers      = Koha::SMTP::Servers->search();
+    my @group_array  = Koha::Library::Groups->search();
+    my @branch_array = Koha::Libraries->search();
 
     if ($action) {
         if ( $action eq 'cud-save' ) {
@@ -191,58 +193,58 @@ sub static_routes {
     return $spec;
 }
 
-=head3 cronjob_nightly
+# =head3 cronjob_nightly
 
-=cut
+# =cut
 
-# sub cronjob_nightly {
-#     my ( $self, $p ) = @_;
+#  sub cronjob_nightly {
+#      my ( $self, $p ) = @_;
 
-#     $self->prune_old_logs();
+#      $self->prune_old_logs();
 
-#     # Clear up archives older than 30 days
-#     if ($archive_dir) {
-#         if ( -d $archive_dir ) {
-#             my $dt = dt_from_string();
-#             $dt->subtract( days => 30 );
-#             my $age_threshold = $dt->ymd;
-#             opendir my $dir, $archive_dir or die "Cannot open directory: $!";
-#             my @files = readdir $dir;
+#      # Clear up archives older than 30 days
+#      if ($archive_dir) {
+#          if ( -d $archive_dir ) {
+#              my $dt = dt_from_string();
+#              $dt->subtract( days => 30 );
+#              my $age_threshold = $dt->ymd;
+#              opendir my $dir, $archive_dir or die "Cannot open directory: $!";
+#              my @files = readdir $dir;
 #             closedir $dir;
 
-#             my $thresholds = {
-#                 new_submissions => "ums-new-submissions-$age_threshold.csv",
-#                 sync            => "ums-sync-$age_threshold.csv",
-#                 updates         => "ums-updates-$age_threshold.csv",
-#             };
+#              my $thresholds = {
+#                  new_submissions => "ums-new-submissions-$age_threshold.csv",
+#                  sync            => "ums-sync-$age_threshold.csv",
+#                  updates         => "ums-updates-$age_threshold.csv",
+#              };
 
-#             foreach my $f (@files) {
-#                 next unless $f =~ /csv$/;
+#              foreach my $f (@files) {
+#                  next unless $f =~ /csv$/;
 
-#                 my $threshold_filename =
-#                       $f =~ /^ums-new-submissions/ ? $thresholds->{new_submissions}
-#                     : $f =~ /^ums-sync/            ? $thresholds->{sync}
-#                     : $f =~ /^ums-updates/         ? $thresholds->{updates}
-#                     :                                undef;
+#                  my $threshold_filename =
+#                        $f =~ /^ums-new-submissions/ ? $thresholds->{new_submissions}
+#                      : $f =~ /^ums-sync/            ? $thresholds->{sync}
+#                      : $f =~ /^ums-updates/         ? $thresholds->{updates}
+#                      :                                undef;
 
-#                 next unless $threshold_filename;
+#                  next unless $threshold_filename;
 
-#                 if ( $f lt $threshold_filename ) {
-#                     unlink( $archive_dir . "/" . $f );
-#                 }
-#             }
-#         } else {
-#             make_path $archive_dir or die "Failed to create path: $archive_dir";
-#         }
-#     }
+#                  if ( $f lt $threshold_filename ) {
+#                      unlink( $archive_dir . "/" . $f );
+#                  }
+#              }
+#          } else {
+#              make_path $archive_dir or die "Failed to create path: $archive_dir";
+#          }
+#      }
 
-#     my $run_weeklys;
-#     my $run_on_dow = $self->retrieve_data('run_on_dow');
-#     unless ( (localtime)[6] == $run_on_dow ) {
-#         log_info( "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6] );
-#     } else {
-#         $run_weeklys = 1;
-#     }
+#      my $run_weeklys;
+#      my $run_on_dow = $self->retrieve_data('run_on_dow');
+#      unless ( (localtime)[6] == $run_on_dow ) {
+#          log_info( "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6] );
+#      } else {
+#          $run_weeklys = 1;
+#      }
 
 #     my $params = { send_sync_report => $p->{send_sync_report} };
 
@@ -778,7 +780,7 @@ sub install() {
         C4::Context->dbh->do( "
         CREATE TABLE IF NOT EXISTS $configuration (
                     config_id int(11) NOT NULL AUTO_INCREMENT COMMENT 'unique id for each config',
-                    config_name VARCHAR(15) NULL COMMENT 'Name of the group or library',
+                    config_name VARCHAR(100) NULL COMMENT 'Name of the group or library',
                     branch VARCHAR(10) NULL COMMENT 'Selected branch',
                     config_group int(11) NULL COMMENT 'Selected group',
                     day_of_week int(1)  NULL COMMENT 'Which day of the week',
@@ -826,20 +828,12 @@ plugin is installed over an existing older version of a plugin
 =cut
 
 sub upgrade {
-    warn "warn upgrade start";
     my ( $self, $args ) = @_;
     my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
 
     if ( $self->_version_compare( $database_version, "2.20.0" ) == -1 ) {
 
         my $configuration = $self->get_qualified_table_name('config');
-
-        unless ( $self->_table_exists('config') ) {
-            C4::Context->dbh->do( "
-        INSERT IGNORE INTO $configuration (require_lost TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Does patron require a lost fee to go to collections"
-            );
-        }
-        $self->store_data();
         warn "warn upgrade end";
         return 1;
     }
@@ -888,6 +882,57 @@ sub prune_old_logs {
     }
     closedir $dh;
 }
+
+# sub get_all_configs {
+#     my @libraries =  Koha::UMSConfigs->find( { config_type => "library"} );
+#     my @groups = Koha::UMSConfigs->find( { config_type => "group"} );
+#     my @global = Koha::UMSConfigs->find( { config_type => "global"} );
+
+# return (@libraries,@groups,$global);
+
+#     }
+
+
+
+# sub get_today_configs {
+#     my (@libraries,@groups,@global) = @_;
+#     my @today_libraries;
+#     my @today_groups;
+#     my @today_global;
+# }
+    #get all branches (and their groups?)
+    #get all groups & (their branches?)
+    #get all branch configs
+    #get all group configs
+    #get global config
+    #each branch config
+        #enabled?
+            #no  - remove from all branches/the branches in groups  (log all skips together)
+            #yes - 
+                #day_to_run match?
+                    #no  - remove from all branches/the branches in groups (log day doesn't match)
+                    #yes - Build and run the report, save the file and send if needed
+                        #save/send report, remove from all branches/the branches in groups- done
+    #each group config
+        #enabled?
+            #no  - remove from groups and remove branches from all branches
+            #yes - 
+                #day_to_run match?
+                    #no  - remove from groups and remove branches from all branches
+                    #yes - build and run report minus branches with their own config
+                        #save/send report, remove from all branches/the branches in groups- done
+    #global config
+        #Are there any branches/groups left?
+            #no  - done
+            #yes - 
+                #enabled?
+                    #no  - done
+                    #yes - 
+                #day_to_run match?
+                    #no  - remove from all branches/the branches in groups (log day doesn't match)
+                    #yes - Build and run the report, save the file and send if needed
+                        #save/send report, remove from all branches/the branches in groups- done
+
 
 sub _log {
     warn "warn log";

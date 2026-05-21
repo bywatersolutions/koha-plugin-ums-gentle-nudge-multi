@@ -5,6 +5,7 @@
 [% USE Categories %]
 [% USE Dumper %]
 [% USE Koha %]
+[% USE To %]
 [% USE raw %]
 [% WRAPPER "wrapper-staff-tool-plugin.inc" method="configure" plugin_title="UMS Collections" %]
 <div id="message">
@@ -168,7 +169,7 @@
                             <div class="col-md-12">
                                 <div class="form-group mb-12">
                                     <label for="umsconfig_categories">Patron categories <i id="info_added" data-bs-toggle="tooltip" title="Leave blank for all categories. multiple values can be selected with ctrl+click or shift+click." data-bs-placement="right" class="fa fa-info-circle"></i></label>
-                                    <select name="umsconfig_categories" id="umsconfig_categories" multiple="multiple">
+                                    <select data-placeholder="Select patron categories to limit to" name="umsconfig_categories" id="umsconfig_categories" class="select2">
                                         [% FOREACH category IN Categories.all() %]
                                             <option value="[% category.categorycode %]">[% category.description %]</option>
                                         [% END %]
@@ -436,7 +437,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
           [% INCLUDE 'datatables.inc' %]
           [% INCLUDE 'calendar.inc' %]
           [% INCLUDE 'validator-strings.inc' %]
-
+          [% INCLUDE 'select2.inc' %]
           <script nonce="[% Koha.CSPNonce | $raw %]">
             $(document).ready(function() {
                 var UMSDeleteModal = document.getElementById('UMSDeleteModal');
@@ -471,7 +472,11 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 if (configtype == 'global'){
                     modalSelector.textContent = 'Global';
                 };
-                if (umsmode == "Edit") loadConfigForEdit();
+                if (umsmode == "Edit") {
+                    $('#umsconfig_categories').val(null).trigger('change');
+                    loadConfigForEdit();
+                    $('#umsconfig_categories').trigger('change');
+                }
                 else setDefaults();
 
             
@@ -532,7 +537,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("fees_starting_age").value = config.fees_newer;
                         document.getElementById("fees_ending_age").value = config.fees_older;
                         document.getElementById("fees_created_before_date_filter").value = config.ignore_before;
-                        document.getElementById("umsconfig_categories").value = config.patron_categories;
+                        document.getElementById("umsconfig_categories").value = '';
                         document.getElementById("processing_fee").value = config.processing_fee;
                         document.getElementById("age_limitation").value = config.remove_minors;
                         document.getElementById("add_restriction").value = config.restriction;
@@ -540,8 +545,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("fees_threshold").value = config.threshold;
                         document.getElementById("unique_email").value = config.unique_email;
                         document.getElementById("require_lost_fee").value = config.require_lost;
-                    }
-                });
+                    },
+                }
+                );
+
             }
             //Load All configs on page load
             loadAll();
@@ -568,6 +575,14 @@ If using another category, the authorized values should be 0 and 1, but the desc
             $('#deleteForm').on('submit', function(e) {
                 e.preventDefault();
                 deleteConfig();
+            });
+            $('.select2').select2({
+                allowClear: true,
+                dropdownAutoWidth: true,
+                width: '100%',
+                multiple: true,
+                size: 4,
+                dropdownParent: ('#config_form')
             });
             //Initialize DataTables
                 function loadAll() {
@@ -788,7 +803,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     umsgroup = $('#umsconfig_id_select').val();
                     config_type= "group";
                 };
-
+                const patron_categories_array = $('#umsconfig_categories').select2('data');
+                patron_categories = patron_categories_array.map(value => value.id);
+                //patron_categories = patron_categories.toString();
+                console.log (patron_categories);
                 var debit_type_select = document.getElementById('processing_debit');
                 var debit_type = debit_type_select.value;
                 var exemption_select = document.getElementById('exemption_flag');
@@ -809,7 +827,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     fees_newer: $('#fees_starting_age').val(),
                     fees_older: $('#fees_ending_age').val(),
                     ignore_before: $('#fees_created_before_date_filter').val(),
-                    patron_categories: $('#umsconfig_categories').val(),
+                    patron_categories: patron_categories,
                     processing_fee: $('#processing_fee').val(),
                     remove_minors: $('#age_limitation').val(),
                     remove_restriction:$('#remove_restriction').val(),
@@ -836,6 +854,11 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     //showMessage(configId ? 'Config updated successfully' : 'Config created successfully', 'success');
                         $('#UMSConfigModal').modal('hide');
                         loadAll();
+                    },
+                    statusCode: {
+                        409: function(xhr) {
+                            alert(xhr.responseJSON.error);
+                        }
                     },
                     error: function(xhr, status, error) {
                         let message = 'Failed to save config';

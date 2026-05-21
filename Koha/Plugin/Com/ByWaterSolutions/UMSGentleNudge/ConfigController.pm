@@ -25,11 +25,13 @@ List all configs
 
 sub list {
     my $c = shift->openapi->valid_input or return;
-
+    my $configs = $c->objects->search( Koha::UMSConfigs->new );
+        return $c->render_resource_not_found('UMS config entries')
+            unless $configs;
     return try {
         return $c->render(
             status  => 200,
-            openapi => $c->objects->search( Koha::UMSConfigs->new ),
+            openapi => $configs
         );
     } catch {
         $c->unhandled_exception;
@@ -44,13 +46,15 @@ Get a specific config
 
 sub get {
     my $c         = shift->openapi->valid_input or return;
-    my $config_id = $c->param('config_id');
+    my $config = $c->objects->find( Koha::UMSConfigs->new, $c->param('config_id') );
+
+    return $c->render_resource_not_found('UMS config entry')
+        unless $config;
 
     return try {
-        my $config = Koha::UMSConfigs->find( { config_id => $config_id } );
         return $c->render(
             status  => 200,
-            openapi => $config,
+            openapi => $c->objects->to_api( $config )
         );
     } catch {
         $c->unhandled_exception($_);
@@ -65,74 +69,44 @@ Create a new config
 
 sub add {
     my $c = shift->openapi->valid_input or return;
+    my $body = $c->req->json;
 
-    my $additional_email  = $c->req->json->{'additional_email'};
-    my $branch            = $c->req->json->{'branch'};
-    my $clear_below       = $c->req->json->{'clear_below'};
-    my $clear_threshold   = $c->req->json->{'clear_threshold'};
-    my $collections_flag  = $c->req->json->{'collections_flag'};
-    my $config_group      = $c->req->json->{'config_group'};
-    my $config_id         = $c->req->json->{'config_id'};
-    my $config_name       = $c->req->json->{'config_name'};
-    my $config_type       = $c->req->json->{'config_type'};
-    my $day_of_week       = $c->req->json->{'day_of_week'};
-    my $debit_type        = $c->req->json->{'debit_type'};
-    my $enabled           = $c->req->json->{'enabled'};
-    my $exemptions_flag   = $c->req->json->{'exemptions_flag'};
-    my $fees_newer        = $c->req->json->{'fees_newer'};
-    my $fees_older        = $c->req->json->{'fees_older'};
-    my $ignore_before     = $c->req->json->{'ignore_before'};
-    my $patron_categories = $c->req->json->{'day_of_week'};
-    my $processing_fee    = $c->req->json->{'processing_fee'};
-    my $remove_minors     = $c->req->json->{'remove_minors'};
-    my $require_lost      = $c->req->json->{'require_lost'};
-    my $restriction       = $c->req->json->{'restriction'};
-    my $threshold         = $c->req->json->{'threshold'};
-    my $unique_email      = $c->req->json->{'unique_email'};
-    warn $config_type;
-
-    if ( $config_type eq "group" ) {
-        my $group = Koha::Library::Groups->find($config_group);
-        $config_name = $group->title;
+    if ( $body->{config_type} eq "group" ) {
+        my $group = Koha::Library::Groups->find($body->{config_group});
+                $body->{config_name} = $group->title;
+        my $match_result = 
+            Koha::UMSConfigs->check_for_existing_group($group);
+            if ( $match_result->{duplicate_found} ) {
+                return $c->render(
+                    status => 409,
+                    openapi => { error => 'A configuration matching this group already exists.'}
+                );
+            }
     }
-    if ( $config_type eq "library" ) {
-        my $branch_name = Koha::Libraries->find($branch);
-        $config_name = $branch_name->branchname;
+    if ( $body->{config_type} eq "library" ) {
+        my $library = Koha::Libraries->find($body->{branch});
+        my $library_name = Koha::Libraries->find($library);
+        my $config_name = $library_name->branchname;
+        my $match_result = 
+            Koha::UMSConfigs->check_for_existing_branch($library);
+            if ( $match_result->{duplicate_found} ) {
+                return $c->render(
+                    status => 409,
+                    openapi => { error => 'A configuration matching this library already exists.'}
+                );
+            }
     }
     return try {
-        my $config = Koha::UMSConfig->new(
-            {
-                additional_email  => $additional_email,
-                branch            => $branch,
-                clear_below       => $clear_below,
-                clear_threshold   => $clear_threshold,
-                collections_flag  => $collections_flag,
-                config_group      => $config_group,
-                config_id         => $config_id,
-                config_name       => $config_name,
-                config_type       => $config_type,
-                day_of_week       => $day_of_week,
-                debit_type        => $debit_type,
-                enabled           => $enabled,
-                exemptions_flag   => $exemptions_flag,
-                fees_newer        => $fees_newer,
-                fees_older        => $fees_older,
-                ignore_before     => $ignore_before,
-                patron_categories => $patron_categories,
-                processing_fee    => $processing_fee,
-                remove_minors     => $remove_minors,
-                restriction       => $restriction,
-                require_lost      => $require_lost,
-                threshold         => $threshold,
-                unique_email      => $unique_email
-            }
-        );
+        my $config = Koha::UMSConfig->new_from_api($body);
 
         $config->store;
-
+        $c->res->hears->location( $c->req->url->to_string . '/' . $config->id );
+        my $config_id = $c->param('config_id');
+        logaction( 'SYSTEMPREFERENCE', 'ADD', $config_id,
+            $config, undef, undef );
         return $c->render(
-            status  => 200,
-            openapi => $config
+            status  => 201,
+            openapi => $c->objects->to_api($config),
         );
     } catch {
         $c->unhandled_exception($_);
@@ -147,74 +121,37 @@ sub add {
 
 sub update {
 
-    my $c                = shift->openapi->valid_input or return;
-    my $config_id        = $c->param('config_id');
-    my $config           = Koha::UMSConfigs->find( { config_id => $config_id } );
-    my $additional_email = $c->req->json->{'additional_email'};
-    my $branch           = $c->req->json->{'branch'};
-    my $clear_below      = $c->req->json->{'clear_below'};
-    my $clear_threshold  = $c->req->json->{'clear_threshold'};
-    my $collections_flag = $c->req->json->{'collections_flag'};
-    my $config_group     = $c->req->json->{'config_group'};
-    my $config_name      = $c->req->json->{'config_name'};
-    my $config_type      = $c->req->json->{'config_type'};
-    my $day_of_week      = $c->req->json->{'day_of_week'};
-    my $debit_type       = $c->req->json->{'debit_type'};
-    my $enabled          = $c->req->json->{'enabled'};
-    my $exemptions_flag  = $c->req->json->{'exemptions_flag'};
-    my $fees_newer       = $c->req->json->{'fees_newer'};
-    my $fees_older       = $c->req->json->{'fees_older'};
-    my $ignore_before    = $c->req->json->{'ignore_before'};
+    my $c                 = shift->openapi->valid_input or return;
+    my $body = $c->req->json;
+    my $config            = $c->objects->find_rs (Koha::UMSConfigs->new, $c->param('config_id') );
 
-    #my $patron_categories = $c->req->json->{'patron_categories'};
-    my $processing_fee = $c->req->json->{'processing_fee'};
-    my $remove_minors  = $c->req->json->{'remove_minors'};
-    my $restriction    = $c->req->json->{'restriction'};
-    my $require_lost   = $c->req->json->{'require_lost'};
-    my $threshold      = $c->req->json->{'threshold'};
-    my $unique_email   = $c->req->json->{'unique_email'};
+    return $c->render_resource_not_found('UMS config entry')
+        unless $config;
+
+    my $config_type  = $body->{'config_type'};
+    my $config_group = $body->{'config_group'};
+    my $branch       = $body->{'branch'};
+
     if ( $config_type eq "group" ) {
         my $group = Koha::Library::Groups->find($config_group);
-        $config_name = $group->title;
+        my $config_name = $group->title;
     }
     if ( $config_type eq "library" ) {
         my $branch_name = Koha::Libraries->find($branch);
-        $config_name = $branch_name->branchname;
+       my $config_name = $branch_name->branchname;
     }
     return try {
-        my $old_config = $config;
-        {
-            $config->additional_email($additional_email) if $additional_email;
-            $config->branch($branch)                     if $branch;
-            $config->clear_below($clear_below)           if $clear_below;
-            $config->clear_threshold($clear_threshold)   if $clear_threshold;
-            $config->collections_flag($collections_flag) if $collections_flag;
-            $config->config_group($config_group)         if $config_group;
-            $config->config_id($config_id)               if $config_id;
-            $config->config_name($config_name)           if $config_name;
-            $config->config_type($config_type)           if $config_type;
-            $config->day_of_week($day_of_week)           if $day_of_week;
-            $config->debit_type($debit_type)             if $debit_type;
-            $config->enabled($enabled)                   if $enabled;
-            $config->exemptions_flag($exemptions_flag)   if $exemptions_flag;
-            $config->fees_newer($fees_newer)             if $fees_newer;
-            $config->fees_older($fees_older)             if $fees_older;
-            $config->ignore_before($ignore_before)       if $ignore_before;
-
-            #$config->patron_categories ( $patron_categories ) if $patron_categories;
-            $config->processing_fee($processing_fee) if $processing_fee;
-            $config->remove_minors($remove_minors)   if $remove_minors;
-            $config->restriction($restriction)       if $restriction;
-            $config->threshold($threshold)           if $threshold;
-            $config->unique_email($unique_email)     if $unique_email;
-        };
+        my $config_before = $config;
+        my $config_id = $c->param('config_id');
 
         $config->store;
-
+        $c->res->headers->location( $c->req->url->to_string . '/' . $config->id );
+        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
+            $config, undef, $config_before ); 
         return try {
             return $c->render(
                 status  => 200,
-                openapi => $config
+                openapi => $c->objects->to_api( $config )
             );
         } catch {
             $c->unhandled_exception($_);
@@ -230,23 +167,19 @@ Delete a configuration
 
 sub delete {
     my $c             = shift->openapi->valid_input or return;
-    my $config_id     = $c->param('config_id');
-    my $config_before = Koha::UMSConfigs->find({ config_id =>$config_id });
-    my $config_name   = $config_before->config_name;
+    my $config_before = Koha::UMSConfigs->find( $c->param('config_id') );
 
+    return $c->render_resource_not_found('UMS config entry')
+        unless $config_before;
     try {
         my $config = $config_before;
+        my $config_id = $c->param('config_id');
         $config->delete;
 
         logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id,
             $config, undef, $config_before ); 
-        warn $config_before;
-        return $c->render (
-            status  => 204,
-            openapi => $config
-        );
-    }
-    catch {
+        return $c->render_resource_deleted;
+        } catch {
         $c->unhandled_exception($_);
     };
 
