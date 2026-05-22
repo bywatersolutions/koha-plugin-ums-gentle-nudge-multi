@@ -307,8 +307,8 @@
         }
       ],
       "responses": {
-        "200": {
-          "description": "A list of configurations"
+        "201": {
+          "description": "Configuration added"
         },
         "403": {
           "description": "You are not authorized to add configurations"

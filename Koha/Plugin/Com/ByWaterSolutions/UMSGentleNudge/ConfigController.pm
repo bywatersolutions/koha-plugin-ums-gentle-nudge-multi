@@ -54,8 +54,8 @@ sub get {
     return try {
         return $c->render(
             status  => 200,
-            openapi => $c->objects->to_api( $config )
-        );
+            openapi => $config
+        )
     } catch {
         $c->unhandled_exception($_);
     };
@@ -70,13 +70,15 @@ Create a new config
 sub add {
     my $c = shift->openapi->valid_input or return;
     my $body = $c->req->json;
-
+    warn "73";
     if ( $body->{config_type} eq "group" ) {
+        warn "is a group";
         my $group = Koha::Library::Groups->find($body->{config_group});
                 $body->{config_name} = $group->title;
         my $match_result = 
             Koha::UMSConfigs->check_for_existing_group($group);
             if ( $match_result->{duplicate_found} ) {
+                warn 'is group match';
                 return $c->render(
                     status => 409,
                     openapi => { error => 'A configuration matching this group already exists.'}
@@ -84,29 +86,33 @@ sub add {
             }
     }
     if ( $body->{config_type} eq "library" ) {
+        warn 'is a library';
         my $library = Koha::Libraries->find($body->{branch});
-        my $library_name = Koha::Libraries->find($library);
-        my $config_name = $library_name->branchname;
+        my $config_name = $library ->branchname;
+        warn 'after my $config_name';
         my $match_result = 
             Koha::UMSConfigs->check_for_existing_branch($library);
+            warn 'check_for_existing_branch';
             if ( $match_result->{duplicate_found} ) {
+                warn 'is branch match';
                 return $c->render(
                     status => 409,
                     openapi => { error => 'A configuration matching this library already exists.'}
                 );
             }
     }
+    warn 'about to store it?';
     return try {
         my $config = Koha::UMSConfig->new_from_api($body);
 
         $config->store;
-        $c->res->hears->location( $c->req->url->to_string . '/' . $config->id );
+        $c->res->headers->location( $c->req->url->to_string . '/' . $config->id );
         my $config_id = $c->param('config_id');
         logaction( 'SYSTEMPREFERENCE', 'ADD', $config_id,
             $config, undef, undef );
         return $c->render(
             status  => 201,
-            openapi => $c->objects->to_api($config),
+            openapi => $config,
         );
     } catch {
         $c->unhandled_exception($_);

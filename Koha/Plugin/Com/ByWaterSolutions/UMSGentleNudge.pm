@@ -805,9 +805,9 @@ sub install() {
                     require_lost TINYINT(1) NOT NULL COMMENT 'Does patron require a lost fee to go to collections',
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
-                    KEY config_group (config_group)
-                    # CONSTRAINT configs_branch FOREIGN KEY (branch) REFERENCES branches (branchcode) ON DElETE CASCADE ON UPDATE CASCADE,
-                    # CONSTRAINT config_library_group FOREIGN KEY (config_group) REFERENCES library_groups (id) ON DELETE CASCADE ON UPDATE CASCADE
+                    KEY config_group (config_group),
+                    CONSTRAINT configs_branch FOREIGN KEY (branch) REFERENCES branches (branchcode) ON DElETE CASCADE ON UPDATE CASCADE,
+                    CONSTRAINT config_library_group FOREIGN KEY (config_group) REFERENCES library_groups (id) ON DELETE CASCADE ON UPDATE CASCADE
                     ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
        " );
