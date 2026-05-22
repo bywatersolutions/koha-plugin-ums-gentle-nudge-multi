@@ -7,6 +7,8 @@ use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::UMSConfigs;
 use Koha::UMSConfig;
 use Data::Dumper qw( Dumper );
+use Koha::Libraries;
+use Koha::Library;
 use Koha::Library::Groups;
 
 =head1 NAME
@@ -50,7 +52,7 @@ sub get {
 
     return $c->render_resource_not_found('UMS config entry')
         unless $config;
-
+    warn Dumper($config);
     return try {
         return $c->render(
             status  => 200,
@@ -88,8 +90,9 @@ sub add {
     if ( $body->{config_type} eq "library" ) {
         warn 'is a library';
         my $library = Koha::Libraries->find($body->{branch});
-        my $config_name = $library ->branchname;
-        warn 'after my $config_name';
+        warn Dumper($library->branchname);
+        my $config_name = ($library->branchname);
+        warn $config_name;
         my $match_result = 
             Koha::UMSConfigs->check_for_existing_branch($library);
             warn 'check_for_existing_branch';
@@ -103,17 +106,23 @@ sub add {
     }
     warn 'about to store it?';
     return try {
+        warn 'in the try';
         my $config = Koha::UMSConfig->new_from_api($body);
-
+        warn 'after new from api';
         $config->store;
+        warn 'after store';
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->id );
+        warn 'after headers';
         my $config_id = $c->param('config_id');
-        logaction( 'SYSTEMPREFERENCE', 'ADD', $config_id,
-            $config, undef, undef );
+        warn 'after config_id';
+        #logaction( 'SYSTEMPREFERENCE', 'ADD', $config_id,
+         #   $config, undef, undef );
+        warn 'after commented log';
         return $c->render(
             status  => 201,
             openapi => $config,
         );
+        warn 'end of try';
     } catch {
         $c->unhandled_exception($_);
     }

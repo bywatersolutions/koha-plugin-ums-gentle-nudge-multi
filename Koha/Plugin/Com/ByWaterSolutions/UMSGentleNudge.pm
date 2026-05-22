@@ -795,6 +795,7 @@ sub install() {
                     clear_below tinyint(1) NULL COMMENT '0, patrons who have paid their fines to below the threshold will not be removed from collections.',
                     clear_threshold int(11) NULL COMMENT 'The patron will be cleared from collections if if they do not exceed this threshold.',
                     restriction tinyint(1) NULL COMMENT 'Newly flagged patrons will have a restriction added to their account.',
+                    remove_restriction tinyint (1) NULL COMMENT 'IF 1, patrons will have the restriction removed if they are removed from collections.',
                     remove_minors tinyint(1) NULL COMMENT 'If 1, patrons under the age of 18 years old will not be included on the collections report.',
                     unique_email VARCHAR(191) NULL COMMENT 'If email information is set, plugin will email files to the given addresses.',
                     additional_email VARCHAR(191) NULL COMMENT 'If you would like to send to another email address as well',

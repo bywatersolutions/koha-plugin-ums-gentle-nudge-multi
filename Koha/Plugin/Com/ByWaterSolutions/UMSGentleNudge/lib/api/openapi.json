@@ -301,7 +301,22 @@
               "clear_threshold": {
                 "description": "Amount",
                 "type": "string"
-              }
+              },
+                "remove_minors": {
+                    "type": "boolean",
+                    "description": "Will minors be removed"
+                },
+                "remove_restriction": {
+                    "type": "boolean",
+                    "description": "Will restriction be removed when leaving collections"
+                },
+                "ignore_before": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Email from unique"
+                }
             }
           }
         }
