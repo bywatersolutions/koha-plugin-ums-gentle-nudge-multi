@@ -89,6 +89,20 @@
                     "name": "config_type",
                     "required": false,
                     "type": "string"
+                },
+                {
+                    "description": "Day of week to run",
+                    "in": "query",
+                    "name": "day_of_week",
+                    "required": false,
+                    "type": "integer"
+                },
+                {
+                    "description": "Enabled",
+                    "in": "query",
+                    "name": "enabled",
+                    "required": false,
+                    "type": "integer"
                 }
             ],
             "responses": {
@@ -266,61 +280,6 @@
       "produces": [
         "application/json"
       ],
-      "parameters": [{
-          "name": "body",
-          "in": "body",
-          "description": "New config object",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "properties": {
-              "config_id": {
-                "description": "Unique config id",
-                "type": "integer"
-              },
-              "config_type": {
-                "description": "Config type",
-                "type": "string"
-              },
-              "branch": {
-                "description": "Optional branch code",
-                "type": "string"
-              },
-              "require_lost": {
-                  "type": "string",
-                  "description": "Does the patron need to have a lost fee to be sent to collections"
-              },
-              "additional_email": {
-                "description": "Optional additional email",
-                "type": "string"
-              },
-              "clear_below": {
-                "description": "Patrons who have dropped should be removed",
-                "type": "boolean"
-              },
-              "clear_threshold": {
-                "description": "Amount",
-                "type": "string"
-              },
-                "remove_minors": {
-                    "type": "boolean",
-                    "description": "Will minors be removed"
-                },
-                "remove_restriction": {
-                    "type": "boolean",
-                    "description": "Will restriction be removed when leaving collections"
-                },
-                "ignore_before": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                }
-            }
-          }
-        }
-      ],
       "responses": {
         "201": {
           "description": "Configuration added"
@@ -370,157 +329,6 @@
           "description": "Search on config id",
           "required": true,
           "type": "integer"
-        },{
-          "name": "body",
-          "in": "body",
-          "description": "Updated config information",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "properties": {
-                "config_id": {
-                    "description": "config id",
-                    "type": "integer"
-                },
-                "config_name": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Name of the configuration"
-                },
-                "day_of_week": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Day of week to run"
-                },
-                "patron_categories": {
-                    "type": [
-                        "string",
-                        "array",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "require_lost": {
-                    "type": "string",
-                    "description": "Does the patron need to have a lost fee to be sent to collections"
-                },
-                "threshold": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "processing_fee": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "collections_flag": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "exemptions_flag": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "fees_newer": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "fees_older": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "ignore_before": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "clear_below": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "clear_threshold": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "restriction": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email from unique"
-                },
-                "remove_minors": {
-                    "type": "boolean",
-                    "description": "Will minors be removed"
-                },
-                "unique_email": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Email to unique"
-                },
-                "additional_email": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Optional email to send to"
-                },
-                "enabled": {
-                    "type": "boolean",
-                    "description": "Whether the job is enabled"
-                },
-                "config_type": {
-                    "type": "string",
-                    "description": "What type of config is it"
-                },
-                "debit_type": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "What debit type should be used"
-                },
-
-                "updated_at": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Job last update timestamp"
-                }
-            }
-          }
         }
       ],
       "responses": {
@@ -549,54 +357,13 @@
       ],
       "responses": {
         "204": {
-          "description": "Config deleted deleted"
+          "description": "Config deleted"
         },
         "403": {
           "description": "You are not authorized to delete config"
         }
       }
     }
-  },
-   "/config/{config_id}/enable": {
-    "post": {
-        "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#enable",
-        "operationId": "enableUMSConfig",
-        "tags": [
-            "configs"
-        ],
-        "produces": [
-            "application/json"
-        ],
-        "parameters": [{
-          "name": "config_id",
-          "in": "path",
-          "description": "Search on config id",
-          "required": true,
-          "type": "integer"
-        }],
-        "responses": {
-            "200": {
-                "description": "Config enabled successfully",
-                "schema":{
-                    "type":"object",
-                    "properties": {
-                        "success": {
-                            "type": "boolean"
-                        }
-                    }
-                }            
-            },
-            "401": {
-                "description": "Authentication required"
-            },
-            "403": {
-                "description": "Access forbidden"
-            },
-            "500": {
-                "description": "Internal server error"
-            }
-            }
-        }
+  }
     }
-   }
 

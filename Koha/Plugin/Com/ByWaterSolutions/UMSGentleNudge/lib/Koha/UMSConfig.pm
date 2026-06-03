@@ -5,6 +5,7 @@ use C4::Context;
 use Koha::Database;
 use Koha::Library::Group;
 use base qw(Koha::Object);
+use JSON qw( encode_json decode_json );
 
 =head1 NAME
 
@@ -16,15 +17,14 @@ Koha::UMSConfig - Koha UMS Configuration Object set class
 
 =cut
 
+sub to_api {
+    my ($self, $params) = @_;
+    my $json;
+    my %json;
+    return $self;
+};
+
 =head2 Internal methods
-
-=head3 enabled
-
-=cut
-
-sub _enabled {
-    return 'KohaPluginComBywatersolutionsUmsgentlenudgeConfig';
-}
 
 =head3 _type
 

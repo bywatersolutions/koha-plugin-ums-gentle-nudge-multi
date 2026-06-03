@@ -10,6 +10,7 @@ use Data::Dumper qw( Dumper );
 use Koha::Libraries;
 use Koha::Library;
 use Koha::Library::Groups;
+use JSON qw( encode_json decode_json to_json);
 
 =head1 NAME
 
@@ -49,10 +50,9 @@ Get a specific config
 sub get {
     my $c         = shift->openapi->valid_input or return;
     my $config = $c->objects->find( Koha::UMSConfigs->new, $c->param('config_id') );
-
     return $c->render_resource_not_found('UMS config entry')
         unless $config;
-    warn Dumper($config);
+
     return try {
         return $c->render(
             status  => 200,
@@ -71,8 +71,8 @@ Create a new config
 
 sub add {
     my $c = shift->openapi->valid_input or return;
+    my $config_name;
     my $body = $c->req->json;
-    warn "73";
     if ( $body->{config_type} eq "group" ) {
         warn "is a group";
         my $group = Koha::Library::Groups->find($body->{config_group});
@@ -88,41 +88,31 @@ sub add {
             }
     }
     if ( $body->{config_type} eq "library" ) {
-        warn 'is a library';
         my $library = Koha::Libraries->find($body->{branch});
         warn Dumper($library->branchname);
-        my $config_name = ($library->branchname);
+        $config_name = ($library->branchname);
         warn $config_name;
         my $match_result = 
             Koha::UMSConfigs->check_for_existing_branch($library);
-            warn 'check_for_existing_branch';
             if ( $match_result->{duplicate_found} ) {
-                warn 'is branch match';
                 return $c->render(
                     status => 409,
                     openapi => { error => 'A configuration matching this library already exists.'}
                 );
             }
     }
-    warn 'about to store it?';
     return try {
-        warn 'in the try';
+        $body->{patron_categories} = encode_json($body->{patron_categories});
         my $config = Koha::UMSConfig->new_from_api($body);
-        warn 'after new from api';
         $config->store;
-        warn 'after store';
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->id );
-        warn 'after headers';
         my $config_id = $c->param('config_id');
-        warn 'after config_id';
         #logaction( 'SYSTEMPREFERENCE', 'ADD', $config_id,
          #   $config, undef, undef );
-        warn 'after commented log';
         return $c->render(
             status  => 201,
             openapi => $config,
         );
-        warn 'end of try';
     } catch {
         $c->unhandled_exception($_);
     }
@@ -138,31 +128,21 @@ sub update {
 
     my $c                 = shift->openapi->valid_input or return;
     my $body = $c->req->json;
-    my $config            = $c->objects->find_rs (Koha::UMSConfigs->new, $c->param('config_id') );
-
+    my $config            = Koha::UMSConfigs->find($c->param('config_id') );
     return $c->render_resource_not_found('UMS config entry')
         unless $config;
-
     my $config_type  = $body->{'config_type'};
     my $config_group = $body->{'config_group'};
     my $branch       = $body->{'branch'};
-
-    if ( $config_type eq "group" ) {
-        my $group = Koha::Library::Groups->find($config_group);
-        my $config_name = $group->title;
-    }
-    if ( $config_type eq "library" ) {
-        my $branch_name = Koha::Libraries->find($branch);
-       my $config_name = $branch_name->branchname;
-    }
     return try {
         my $config_before = $config;
         my $config_id = $c->param('config_id');
-
+        $body->{patron_categories} = encode_json($body->{patron_categories});
+        $config->set_from_api($body);
         $config->store;
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->id );
-        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
-            $config, undef, $config_before ); 
+       # logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
+       #     $config, undef, $config_before ); 
         return try {
             return $c->render(
                 status  => 200,
@@ -182,17 +162,29 @@ Delete a configuration
 
 sub delete {
     my $c             = shift->openapi->valid_input or return;
-    my $config_before = Koha::UMSConfigs->find( $c->param('config_id') );
-
+    my $config_before = Koha::UMSConfigs->find($c->param('config_id') );
+    warn "after config_before";
     return $c->render_resource_not_found('UMS config entry')
         unless $config_before;
-    try {
+    
+    return try {
+        warn "in try";
         my $config = $config_before;
+        warn "after config";
         my $config_id = $c->param('config_id');
+        warn "config_id";
         $config->delete;
+        warn "after_delete";
 
-        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id,
-            $config, undef, $config_before ); 
+       # logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id,
+     #       to_json(
+        #            $config->TO_JSON,
+        #            { utf8 => 1, pretty => 1, canonical => 1, }
+         #       ), undef, to_json(
+          #          $config_before->TO_JSON,
+          #          { utf8 => 1, pretty => 1, canonical => 1, }
+           #     ) ); 
+         #   warn "after log";
         return $c->render_resource_deleted;
         } catch {
         $c->unhandled_exception($_);

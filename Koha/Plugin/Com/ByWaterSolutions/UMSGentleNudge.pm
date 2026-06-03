@@ -170,6 +170,32 @@ sub configure {
     $self->output_html( $template->output() );
 }
 
+sub admin {
+    my ( $self, $args ) = @_;
+    my $cgi = $self->{'cgi'};
+    my $action       = scalar $cgi->param('op');
+    my $template = $self->get_template( { file => 'templates/ums_global.tt' } );
+    ## Grab the values we already have for our settings, if any exist
+        $template->param(
+            global_enabled   => $self->retrieve_data('global_enabled'),
+            global_fine_branch => $self->retrieve_data('global_fine_branch')
+        );
+        $self->output_html( $template->output() );
+    
+    if ( $action ) {
+        if ( $action eq 'cud-save' ) {
+
+        $self->store_data(
+            {
+                global_enabled => scalar $cgi->param('global_enabled_selector'),
+                global_fine_branch => scalar $cgi->param('global_fine_branch_selector'),
+            }
+        );
+ $self->go_home();
+    }
+    }
+}
+
 # =head3 intranet_js
 
 # Get the configure.js file
@@ -238,7 +264,29 @@ sub static_routes {
 #          }
 #      }
 
-#      my $run_weeklys;
+#       get_global();
+#       my $run_weeklys;
+#       my $weekly_branches;
+#       my @today_enabled = Koha::UMSConfigs->search( { enabled => 1 }, { day_of_week => (localtime)[6] } );
+#       foreach my $config_today in @today_enabled {
+#           if $config_today.config_type == 'library' {
+#             $weekly_branches == ''
+#           } else if $config_today.config_type == 'group' {
+
+#           } else {
+
+#           }
+          
+#       }
+
+      #get today's run (day matches + enabled)
+      #foreach library config, run
+      #foreach group config, run but exclude any that are seperately config'd
+      #if default is today, run any that don't have other config
+#      }
+
+
+
 #      my $run_on_dow = $self->retrieve_data('run_on_dow');
 #      unless ( (localtime)[6] == $run_on_dow ) {
 #          log_info( "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6] );
@@ -804,11 +852,14 @@ sub install() {
                     debit_type VARCHAR(191) NOT NULL,
                     # updated_at timestamp NOT NULL COMMENT 'When the config was last updated',
                     require_lost TINYINT(1) NOT NULL COMMENT 'Does patron require a lost fee to go to collections',
+                    smpt_server int(11) NULL COMMENT 'The ID of the SMPT server to use',
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
                     KEY config_group (config_group),
-                    CONSTRAINT configs_branch FOREIGN KEY (branch) REFERENCES branches (branchcode) ON DElETE CASCADE ON UPDATE CASCADE,
-                    CONSTRAINT config_library_group FOREIGN KEY (config_group) REFERENCES library_groups (id) ON DELETE CASCADE ON UPDATE CASCADE
+                    KEY smpt_server (smpt_server),
+                    CONSTRAINT config_branch FOREIGN KEY (branch) REFERENCES branches (branchcode) ON DElETE CASCADE ON UPDATE CASCADE,
+                    CONSTRAINT config_library_group FOREIGN KEY (config_group) REFERENCES library_groups (id) ON DELETE CASCADE ON UPDATE CASCADE,
+                    CONSTRAINT config_smtp FOREIGN KEY (smpt_server) REFERENCES smtp_servers (id) ON DELETE CASCADE ON UPDATE CASCADE
                     ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
        " );

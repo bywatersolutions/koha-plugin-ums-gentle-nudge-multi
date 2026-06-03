@@ -5,6 +5,7 @@ use C4::Context;
 use Koha::Database;
 use Koha::Library::Group;
 use Koha::Libraries;
+use Koha::UMSConfig;
 use base qw(Koha::Objects);
 
 =head1 NAME
