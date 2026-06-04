@@ -229,27 +229,19 @@ Delete a configuration
 =cut
 
 sub delete {
-    my $c             = shift->openapi->valid_input or return;
-    my $config_id     = $c->param('config_id');
-    my $config_before = Koha::UMSConfigs->find({ config_id =>$config_id });
-    my $config_name   = $config_before->config_name;
+    my $c         = shift->openapi->valid_input or return;
+    my $config_id = $c->param('config_id');
+    my $config    = Koha::UMSConfigs->find({ config_id => $config_id });
 
-    try {
-        my $config = $config_before;
+    return $c->render_resource_not_found("Config") unless $config;
+
+    return try {
+        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id, $config );
         $config->delete;
-
-        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id,
-            $config, undef, $config_before ); 
-        warn $config_before;
-        return $c->render (
-            status  => 204,
-            openapi => $config
-        );
-    }
-    catch {
+        return $c->render( status => 204, openapi => q{} );
+    } catch {
         $c->unhandled_exception($_);
     };
-
 }
 
 1;

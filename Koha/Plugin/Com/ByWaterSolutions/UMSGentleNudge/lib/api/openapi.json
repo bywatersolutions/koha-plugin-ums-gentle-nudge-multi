@@ -528,10 +528,16 @@
       ],
       "responses": {
         "204": {
-          "description": "Config deleted deleted"
+          "description": "Config deleted"
         },
         "403": {
           "description": "You are not authorized to delete config"
+        },
+        "404": {
+          "description": "Config not found"
+        },
+        "500": {
+          "description": "Internal server error"
         }
       }
     }
