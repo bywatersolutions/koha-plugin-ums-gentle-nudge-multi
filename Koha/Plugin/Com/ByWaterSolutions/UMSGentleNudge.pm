@@ -804,6 +804,20 @@ sub api_namespace {
     return 'ums';
 }
 
+=head3 configs
+
+    my $configs = $plugin->configs;
+
+Returns a new I<UMS::GentleNudge::Configs> resultset.
+
+=cut
+
+sub configs {
+    my ($self) = @_;
+    require UMS::GentleNudge::Configs;
+    return UMS::GentleNudge::Configs->new;
+}
+
 =head3 install
 
 This is the 'install' method. Any database tables or other setup that should

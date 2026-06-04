@@ -2,7 +2,7 @@
     "/configs": {
         "get": {
             "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#list",
-            "operationId": "listUMSConfigs",
+            "x-koha-authorization": { "permissions": { "plugins": "configure" } }, "operationId": "listUMSConfigs",
             "description": "Endpoint used to list configs",
             "tags": [
                 "configs"
@@ -260,7 +260,7 @@
         },
      "post": {
       "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#add",
-      "operationId": "addConfig",
+      "x-koha-authorization": { "permissions": { "plugins": "configure" } }, "operationId": "addConfig",
       "tags": ["configs"],
       "produces": [
         "application/json"
@@ -327,7 +327,7 @@
  "/config/{config_id}": {
     "get": {
       "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#get",
-      "operationId": "getUMSConfig",
+      "x-koha-authorization": { "permissions": { "plugins": "configure" } }, "operationId": "getUMSConfig",
       "tags": ["configs"],
       "produces": [
         "application/json"
@@ -354,7 +354,7 @@
     },
     "put": {
       "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#update",
-      "operationId": "updateUMSConfig",
+      "x-koha-authorization": { "permissions": { "plugins": "configure" } }, "operationId": "updateUMSConfig",
       "tags": ["configs"],
       "produces": [
         "application/json"
@@ -534,7 +534,7 @@
     },
     "delete": {
       "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#delete",
-      "operationId": "deleteConfig",
+      "x-koha-authorization": { "permissions": { "plugins": "configure" } }, "operationId": "deleteConfig",
       "tags": ["configs"],
       "produces": [
         "application/json"
@@ -566,7 +566,7 @@
    "/config/{config_id}/enable": {
     "post": {
         "x-mojo-to": "Com::ByWaterSolutions::UMSGentleNudge::ConfigController#enable",
-        "operationId": "enableUMSConfig",
+        "x-koha-authorization": { "permissions": { "plugins": "configure" } }, "operationId": "enableUMSConfig",
         "tags": [
             "configs"
         ],

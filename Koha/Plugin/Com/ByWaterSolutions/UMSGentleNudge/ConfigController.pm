@@ -4,10 +4,11 @@ use C4::Log qw( logaction );
 use Modern::Perl;
 use Mojo::Base 'Mojolicious::Controller';
 use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
-use UMS::GentleNudge::Configs;
 use Koha::Libraries;
 use Koha::Library::Groups;
 use JSON qw( encode_json );
+
+my $plugin = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new;
 
 =head1 NAME
 
@@ -29,7 +30,7 @@ sub list {
     return try {
         return $c->render(
             status  => 200,
-            openapi => $c->objects->search( UMS::GentleNudge::Configs->new ),
+            openapi => $c->objects->search( $plugin->configs ),
         );
     } catch {
         $c->unhandled_exception($_);
@@ -45,7 +46,7 @@ Get a specific config
 sub get {
     my $c = shift->openapi->valid_input or return;
 
-    my $config = $c->objects->find( UMS::GentleNudge::Configs->new, $c->param('config_id') );
+    my $config = $c->objects->find( $plugin->configs, $c->param('config_id') );
     return $c->render_resource_not_found("Config") unless $config;
 
     return try {
@@ -74,7 +75,7 @@ sub add {
         my $group = Koha::Library::Groups->find( $body->{'config_group'} );
         return $c->render_resource_not_found("Library group") unless $group;
         $body->{'config_name'} = $group->title;
-        my $match_result = UMS::GentleNudge::Configs->check_for_existing_group($group->id);
+        my $match_result = $plugin->configs->check_for_existing_group( $group->id );
         if ( $match_result->{duplicate_found} ) {
             return $c->render(
                 status  => 409,
@@ -86,7 +87,7 @@ sub add {
         my $library = Koha::Libraries->find( $body->{'branch'} );
         return $c->render_resource_not_found("Library") unless $library;
         $body->{'config_name'} = $library->branchname;
-        my $match_result = UMS::GentleNudge::Configs->check_for_existing_branch($library->branchcode);
+        my $match_result = $plugin->configs->check_for_existing_branch( $library->branchcode );
         if ( $match_result->{duplicate_found} ) {
             return $c->render(
                 status  => 409,
@@ -98,14 +99,14 @@ sub add {
     return try {
         $body->{patron_categories} = encode_json( $body->{patron_categories} )
             if $body->{patron_categories};
-        my $config = UMS::GentleNudge::Config->new_from_api($body)->store;
+        my $config = $plugin->configs->object_class->new_from_api($body)->store;
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->config_id );
 
         logaction( 'SYSTEMPREFERENCE', 'ADD', $config->config_id, $config );
 
         return $c->render(
             status  => 200,
-            openapi => $c->objects->find( UMS::GentleNudge::Configs->new, $config->config_id ),
+            openapi => $c->objects->find( $plugin->configs, $config->config_id ),
         );
     } catch {
         $c->unhandled_exception($_);
@@ -121,7 +122,7 @@ Update an existing config
 sub update {
     my $c = shift->openapi->valid_input or return;
 
-    my $config = $c->objects->find_rs( UMS::GentleNudge::Configs->new, $c->param('config_id') );
+    my $config = $c->objects->find_rs( $plugin->configs, $c->param('config_id') );
     return $c->render_resource_not_found("Config") unless $config;
 
     my $config_before = $config->unblessed;
@@ -145,12 +146,14 @@ sub update {
         $config->set_from_api($body)->store;
         $c->res->headers->location( $c->req->url->to_string );
 
-        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $c->param('config_id'),
-            $config, undef, $config_before );
+        logaction(
+            'SYSTEMPREFERENCE', 'MODIFY', $c->param('config_id'),
+            $config,            undef,    $config_before
+        );
 
         return $c->render(
             status  => 200,
-            openapi => $c->objects->find( UMS::GentleNudge::Configs->new, $c->param('config_id') ),
+            openapi => $c->objects->find( $plugin->configs, $c->param('config_id') ),
         );
     } catch {
         $c->unhandled_exception($_);
@@ -167,7 +170,7 @@ sub delete {
     my $c = shift->openapi->valid_input or return;
 
     my $config_id = $c->param('config_id');
-    my $config    = UMS::GentleNudge::Configs->new->find({ config_id => $config_id });
+    my $config    = $plugin->configs->find( { config_id => $config_id } );
     return $c->render_resource_not_found("Config") unless $config;
 
     return try {

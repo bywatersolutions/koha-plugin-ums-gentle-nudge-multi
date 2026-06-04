@@ -28,9 +28,8 @@ sub _type {
 =cut
 
 sub object_class {
-        return 'UMS::GentleNudge::Config';
+    return 'UMS::GentleNudge::Config';
 }
-
 
 =head3 check_for_existing_group {
     my ( $self, $group ) = @_;
@@ -49,11 +48,9 @@ sub object_class {
 sub check_for_existing_group {
     my ( $self, $group ) = @_;
 
-    my $existing_group = UMS::GentleNudge::Configs->search( {config_group=>$group} );
+    my $existing_group = UMS::GentleNudge::Configs->search( { config_group => $group } );
     if ( $existing_group->count > 0 ) {
-        return {
-            'duplicate_found'  => 1
-        };
+        return { 'duplicate_found' => 1 };
     }
     return { 'duplicate_found' => 0 };
 }
@@ -75,11 +72,9 @@ sub check_for_existing_group {
 sub check_for_existing_branch {
     my ( $self, $branch ) = @_;
 
-    my $existing_branch = UMS::GentleNudge::Configs->search( {branch=>$branch} );
+    my $existing_branch = UMS::GentleNudge::Configs->search( { branch => $branch } );
     if ( $existing_branch->count > 0 ) {
-        return {
-            'duplicate_found'  => 1
-        };
+        return { 'duplicate_found' => 1 };
     }
     return { 'duplicate_found' => 0 };
 }

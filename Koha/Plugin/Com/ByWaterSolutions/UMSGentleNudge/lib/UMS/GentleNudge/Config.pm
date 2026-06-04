@@ -18,11 +18,11 @@ UMS::GentleNudge::Config - UMS Configuration Object class
 =cut
 
 sub to_api {
-    my ($self, $params) = @_;
+    my ( $self, $params ) = @_;
     my $json;
     my %json;
     return $self;
-};
+}
 
 =head2 Internal methods
 
