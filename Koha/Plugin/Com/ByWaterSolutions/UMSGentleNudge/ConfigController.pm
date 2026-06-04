@@ -5,9 +5,9 @@ use Modern::Perl;
 use Mojo::Base 'Mojolicious::Controller';
 use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::UMSConfigs;
-use Koha::UMSConfig;
-use Data::Dumper qw( Dumper );
+use Koha::Libraries;
 use Koha::Library::Groups;
+use JSON qw( encode_json );
 
 =head1 NAME
 
@@ -74,15 +74,34 @@ sub add {
         my $group = Koha::Library::Groups->find( $body->{'config_group'} );
         return $c->render_resource_not_found("Library group") unless $group;
         $body->{'config_name'} = $group->title;
+        my $match_result = Koha::UMSConfigs->check_for_existing_group($group->id);
+        if ( $match_result->{duplicate_found} ) {
+            return $c->render(
+                status  => 409,
+                openapi => { error => 'A configuration matching this group already exists.' },
+            );
+        }
     }
     if ( $config_type eq "library" ) {
         my $library = Koha::Libraries->find( $body->{'branch'} );
         return $c->render_resource_not_found("Library") unless $library;
         $body->{'config_name'} = $library->branchname;
+        my $match_result = Koha::UMSConfigs->check_for_existing_branch($library->branchcode);
+        if ( $match_result->{duplicate_found} ) {
+            return $c->render(
+                status  => 409,
+                openapi => { error => 'A configuration matching this library already exists.' },
+            );
+        }
     }
 
     return try {
+        $body->{patron_categories} = encode_json( $body->{patron_categories} )
+            if $body->{patron_categories};
         my $config = Koha::UMSConfig->new_from_api($body)->store;
+        $c->res->headers->location( $c->req->url->to_string . '/' . $config->config_id );
+
+        logaction( 'SYSTEMPREFERENCE', 'ADD', $config->config_id, $config );
 
         return $c->render(
             status  => 200,
@@ -95,7 +114,7 @@ sub add {
 
 =head3 update
 
- Update an existing config
+Update an existing config
 
 =cut
 
@@ -105,8 +124,9 @@ sub update {
     my $config = $c->objects->find_rs( Koha::UMSConfigs->new, $c->param('config_id') );
     return $c->render_resource_not_found("Config") unless $config;
 
-    my $body        = $c->req->json;
-    my $config_type = $body->{'config_type'};
+    my $config_before = $config->unblessed;
+    my $body          = $c->req->json;
+    my $config_type   = $body->{'config_type'};
 
     if ( $config_type eq "group" ) {
         my $group = Koha::Library::Groups->find( $body->{'config_group'} );
@@ -120,7 +140,13 @@ sub update {
     }
 
     return try {
+        $body->{patron_categories} = encode_json( $body->{patron_categories} )
+            if $body->{patron_categories};
         $config->set_from_api($body)->store;
+        $c->res->headers->location( $c->req->url->to_string );
+
+        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $c->param('config_id'),
+            $config, undef, $config_before );
 
         return $c->render(
             status  => 200,
@@ -138,10 +164,10 @@ Delete a configuration
 =cut
 
 sub delete {
-    my $c         = shift->openapi->valid_input or return;
+    my $c = shift->openapi->valid_input or return;
+
     my $config_id = $c->param('config_id');
     my $config    = Koha::UMSConfigs->find({ config_id => $config_id });
-
     return $c->render_resource_not_found("Config") unless $config;
 
     return try {

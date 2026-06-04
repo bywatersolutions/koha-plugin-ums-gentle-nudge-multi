@@ -315,6 +315,9 @@
         "404": {
           "description": "Referenced resource not found"
         },
+        "409": {
+          "description": "Duplicate configuration already exists"
+        },
         "500": {
           "description": "Internal server error"
         }

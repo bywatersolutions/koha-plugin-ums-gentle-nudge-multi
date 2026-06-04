@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 use Modern::Perl;
-use Test::More tests => 4;
+use Test::More tests => 5;
 use Test::Mojo;
 
 use t::lib::TestBuilder;
@@ -122,6 +122,47 @@ subtest 'delete config' => sub {
     # Already deleted
     $t->delete_ok( "/api/v1/contrib/ums/config/" . $config->config_id )
       ->status_is(404);
+
+    $schema->storage->txn_rollback;
+};
+
+subtest 'add config - duplicate detection' => sub {
+    plan tests => 3;
+
+    $schema->storage->txn_begin;
+
+    my $patron = $builder->build_object(
+        { class => 'Koha::Patrons', value => { flags => 1 } }
+    );
+    t::lib::Mocks::mock_userenv( { patron => $patron } );
+
+    my $library = $builder->build_object( { class => 'Koha::Libraries' } );
+
+    # Create a library config
+    my $config = $builder->build_object(
+        {
+            class => 'Koha::UMSConfigs',
+            value => {
+                config_type => 'library',
+                branch      => $library->branchcode,
+                enabled     => 1,
+            },
+        }
+    );
+
+    # Attempt to create a duplicate library config
+    my $body = {
+        config_type  => 'library',
+        branch       => $library->branchcode,
+        enabled      => 1,
+        debit_type   => 'manual',
+        require_lost => "0",
+    };
+
+    $t->post_ok( "/api/v1/contrib/ums/configs" => json => $body )
+      ->status_is(409)
+      ->json_has('/error')
+      ->or( sub { diag $t->tx->res->body } );
 
     $schema->storage->txn_rollback;
 };
