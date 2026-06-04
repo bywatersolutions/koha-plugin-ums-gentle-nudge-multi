@@ -29,7 +29,7 @@ subtest 'list configs' => sub {
 
     my $config = $builder->build_object(
         {
-            class => 'Koha::UMSConfigs',
+            class => 'UMS::GentleNudge::Configs',
             value => { config_type => 'global', enabled => 1 },
         }
     );
@@ -54,7 +54,7 @@ subtest 'get config' => sub {
 
     my $config = $builder->build_object(
         {
-            class => 'Koha::UMSConfigs',
+            class => 'UMS::GentleNudge::Configs',
             value => { config_type => 'global', enabled => 0 },
         }
     );
@@ -111,7 +111,7 @@ subtest 'delete config' => sub {
 
     my $config = $builder->build_object(
         {
-            class => 'Koha::UMSConfigs',
+            class => 'UMS::GentleNudge::Configs',
             value => { config_type => 'global', enabled => 0 },
         }
     );
@@ -141,7 +141,7 @@ subtest 'add config - duplicate detection' => sub {
     # Create a library config
     my $config = $builder->build_object(
         {
-            class => 'Koha::UMSConfigs',
+            class => 'UMS::GentleNudge::Configs',
             value => {
                 config_type => 'library',
                 branch      => $library->branchcode,

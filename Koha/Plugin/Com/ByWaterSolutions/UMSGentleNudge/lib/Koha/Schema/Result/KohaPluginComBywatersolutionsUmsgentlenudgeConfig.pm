@@ -4,12 +4,12 @@ package Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig;
 # Created by DBIx::Class::Schema::Loader
 # DO NOT MODIFY THE FIRST PART OF THIS FILE
 sub koha_object_class {
-  'Koha::UMSConfig';
+  'UMS::GentleNudge::Config';
 
 }
 
 sub koha_objects_class {
-  'Koha::UMSConfigs';
+  'UMS::GentleNudge::Configs';
 }
 
 =head1 NAME

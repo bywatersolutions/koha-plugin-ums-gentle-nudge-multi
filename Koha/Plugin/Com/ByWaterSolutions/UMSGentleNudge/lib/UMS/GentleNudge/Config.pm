@@ -1,4 +1,4 @@
-package Koha::UMSConfig;
+package UMS::GentleNudge::Config;
 
 use Modern::Perl;
 use C4::Context;
@@ -9,7 +9,7 @@ use JSON qw( encode_json decode_json );
 
 =head1 NAME
 
-Koha::UMSConfig - Koha UMS Configuration Object set class
+UMS::GentleNudge::Config - UMS Configuration Object class
 
 =head1 API
 

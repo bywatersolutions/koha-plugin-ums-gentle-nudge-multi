@@ -56,13 +56,10 @@ our $metadata = {
 };
 
 BEGIN {
-    warn "warn begin";
     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
 
-    require Koha::UMSConfigs;
-    require Koha::UMSConfig;
     require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig;
 
     #register the additional schema classes
@@ -71,7 +68,6 @@ BEGIN {
 
     # force a refresh of the database handle so that it includes the new classes
     Koha::Database->schema( { new => 1 } );
-    warn "warn begin end";
 }
 
 our $json = JSON->new;

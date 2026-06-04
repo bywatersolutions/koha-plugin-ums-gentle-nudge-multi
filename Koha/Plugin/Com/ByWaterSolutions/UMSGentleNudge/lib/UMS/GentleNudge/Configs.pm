@@ -1,11 +1,11 @@
-package Koha::UMSConfigs;
+package UMS::GentleNudge::Configs;
 
 use Modern::Perl;
 use C4::Context;
 use Koha::Database;
 use Koha::Library::Group;
 use Koha::Libraries;
-use Koha::UMSConfig;
+use UMS::GentleNudge::Config;
 use base qw(Koha::Objects);
 
 =head1 NAME
@@ -28,14 +28,14 @@ sub _type {
 =cut
 
 sub object_class {
-        return 'Koha::UMSConfig';
+        return 'UMS::GentleNudge::Config';
 }
 
 
 =head3 check_for_existing_group {
     my ( $self, $group ) = @_;
 
-    my $existing_group = Koha::UMSConfigs->search( {config_group=>$group} );
+    my $existing_group = UMS::GentleNudge::Configs->search( {config_group=>$group} );
     if ( $existing_group->count > 0 ) {
         return {
             'duplicate_found'  => 1
@@ -49,7 +49,7 @@ sub object_class {
 sub check_for_existing_group {
     my ( $self, $group ) = @_;
 
-    my $existing_group = Koha::UMSConfigs->search( {config_group=>$group} );
+    my $existing_group = UMS::GentleNudge::Configs->search( {config_group=>$group} );
     if ( $existing_group->count > 0 ) {
         return {
             'duplicate_found'  => 1
@@ -61,7 +61,7 @@ sub check_for_existing_group {
 =head3 check_for_existing_branch {
     my ( $self, $branch ) = @_;
 
-    my $existing_branch = Koha::UMSConfigs->search( {branch=>$branch} );
+    my $existing_branch = UMS::GentleNudge::Configs->search( {branch=>$branch} );
     if ( $existing_branch->count > 0 ) {
         return {
             'duplicate_found'  => 1
@@ -75,7 +75,7 @@ sub check_for_existing_group {
 sub check_for_existing_branch {
     my ( $self, $branch ) = @_;
 
-    my $existing_branch = Koha::UMSConfigs->search( {branch=>$branch} );
+    my $existing_branch = UMS::GentleNudge::Configs->search( {branch=>$branch} );
     if ( $existing_branch->count > 0 ) {
         return {
             'duplicate_found'  => 1
