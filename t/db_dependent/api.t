@@ -8,11 +8,9 @@ use t::lib::TestBuilder;
 use t::lib::Mocks;
 
 use Koha::Database;
-use Koha::Plugins;
+use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use JSON qw( encode_json );
 use URI::Escape qw( uri_escape_utf8 );
-
-BEGIN { Koha::Plugins->new->GetPlugins({ all => 1 }) }
 
 my $schema  = Koha::Database->new->schema;
 my $builder = t::lib::TestBuilder->new;
