@@ -36,8 +36,8 @@ use constant LOG_DEBUG_LL => 2;
 use constant LOG_TRACE_LL => 3;
 
 ## Here we set our plugin version
-our $VERSION         = "{VERSION}";
-our $MINIMUM_VERSION = "{MINIMUM_VERSION}";
+our $VERSION         = "0.6.0";
+our $MINIMUM_VERSION = "24.05";
 our $debug           = $ENV{UMS_COLLECTIONS_DEBUG}        // 0;
 our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL}     // 0;
 our $archive_dir     = $ENV{UMS_COLLECTIONS_ARCHIVES_DIR} // undef;

@@ -1,10 +1,10 @@
 {
   "name": "koha-plugin-ums-gentle-nudge-multi",
-  "version": "1.0.0",
+  "version": "0.6.0",
   "description": "UMS Gentle nudge plugin for multi-branch systems",
   "main": "index.js",
   "scripts": {
-    "preversion": "sed -i -e \"s/^our \\$VERSION = .*/our \\$VERSION = \\\"$npm_new_version\\\";/\" Koha/Plugin/Com/ByWaterSolutions/UMSGentleNudge.pm; git add -u;",
+    "preversion": "sed -i -e \"s/^our \\$VERSION .*/our \\$VERSION         = \\\"$npm_new_version\\\";/\" Koha/Plugin/Com/ByWaterSolutions/UMSGentleNudge.pm; git add -u; rm -f Koha/Plugin/Com/ByWaterSolutions/UMSGentleNudge.pm-e",
     "test": "echo \"Error: no test specified\" && exit 1",
     "kpz": "echo -n ${npm_package_name}-v${npm_package_version}.kpz",
     "print-name": "echo -n ${npm_package_name}"
