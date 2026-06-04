@@ -43,13 +43,14 @@ unique id for each config
 
   data_type: 'varchar'
   is_nullable: 1
-  size: 15
+  size: 100
 
 Name of the group or library
 
 =head2 branch
 
   data_type: 'varchar'
+  is_foreign_key: 1
   is_nullable: 1
   size: 10
 
@@ -58,6 +59,7 @@ Selected branch
 =head2 config_group
 
   data_type: 'integer'
+  is_foreign_key: 1
   is_nullable: 1
 
 Selected group
@@ -150,6 +152,13 @@ The patron will be cleared from collections if if they do not exceed this thresh
 
 Newly flagged patrons will have a restriction added to their account.
 
+=head2 remove_restriction
+
+  data_type: 'tinyint'
+  is_nullable: 1
+
+IF 1, patrons will have the restriction removed if they are removed from collections.
+
 =head2 remove_minors
 
   data_type: 'tinyint'
@@ -176,7 +185,6 @@ If you would like to send to another email address as well
 =head2 enabled
 
   data_type: 'integer'
-  default_value: 0
   is_nullable: 0
 
 If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled
@@ -184,7 +192,6 @@ If there is a default configuration, all branches/groups will be included. 0=dis
 =head2 config_type
 
   data_type: 'varchar'
-  default_value: 'global'
   is_nullable: 0
   size: 15
 
@@ -193,9 +200,15 @@ Options are global (can only have 1 global), branch, or group
 =head2 debit_type
 
   data_type: 'varchar'
-  default_value: 'manual'
   is_nullable: 0
   size: 191
+
+=head2 require_lost
+
+  data_type: 'tinyint'
+  is_nullable: 0
+
+Does patron require a lost fee to go to collections
 
 =cut
 
@@ -203,11 +216,11 @@ __PACKAGE__->add_columns(
   "config_id",
   { data_type => "integer", is_auto_increment => 1, is_nullable => 0 },
   "config_name",
-  { data_type => "varchar", is_nullable => 1, size => 15 },
+  { data_type => "varchar", is_nullable => 1, size => 100 },
   "branch",
-  { data_type => "varchar", is_nullable => 1, size => 10 },
+  { data_type => "varchar", is_foreign_key => 1, is_nullable => 1, size => 10 },
   "config_group",
-  { data_type => "integer", is_nullable => 1 },
+  { data_type => "integer", is_foreign_key => 1, is_nullable => 1 },
   "day_of_week",
   { data_type => "integer", is_nullable => 1 },
   "patron_categories",
@@ -232,6 +245,8 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_nullable => 1 },
   "restriction",
   { data_type => "tinyint", is_nullable => 1 },
+  "remove_restriction",
+  { data_type => "tinyint", is_nullable => 1 },
   "remove_minors",
   { data_type => "tinyint", is_nullable => 1 },
   "require_lost",
@@ -241,21 +256,13 @@ __PACKAGE__->add_columns(
   "additional_email",
   { data_type => "varchar", is_nullable => 1, size => 191 },
   "enabled",
-  { data_type => "integer", default_value => 0, is_nullable => 0 },
+  { data_type => "integer", is_nullable => 0 },
   "config_type",
-  {
-    data_type => "varchar",
-    default_value => "global",
-    is_nullable => 0,
-    size => 15,
-  },
+  { data_type => "varchar", is_nullable => 0, size => 15 },
   "debit_type",
-  {
-    data_type => "varchar",
-    default_value => "manual",
-    is_nullable => 0,
-    size => 191,
-  },
+  { data_type => "varchar", is_nullable => 0, size => 191 },
+  "require_lost",
+  { data_type => "tinyint", is_nullable => 0 },
 );
 
 =head1 PRIMARY KEY
@@ -270,9 +277,51 @@ __PACKAGE__->add_columns(
 
 __PACKAGE__->set_primary_key("config_id");
 
+=head1 RELATIONS
 
-# Created by DBIx::Class::Schema::Loader v0.07051 @ 2026-02-11 15:53:53
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:ycVOadIgmLkPBKbb+m+I6A
+=head2 branch
+
+Type: belongs_to
+
+Related object: L<Koha::Schema::Result::Branch>
+
+=cut
+
+__PACKAGE__->belongs_to(
+  "branch",
+  "Koha::Schema::Result::Branch",
+  { branchcode => "branch" },
+  {
+    is_deferrable => 1,
+    join_type     => "LEFT",
+    on_delete     => "CASCADE",
+    on_update     => "CASCADE",
+  },
+);
+
+=head2 config_group
+
+Type: belongs_to
+
+Related object: L<Koha::Schema::Result::LibraryGroup>
+
+=cut
+
+__PACKAGE__->belongs_to(
+  "config_group",
+  "Koha::Schema::Result::LibraryGroup",
+  { id => "config_group" },
+  {
+    is_deferrable => 1,
+    join_type     => "LEFT",
+    on_delete     => "CASCADE",
+    on_update     => "CASCADE",
+  },
+);
+
+
+# Created by DBIx::Class::Schema::Loader v0.07051 @ 2026-05-22 16:19:37
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:PapyRD7Ilsj+01QAbF7IAg
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

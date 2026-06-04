@@ -252,13 +252,7 @@ Koha/Plugin/Com/ByWaterSolutions/
 t/
 ├── 00-load.t                 # Module loading tests
 ├── UMS.t                     # Main plugin tests
-├── BackgroundJobWorker.t     # Background job tests
-├── lib_Mocks_UMS.t           # Mock module tests
-├── lib/
-│   └── Mocks/
-│       └── UMS.pm            # Mock plugin for testing
-└── db_dependent/
-    └── config.t              # Comprehensive config method tests
+├── CronJob.t     # Cron job tests
 ```
 
 ## Development Workflow
