@@ -32,7 +32,7 @@ sub list {
             openapi => $c->objects->search( Koha::UMSConfigs->new ),
         );
     } catch {
-        $c->unhandled_exception;
+        $c->unhandled_exception($_);
     };
 }
 
