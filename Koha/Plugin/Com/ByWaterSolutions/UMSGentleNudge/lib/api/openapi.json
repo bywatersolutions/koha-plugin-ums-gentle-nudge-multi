@@ -311,6 +311,12 @@
         },
         "403": {
           "description": "You are not authorized to add configurations"
+        },
+        "404": {
+          "description": "Referenced resource not found"
+        },
+        "500": {
+          "description": "Internal server error"
         }
       }
     }
@@ -334,6 +340,12 @@
       "responses": {
         "200": {
           "description": "A single config"
+        },
+        "404": {
+          "description": "Config not found"
+        },
+        "500": {
+          "description": "Internal server error"
         }
       }
     },
@@ -508,6 +520,12 @@
         },
         "403": {
           "description": "You are not authorized to update configurations"
+        },
+        "404": {
+          "description": "Config not found"
+        },
+        "500": {
+          "description": "Internal server error"
         }
       }
     },
