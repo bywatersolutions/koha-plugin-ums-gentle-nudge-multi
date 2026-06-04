@@ -109,16 +109,11 @@ sub add {
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->id );
         my $config_id = $c->param('config_id');
         
-        return $c->render(
-            status  => 200,
-            openapi => $c->objects->find( Koha::UMSConfigs->new, $config->config_id ),
-
-        
         logaction( 'SYSTEMPREFERENCE', 'ADD', $config_id,
             $config, undef, undef );
         return $c->render(
             status  => 201,
-            openapi => $config,
+            openapi => $config
         );
     } catch {
         $c->unhandled_exception($_);
@@ -140,7 +135,7 @@ sub update {
     my $config_before = $config;
     my $body          = $c->req->json;
     my $config_type   = $body->{'config_type'};
-    my $config_id     = $body->{'config_id');
+    my $config_id     = $body->{'config_id'};
 
     if ( $config_type eq "group" ) {
         my $group = Koha::Library::Groups->find( $body->{'config_group'} );
@@ -158,8 +153,8 @@ sub update {
         $config->set_from_api($body)->store;
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->id );
         
-        logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
-            $config, undef, $config_before ); 
+        #logaction( 'SYSTEMPREFERENCE', 'MODIFY', $config_id,
+            #$config, undef, $config_before ); 
         
         return $c->render(
             status  => 200,
@@ -168,7 +163,7 @@ sub update {
     } catch {
         $c->unhandled_exception($_);
     };  
-
+}
 =head3 delete
 
 Delete a configuration
@@ -179,11 +174,11 @@ sub delete {
     my $c             = shift->openapi->valid_input or return;
     my $config_id     = $c->param('config_id');
     my $config        = Koha::UMSConfigs->find({ config_id => $config_id });
-    my $config_before = $config
+    my $config_before = $config;
     return $c->render_resource_not_found("Config") unless $config;
 
     return try {
-        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id, $config, undef, $config_befoer );
+        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id, undef, undef, $config_before );
         $config->delete;
         return $c->render( status => 204, openapi => q{} );
         } catch {
