@@ -144,7 +144,6 @@ sub configure {
     my $template     = $self->get_template( { file => 'templates/ums2.tt' } );
     my $dbh          = C4::Context->dbh;
     my $config_table = $self->get_qualified_table_name('config');
-    my $configs      = Koha::UMSConfigs->search();
     my $action       = $cgi->param('op');
     my $config       = $cgi->param('config');
     my $groups       = Koha::Library::Groups->search( { branchcode => undef }, { order_by => ['title'] } );
@@ -162,7 +161,7 @@ sub configure {
             );
         }
     }
-    $template->param( configs => $configs, groups => $groups, debit_types => \@debit_types, servers => @servers );
+    $template->param( groups => $groups, debit_types => \@debit_types, servers => @servers );
     $self->output_html( $template->output() );
 }
 
