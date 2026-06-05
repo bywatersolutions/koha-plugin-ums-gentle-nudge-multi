@@ -840,8 +840,9 @@ sub install() {
                     config_name VARCHAR(100) NULL COMMENT 'Name of the group or library',
                     branch VARCHAR(10) NULL COMMENT 'Selected branch',
                     config_group int(11) NULL COMMENT 'Selected group',
-                    day_of_week int(1)  NULL COMMENT 'Which day of the week',
-                    patron_categories VARCHAR(191) NULL COMMENT 'Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
+                    debit_types VARCHAR(191) NULL COMMENT 'JSON array of debit types to be used for collections. Only selected types will be counted for total.',
+                    day_of_week int(1)  NULL COMMENT 'Which day of the week should the report run on',
+                    patron_categories VARCHAR(191) NULL COMMENT 'JSON array of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
                     threshold int(11) NULL COMMENT 'Minimum amount owed to be sent to collections.',
                     processing_fee int(11) NULL COMMENT 'Amount of the processing fee added to the patron account',
                     collections_flag VARCHAR(191) NULL COMMENT 'Specify how the patron is flagged as being in collections. If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO category.',
@@ -858,7 +859,7 @@ sub install() {
                     additional_email VARCHAR(191) NULL COMMENT 'If you would like to send to another email address as well',
                     enabled int(1) NOT NULL COMMENT 'If there is a default configuration, all branches/groups will be included. 0=disabled, 1=enabled',
                     config_type VARCHAR(15) NOT NULL COMMENT 'Options are global (can only have 1 global), branch, or group',
-                    debit_type VARCHAR(191) NOT NULL,
+                    config_debit_type VARCHAR(191) NOT NULL,
                     # updated_at timestamp NOT NULL COMMENT 'When the config was last updated',
                     require_lost TINYINT(1) NOT NULL COMMENT 'Does patron require a lost fee to go to collections',
                     smpt_server int(11) NULL COMMENT 'The ID of the SMPT server to use',
@@ -874,7 +875,7 @@ sub install() {
        " );
     }
     $dbh->do(
-        "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, debit_type, require_lost) VALUES ('Global', 'global', 0, '10', 'manual', 0)"
+        "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, config_debit_type, require_lost, remove_minors, fees_newer, fees_older, remove_restriction, restriction) VALUES ('Global', 'global', 0, '10', 'manual', 0, 0, '90', '60', 0, 0)"
     );    #Create default configuration
 
     my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");

@@ -99,10 +99,12 @@ sub add {
     return try {
         $body->{patron_categories} = encode_json( $body->{patron_categories} )
             if $body->{patron_categories};
+        $body->{debit_types} = encode_json( $body->{debit_types} )
+            if $body->{debit_types};
         my $config = $plugin->configs->object_class->new_from_api($body)->store;
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->config_id );
 
-        logaction( 'SYSTEMPREFERENCE', 'ADD', $config->config_id, $config );
+        #logaction( 'SYSTEMPREFERENCE', 'ADD', $config->config_id, $config );
 
         return $c->render(
             status  => 200,
@@ -143,13 +145,15 @@ sub update {
     return try {
         $body->{patron_categories} = encode_json( $body->{patron_categories} )
             if $body->{patron_categories};
+        $body->{debit_types} = encode_json( $body->{debit_types} )
+            if $body->{debit_types};
         $config->set_from_api($body)->store;
         $c->res->headers->location( $c->req->url->to_string );
 
-        logaction(
-            'SYSTEMPREFERENCE', 'MODIFY', $c->param('config_id'),
-            $config,            undef,    $config_before
-        );
+        # logaction(
+        #     'SYSTEMPREFERENCE', 'MODIFY', $c->param('config_id'),
+        #     $config,            undef,    $config_before
+        # );
 
         return $c->render(
             status  => 200,
@@ -174,7 +178,7 @@ sub delete {
     return $c->render_resource_not_found("Config") unless $config;
 
     return try {
-        logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id, $config );
+        #logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id, $config );
         $config->delete;
         return $c->render( status => 204, openapi => q{} );
     } catch {
