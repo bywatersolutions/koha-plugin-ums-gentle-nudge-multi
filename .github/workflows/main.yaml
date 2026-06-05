@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - name: Checkout plugin code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Get Koha Version Branch Name
       id: koha-version
@@ -114,7 +114,7 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Parse out and store the GitHub repository name
       id: myvars
@@ -171,7 +171,7 @@ jobs:
     name: Keep Alive
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Check age and push commit if needed
       run: |
         LAST_COMMIT=$( git --no-pager log -1 --format=%ct )
