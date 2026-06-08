@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-06-08
+
+### Fixed
+- CI: Add `permissions` block to workflow to fix publish-test-results 403 after repo transfer (#21)
+- CI: Add missing `devDependencies` (gulp, vinyl) for kpz build step (#21)
+
 ## [0.7.0] - 2026-06-08
 
 ### Fixed
