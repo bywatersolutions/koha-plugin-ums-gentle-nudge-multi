@@ -1,5 +1,9 @@
 # Unique Collections plugin for Koha
 
+[![CI](https://github.com/bywatersolutions/koha-plugin-ums-gentle-nudge-multi/actions/workflows/main.yaml/badge.svg)](https://github.com/bywatersolutions/koha-plugin-ums-gentle-nudge-multi/actions/workflows/main.yaml)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/bywatersolutions/koha-plugin-ums-gentle-nudge-multi)](https://github.com/bywatersolutions/koha-plugin-ums-gentle-nudge-multi/releases)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 This plugin automates the process of sending patrons to the UMS collections service and updating those patrons in Koha.
 
 ## What is ByWater Solutions’ UMS Gentle Nudge plugin?
