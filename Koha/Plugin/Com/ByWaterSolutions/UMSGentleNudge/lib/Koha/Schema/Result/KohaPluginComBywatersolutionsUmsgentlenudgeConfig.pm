@@ -197,7 +197,7 @@ If there is a default configuration, all branches/groups will be included. 0=dis
 
 Options are global (can only have 1 global), branch, or group
 
-=head2 debit_type
+=head2 config_debit_type
 
   data_type: 'varchar'
   is_nullable: 0
@@ -249,8 +249,6 @@ __PACKAGE__->add_columns(
   { data_type => "tinyint", is_nullable => 1 },
   "remove_minors",
   { data_type => "tinyint", is_nullable => 1 },
-  "require_lost",
-  { data_type => "tinyint", is_nullable => 1 },
   "unique_email",
   { data_type => "varchar", is_nullable => 1, size => 191 },
   "additional_email",
@@ -259,7 +257,7 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_nullable => 0 },
   "config_type",
   { data_type => "varchar", is_nullable => 0, size => 15 },
-  "debit_type",
+  "config_debit_type",
   { data_type => "varchar", is_nullable => 0, size => 191 },
   "require_lost",
   { data_type => "tinyint", is_nullable => 0 },
