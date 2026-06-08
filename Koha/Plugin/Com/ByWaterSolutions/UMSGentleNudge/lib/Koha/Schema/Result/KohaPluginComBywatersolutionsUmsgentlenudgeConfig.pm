@@ -71,14 +71,6 @@ Selected group
 
 Which day of the week
 
-=head2 patron_categories
-
-  data_type: 'varchar'
-  is_nullable: 1
-  size: 191
-
-Comma delimited list of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.
-
 =head2 threshold
 
   data_type: 'integer'
@@ -223,8 +215,6 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_foreign_key => 1, is_nullable => 1 },
   "day_of_week",
   { data_type => "integer", is_nullable => 1 },
-  "patron_categories",
-  { data_type => "varchar", is_nullable => 1, size => 191 },
   "threshold",
   { data_type => "integer", is_nullable => 1 },
   "processing_fee",
@@ -323,4 +313,19 @@ __PACKAGE__->belongs_to(
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration
+
+__PACKAGE__->has_many(
+  "config_debit_types",
+  "Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigDebitType",
+  { "foreign.config_id" => "self.config_id" },
+  { cascade_copy => 0, cascade_delete => 1 },
+);
+
+__PACKAGE__->has_many(
+  "config_patron_categories",
+  "Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigPatronCategory",
+  { "foreign.config_id" => "self.config_id" },
+  { cascade_copy => 0, cascade_delete => 1 },
+);
+
 1;

@@ -63,6 +63,7 @@
                 $.ajax({
                     url: '/api/v1/contrib/ums/config/' + event.relatedTarget.getAttribute('data-config-id'),
                     method: 'GET',
+                    headers: { 'x-koha-embed': 'debit_types,patron_categories' },
                     success: function(config) {
 
                         if (config.config_type == "library") {
@@ -85,7 +86,7 @@
                         document.getElementById("fees_starting_age").value = config.fees_newer;
                         document.getElementById("fees_ending_age").value = config.fees_older;
                         document.getElementById("fees_created_before_date_filter").value = config.ignore_before;
-                        document.getElementById("umsconfig_categories").value = config.patron_categories;
+                        document.getElementById("umsconfig_categories").value = (config.patron_categories || []).map(c => c.categorycode).join(',');
                         document.getElementById("processing_fee").value = config.processing_fee;
                         document.getElementById("age_limitation").value = config.remove_minors;
                         document.getElementById("add_restriction").value = config.restriction;
@@ -351,7 +352,7 @@
                     fees_newer: $('#fees_starting_age').val(),
                     fees_older: $('#fees_ending_age').val(),
                     ignore_before: $('#fees_created_before_date_filter').val(),
-                    //patron_categories: $('#umsconfig_categories').val(),
+                    patron_category_codes: $('#umsconfig_categories').val() ? $('#umsconfig_categories').val().split(',').filter(Boolean) : [],
                     processing_fee: $('#processing_fee').val(),
                     remove_minors: $('#age_limitation').val(),
                     remove_restriction:$('#remove_restriction').val(),

@@ -12,6 +12,18 @@
             ],
             "parameters": [
                 {
+                    "name": "x-koha-embed",
+                    "in": "header",
+                    "required": false,
+                    "description": "Embed list sent as a request header",
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["debit_types", "patron_categories"]
+                    },
+                    "collectionFormat": "csv"
+                },
+                {
                     "description": "Matching criteria",
                     "enum": [
                         "contains",
@@ -118,13 +130,6 @@
                                                 "null"
                                             ],
                                             "description": "Day of week to run"
-                                        },
-                                        "patron_categories": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ],
-                                            "description": "Patron categories to include"
                                         },
                                         "threshold": {
                                             "type": [
@@ -333,6 +338,14 @@
         "application/json"
       ],
       "parameters": [{
+          "name": "x-koha-embed",
+          "in": "header",
+          "required": false,
+          "description": "Embed list sent as a request header",
+          "type": "array",
+          "items": { "type": "string", "enum": ["debit_types", "patron_categories"] },
+          "collectionFormat": "csv"
+        },{
           "name": "config_id",
           "in": "path",
           "description": "Search on config id",
@@ -360,6 +373,14 @@
         "application/json"
       ],
       "parameters": [{
+          "name": "x-koha-embed",
+          "in": "header",
+          "required": false,
+          "description": "Embed list sent as a request header",
+          "type": "array",
+          "items": { "type": "string", "enum": ["debit_types", "patron_categories"] },
+          "collectionFormat": "csv"
+        },{
           "name": "config_id",
           "in": "path",
           "description": "Search on config id",
@@ -391,12 +412,21 @@
                     ],
                     "description": "Day of week to run"
                 },
-                "patron_categories": {
+                "patron_category_codes": {
                     "type": [
                         "array",
                         "null"
                     ],
-                    "description": "Email from unique"
+                    "items": { "type": "string" },
+                    "description": "Patron category codes eligible for collections"
+                },
+                "debit_type_codes": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": { "type": "string" },
+                    "description": "Debit type codes to count for collections"
                 },
                 "require_lost": {
                     "type": "string",

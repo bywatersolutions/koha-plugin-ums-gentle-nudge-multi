@@ -6,7 +6,6 @@ use Mojo::Base 'Mojolicious::Controller';
 use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::Libraries;
 use Koha::Library::Groups;
-use JSON qw( encode_json );
 
 my $plugin = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new;
 
@@ -97,11 +96,16 @@ sub add {
     }
 
     return try {
-        $body->{patron_categories} = encode_json( $body->{patron_categories} )
-            if $body->{patron_categories};
-        $body->{debit_types} = encode_json( $body->{debit_types} )
-            if $body->{debit_types};
+        my $patron_category_codes = delete $body->{patron_category_codes} // delete $body->{patron_categories};
+        my $debit_type_codes      = delete $body->{debit_type_codes};
+
+        # Legacy: accept debit_type as alias for config_debit_type
+        $body->{config_debit_type} //= delete $body->{debit_type} if exists $body->{debit_type};
+
         my $config = $plugin->configs->object_class->new_from_api($body)->store;
+        $config->set_debit_types($debit_type_codes);
+        $config->set_patron_categories($patron_category_codes);
+
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->config_id );
 
         #logaction( 'SYSTEMPREFERENCE', 'ADD', $config->config_id, $config );
@@ -143,11 +147,16 @@ sub update {
     }
 
     return try {
-        $body->{patron_categories} = encode_json( $body->{patron_categories} )
-            if $body->{patron_categories};
-        $body->{debit_types} = encode_json( $body->{debit_types} )
-            if $body->{debit_types};
+        my $patron_category_codes = delete $body->{patron_category_codes} // delete $body->{patron_categories};
+        my $debit_type_codes      = delete $body->{debit_type_codes};
+
+        # Legacy: accept debit_type as alias for config_debit_type
+        $body->{config_debit_type} //= delete $body->{debit_type} if exists $body->{debit_type};
+
         $config->set_from_api($body)->store;
+        $config->set_debit_types($debit_type_codes)       if $debit_type_codes;
+        $config->set_patron_categories($patron_category_codes) if $patron_category_codes;
+
         $c->res->headers->location( $c->req->url->to_string );
 
         # logaction(

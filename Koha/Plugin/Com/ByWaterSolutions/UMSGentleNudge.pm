@@ -61,10 +61,16 @@ BEGIN {
     unshift @INC, $path;
 
     require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig;
+    require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigDebitType;
+    require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigPatronCategory;
 
     #register the additional schema classes
     Koha::Schema->register_class( KohaPluginComBywatersolutionsUmsgentlenudgeConfig =>
             'Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig' );
+    Koha::Schema->register_class( KohaPluginComBywatersolutionsUmsgentlenudgeConfigDebitType =>
+            'Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigDebitType' );
+    Koha::Schema->register_class( KohaPluginComBywatersolutionsUmsgentlenudgeConfigPatronCategory =>
+            'Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigPatronCategory' );
 
     # force a refresh of the database handle so that it includes the new classes
     Koha::Database->schema( { new => 1 } );
@@ -840,9 +846,7 @@ sub install() {
                     config_name VARCHAR(100) NULL COMMENT 'Name of the group or library',
                     branch VARCHAR(10) NULL COMMENT 'Selected branch',
                     config_group int(11) NULL COMMENT 'Selected group',
-                    debit_types VARCHAR(191) NULL COMMENT 'JSON array of debit types to be used for collections. Only selected types will be counted for total.',
                     day_of_week int(1)  NULL COMMENT 'Which day of the week should the report run on',
-                    patron_categories VARCHAR(191) NULL COMMENT 'JSON array of patron category codes that are eligible for collections. e.g. CAT1,CAT2,CAT3. Leave blank for all categories.',
                     threshold int(11) NULL COMMENT 'Minimum amount owed to be sent to collections.',
                     processing_fee int(11) NULL COMMENT 'Amount of the processing fee added to the patron account',
                     collections_flag VARCHAR(191) NULL COMMENT 'Specify how the patron is flagged as being in collections. If using a patron attribute, it is recommended that the attribute be mapped to the YES_NO category.',
@@ -877,6 +881,28 @@ sub install() {
     $dbh->do(
         "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, config_debit_type, require_lost, remove_minors, fees_newer, fees_older, remove_restriction, restriction) VALUES ('Global', 'global', 0, '10', 'manual', 0, 0, '90', '60', 0, 0)"
     );    #Create default configuration
+
+    my $config_debit_type = $self->get_qualified_table_name('config_dt');
+    $dbh->do("
+        CREATE TABLE IF NOT EXISTS $config_debit_type (
+            config_id int(11) NOT NULL,
+            debit_type_code VARCHAR(64) NOT NULL,
+            PRIMARY KEY (config_id, debit_type_code),
+            CONSTRAINT config_dt_cfg_fk FOREIGN KEY (config_id) REFERENCES $configuration (config_id) ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT config_dt_code_fk FOREIGN KEY (debit_type_code) REFERENCES account_debit_types (code) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    my $config_patron_category = $self->get_qualified_table_name('config_pc');
+    $dbh->do("
+        CREATE TABLE IF NOT EXISTS $config_patron_category (
+            config_id int(11) NOT NULL,
+            category_code VARCHAR(10) NOT NULL,
+            PRIMARY KEY (config_id, category_code),
+            CONSTRAINT config_pc_cfg_fk FOREIGN KEY (config_id) REFERENCES $configuration (config_id) ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT config_pc_code_fk FOREIGN KEY (category_code) REFERENCES categories (categorycode) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
 
     my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
     return 1;
