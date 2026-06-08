@@ -226,7 +226,7 @@
                                             "type": "string",
                                             "description": "Does the patron need to have a lost fee to be sent to collections"
                                         },
-                                        "debit_type": {
+                                        "config_debit_type": {
                                             "type": [
                                                 "string",
                                                 "null"
@@ -498,7 +498,7 @@
                     "type": "string",
                     "description": "What type of config is it"
                 },
-                "debit_type": {
+                "config_debit_type": {
                     "type": [
                         "string",
                         "null"
