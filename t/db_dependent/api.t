@@ -99,7 +99,7 @@ subtest 'add() tests' => sub {
         enabled      => 1,
         threshold    => "25",
         day_of_week  => "1",
-        debit_type   => 'manual',
+        config_debit_type   => 'manual',
         require_lost => "0",
     };
 
@@ -155,7 +155,7 @@ subtest 'add() duplicate detection tests' => sub {
         config_type  => 'library',
         branch       => $library->branchcode,
         enabled      => 1,
-        debit_type   => 'manual',
+        config_debit_type   => 'manual',
         require_lost => "0",
     };
 

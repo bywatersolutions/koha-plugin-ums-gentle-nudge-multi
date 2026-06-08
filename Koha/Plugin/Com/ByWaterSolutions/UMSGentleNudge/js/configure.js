@@ -78,7 +78,7 @@
                         document.getElementById("clear_below").value = config.clear_below;
                         document.getElementById("clear_threshold").value = config.clear_threshold;
                         document.getElementById("collections_flag").value = config.collections_flag;
-                        document.getElementById("processing_debit").value = config.debit_type;
+                        document.getElementById("processing_debit").value = config.config_debit_type;
                         document.getElementById("run_on_dow").value = config.day_of_week;
                         document.getElementById("config-enabled").value = config.enabled;
                         document.getElementById("exemption_flag").value = config.exemptions_flag;
@@ -345,7 +345,7 @@
                     config_name: $('#config_name').val(),
                     config_type: configtype,
                     day_of_week: $('#run_on_dow').val(),
-                    debit_type: debit_type,
+                    config_debit_type: debit_type,
                     enabled: $('#config-enabled').val(),
                     exemptions_flag: $('#exemption_flag').val(),
                     fees_newer: $('#fees_starting_age').val(),
