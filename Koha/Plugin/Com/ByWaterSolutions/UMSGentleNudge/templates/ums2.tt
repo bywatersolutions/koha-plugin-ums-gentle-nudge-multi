@@ -4,6 +4,7 @@
 [% USE Branches %]
 [% USE Categories %]
 [% USE Dumper %]
+[% USE ExtendedAttributeTypes %]
 [% USE Koha %]
 [% USE To %]
 [% USE raw %]
@@ -245,7 +246,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                     <select name="collections_flag" id="collections_flag" class="form-control">
                                         <option value="sort1"> sort1</option>
                                         <option value="sort2">sort2</option>
-                                        [% FOREACH a IN attributes %]
+                                        [% FOREACH a IN ExtendedAttributeTypes.all %]
                                             <option value="[% a.code %]">[% a.description | html %]</option>
                                         [% END %]
                                       </select>
@@ -261,7 +262,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                     <select name="exemption_flag" id="exemption_flag" class="form-control">
                                         <option value="sort1">sort1</option>
                                         <option value="sort2">sort2</option>
-                                        [% FOREACH a IN attributes %]
+                                        [% FOREACH a IN ExtendedAttributeTypes.all %]
                                             <option value="[% a.code %]">[% a.description | html %]</option>
                                         [% END %]
                                       </select>
@@ -350,7 +351,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="unique_email">Unique email address <i id="info_added" data-bs-toggle="tooltip" title="Email address provided to you by Unique Management Systems to email reports to.</" data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <label for="unique_email">Unique management email address <i id="info_added" data-bs-toggle="tooltip" title="Email address provided to you by Unique Management Systems to email reports to.</" data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <input type="text" name="unique_email" id="unique_email" class="form-control" >
                                   </div><!-- /form-group mb-3 -->
                               </div><!-- /col-md-6 -->
