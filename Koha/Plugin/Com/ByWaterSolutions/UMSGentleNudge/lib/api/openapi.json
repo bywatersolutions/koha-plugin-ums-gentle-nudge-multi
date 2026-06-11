@@ -288,7 +288,10 @@
               },
               "branch": {
                 "description": "Optional branch code",
-                "type": "string"
+                    "type": [
+                        "string",
+                        "null"
+                    ]
               },
               "require_lost": {
                   "type": "string",
