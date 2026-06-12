@@ -157,45 +157,32 @@ sub configure {
     my @servers      = Koha::SMTP::Servers->search();
     my @group_array  = Koha::Library::Groups->search();
     my @branch_array = Koha::Libraries->search();
-
+    my $action_type  = scalar $cgi->param('step');
+    warn 'after all the my';
     if ($action) {
+        warn 'in action';
         if ( $action eq 'cud-save' ) {
+            warn 'in save';
+            if ( $action_type eq 'plugin_settings' ) {
+                warn 'in plugin';
+                $self->store_data(
+                    {
+                        global_enabled => scalar $cgi->param('global_enabled_selector'),
+                        global_fine_branch => scalar $cgi->param('global_fine_branch_selector'),
+                    }
+                );
+        } else {
+            warn 'in else';
             $self->store_data(
                 {
                     config_id => scalar $cgi->param('config_id'),
                 }
             );
         }
-    }
-    $template->param( groups => $groups, debit_types => \@debit_types, servers => @servers );
+    }}
+    $template->param( groups => $groups, debit_types => \@debit_types, servers => @servers, global_enabled => $self->retrieve_data('global_enabled'), global_fine_branch => $self->retrieve_data('global_fine_branch') );
     $self->output_html( $template->output() );
-}
-
-sub admin {
-    my ( $self, $args ) = @_;
-    my $cgi = $self->{'cgi'};
-    my $action       = scalar $cgi->param('op');
-    my $template = $self->get_template( { file => 'templates/ums_global.tt' } );
-    ## Grab the values we already have for our settings, if any exist
-        $template->param(
-            global_enabled   => $self->retrieve_data('global_enabled'),
-            global_fine_branch => $self->retrieve_data('global_fine_branch')
-        );
-        $self->output_html( $template->output() );
-    
-    if ( $action ) {
-        if ( $action eq 'cud-save' ) {
-
-        $self->store_data(
-            {
-                global_enabled => scalar $cgi->param('global_enabled_selector'),
-                global_fine_branch => scalar $cgi->param('global_fine_branch_selector'),
-            }
-        );
- $self->go_home();
-    }
-    }
-}
+ }
 
 # =head3 intranet_js
 
