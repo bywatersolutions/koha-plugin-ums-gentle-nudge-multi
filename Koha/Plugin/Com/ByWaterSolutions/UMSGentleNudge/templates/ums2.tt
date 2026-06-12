@@ -456,6 +456,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
             $(document).ready(function() {
                 var UMSDeleteModal = document.getElementById('UMSDeleteModal');
                 var UMSConfigModal = document.getElementById('UMSConfigModal');
+                
             UMSDeleteModal.addEventListener('show.bs.modal', function (event){
                 var button = event.relatedTarget;
                 delete_id = button.getAttribute('data-delete-id');
@@ -466,6 +467,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 deleteName.textContent = delete_name;
             });
             UMSConfigModal.addEventListener('show.bs.modal', function (event){
+                console.log('modellistener');
                 //Button that triggered the modal
                 var button = event.relatedTarget;
                 // Extract info from data-bs-* attributes
@@ -479,6 +481,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 var modalTypeSelector = modalTypeSelector + configtype;
                 var modalIDSelect = '.' + configtype + '_option';
                 var modalButton =  UMSConfigModal.querySelector('#modal_button');
+                console.log('button' + modalButton);
+                console.log('id:' + ums_id +' /mode:' + umsmode + '/modaltitle: ' + modalTitle + ' / modalTypeInput: ' + modalTypeInput + ' / modalTypeSelector: '  + modalTypeSelector  + ' / modalIDSelect: ' + modalIDSelect);
                 //Sets the title dynamicly: Mode (New/Edit) type(global, group, or library) configuration
                 modalTitle.textContent = umsmode + ' ' + configtype + ' configuration';
                 var modalSelector = UMSConfigModal.querySelector('.modal-select-type');
@@ -531,7 +535,9 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 $.ajax({
                     url: '/api/v1/contrib/ums/config/' + event.relatedTarget.getAttribute('data-config-id'),
                     method: 'GET',
+                    headers: { 'x-koha-embed': 'debit_types,patron_categories' },
                     success: function(config) {
+
                         if (config.config_type == "library") {
                             document.getElementById("umsconfig_id_select").value = config.branch;
                         }
@@ -541,36 +547,29 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         if (config.config_type== "global") {
                             document.getElementById("umsconfig_id_select").value = 'global';
                         }
-                        var cats = JSON.parse(config.patron_categories);
-                        var debs = JSON.parse(config.debit_types);
                         document.getElementById("umsconfig_id_select").setAttribute("disabled","disabled");
                         document.getElementById("cc_email").value = config.additional_email;
                         document.getElementById("clear_below").value = config.clear_below;
                         document.getElementById("clear_threshold").value = config.clear_threshold;
                         document.getElementById("collections_flag").value = config.collections_flag;
-                        document.getElementById("processing_debit").value = config.debit_type;
+                        document.getElementById("processing_debit").value = config.config_debit_type;
                         document.getElementById("run_on_dow").value = config.day_of_week;
                         document.getElementById("config-enabled").value = config.enabled;
                         document.getElementById("exemption_flag").value = config.exemptions_flag;
                         document.getElementById("fees_starting_age").value = config.fees_newer;
                         document.getElementById("fees_ending_age").value = config.fees_older;
                         document.getElementById("fees_created_before_date_filter").value = config.ignore_before;
-                        document.getElementById('umsconfig_categories').value=cats;
-                        $('#umsconfig_categories').val(cats);
-                        $('#umsconfig_debit_types').val(debs);
+                        document.getElementById("umsconfig_categories").value = (config.patron_categories || []).map(c => c.categorycode).join(',');
                         $('#umsconfig_categories').trigger('change');
                         $('#umsconfig_debit_types').trigger('change');
                         document.getElementById("processing_fee").value = config.processing_fee;
-                        document.getElementById("age_limitation").value = config.remove_minors;
                         document.getElementById("add_restriction").value = config.restriction;
                         document.getElementById("remove_restriction").value = config.remove_restriction;
                         document.getElementById("fees_threshold").value = config.threshold;
                         document.getElementById("unique_email").value = config.unique_email;
                         document.getElementById("require_lost_fee").value = config.require_lost;
                     },
-                }
-                );
-
+                });
             }
             //Load All configs on page load
             loadAll();
@@ -766,7 +765,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         title: "Threshold"},
                         {data: "processing_fee",
                         render: function (data, type, row) {
-                            if (data ) {
+                            if (data) {
                             return '$' + data;
                             } else {
                                 return 'Not configured';
@@ -842,6 +841,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 var exemption_select = document.getElementById('exemption_flag');
                 var exemption = exemption_select.value;
                 var ignore_before = document.getElementById('fees_created_before_date_filter').value;
+
                 if (ignore_before === ""){
                    ignore_before = null;
                 };
@@ -855,12 +855,12 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     config_type: configtype,
                     config_name: ums_name,
                     day_of_week: $('#run_on_dow').val(),
-                    debit_type: debit_type,
+                    config_debit_type: debit_type,
                     enabled: $('#config-enabled').val(),
-                    exemptions_flag: exemption,
+                    exemptions_flag: $('#exemption_flag').val(),
                     fees_newer: $('#fees_starting_age').val(),
                     fees_older: $('#fees_ending_age').val(),
-                    ignore_before: ignore_before,
+                    ignore_before: $('#fees_created_before_date_filter').val(),
                     patron_categories: patron_categories,
                     processing_fee: $('#processing_fee').val(),
                     remove_minors: $('#age_limitation').val(),
@@ -912,4 +912,5 @@ If using another category, the authorized values should be 0 and 1, but the desc
             }
             function openDeleteModal() {
             }
-        });</script>
+        });
+        </script>
