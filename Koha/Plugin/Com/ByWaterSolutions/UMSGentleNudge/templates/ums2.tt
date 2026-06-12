@@ -13,8 +13,6 @@
     <div class="alert alert-danger" role="alert"><h2>Beta! In testing for user experience testing only right now.</h2>
         <h3>Known UI issues</h3>
         <ul>
-            <li>2 delete buttons</li>
-            <li>put action buttons on left, cancel on right, color as needed</li>
             <li>logging failures. May need a seperate table for logging instead of using action log</li>
             <li>can I merge the admin page with this page? Maybe another tab? only visible to super librarians?</li>
             <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a>. It will not show as an option if there are no SFTP instances present.</li>
@@ -396,11 +394,11 @@ If using another category, the authorized values should be 0 and 1, but the desc
 
                     <div class="modal-footer">
                     <fieldset class="action">
+                        <button type="submit" class="btn btn-primary">Save</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fa fa-times"></i> Cancel
                           </button>
                         <input type="hidden" name="op" value="cud-save" />
-                        <input type="submit" value="Save" />
                         [% INCLUDE 'csrf-token.inc' %]
                       </fieldset>
                       </div> <!-- /.modal-footer -->
@@ -437,7 +435,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 <i class="fa fa-times"></i> Cancel
                             </button>
                             <input type="hidden" name="op" value="delete" />
-                            <input type="submit" value="Delete" />
                             [% INCLUDE 'csrf-token.inc' %]
                           </fieldset>
                     </div><!-- /.modal-footer -->
