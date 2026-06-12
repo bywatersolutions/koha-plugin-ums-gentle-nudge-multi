@@ -16,6 +16,8 @@
             <li>logging failures. May need a seperate table for logging instead of using action log</li>            
             <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a>. It will not show as an option if there are no SFTP instances present.</li>
             <li>Report option, see the reports that were sent before they're purged?</li>
+            <li>Disable/remove libraries from list of options when they've already been used.</li>
+            <li>Add option to library groups to limit for ums?</li>
           </ul>
       </div> <!-- /alert -->
   </div> <!-- /message -->
