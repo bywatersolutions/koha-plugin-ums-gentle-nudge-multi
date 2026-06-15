@@ -95,10 +95,9 @@ sub check_for_existing_branch {
 
 sub today_enabled_configs {
     my ( $self ) = @_;
-
-    my @todays_configs = UMS::GentleNudge::Configs->search( { enabled => "1" }, { run_on_dow => "0" });
-    if ( @todays_configs->count > 0 ) {
-        return { @todays_configs };
+    my $todays_configs => UMS::GentleNudge::Configs->search( { enabled => "1" }, { run_on_dow => (localtime)[6] });
+    if ( $todays_configs) {
+        return { $todays_configs };
     }
     return { 'no_enabled_configs' => 1 };
 }
