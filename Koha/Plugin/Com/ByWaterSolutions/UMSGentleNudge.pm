@@ -242,8 +242,8 @@ warn "debug 1";
      }
 #        $self->prune_old_logs();
 warn "in prune";
-        my $todays_configs = KohaPluginComBywatersolutionsUmsgentlenudgeConfig->today_enabled_configs();
-        foreach my $config ($todays_configs) {
+        my @todays_configs = KohaPluginComBywatersolutionsUmsgentlenudgeConfigs->today_enabled_configs();
+        foreach my $config (@todays_configs) {
             my $config_code = "global";
             my $config_type = "global";
             my $config_branch_where;
