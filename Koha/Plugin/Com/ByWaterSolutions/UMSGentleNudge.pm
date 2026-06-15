@@ -239,13 +239,29 @@ warn "debug 1";
         if ($global_fine_branch eq 'item_checkout') {
             $branch_query = "AND accountlines.branchcode "
         };
-     }
+     } else {return 0;}
 #        $self->prune_old_logs();
 warn "in prune";
         my $todays_configs => UMS::GentleNudge::Configs->today_enabled_configs();
         foreach my $config ($todays_configs) {
             my $config_code = "global";
             my $config_type = "global";
+            my $collections_flag = $config->{collections_flag};
+            my $collections_flag_type = 'attribute';
+            my $exemptions_flag = $config->{exemptions_flag};
+            my $exemptions_flag_type  = 'attribute';
+            if ( $collections_flag eq 'sort1'){
+                $collections_flag_type = 'sort'
+            }
+            if ( $collections_flag eq 'sort2'){
+                $collections_flag_type = 'sort'
+            }
+            if ( $exemptions_flag eq 'sort1'){
+                $exemptions_flag_type = 'sort'
+            }
+            if ( $exemptions_flag eq 'sort2'){
+                $exemptions_flag_type = 'sort'
+            }
             my $config_branch_where;
             my $config_branch_helper;
            if ($config->{type => 'group'}){
@@ -297,8 +313,8 @@ warn "in prune";
             $config_branch_helper = "$branch_query $config_code";
         }
         if ($config_type eq "group") {
-              $config_branch_helper = $branch_query + "IN (SELECT library_groups.branchcode 
-                FROM library_groups WHERE library_groups.parent_id = " + $config_code + "
+              $config_branch_helper = $branch_query . "IN (SELECT library_groups.branchcode 
+                FROM library_groups WHERE library_groups.parent_id = " . $config_code . "
                 AND library_groups.branchcode NOT IN 
                         (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch 
                         FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
@@ -306,7 +322,7 @@ warn "in prune";
      )"
          }
          if ($config_type eq "global") {
-            $config_branch_helper = $branch_query + "IN (SELECT branches.branchcode 
+            $config_branch_helper = $branch_query . "IN (SELECT branches.branchcode 
             FROM branches
             WHERE branches.branchcode NOT IN 
                 (SELECT branch 
@@ -321,11 +337,10 @@ warn "in prune";
                     WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL)
                 )"
          }
-warn $config_type . " " . $config_branch_helper;
      my $params = { send_sync_report => $p->{send_sync_report} };
      $params->{require_lost_fee}    = $config->{require_lost};
      $params->{fees_threshold}    = $config->{threshold};
-     $params->{processing_fee}    = $config->{processing_fee};
+     $params->{processing_fee}    = $config->{processing_fee} || 0 ;
      $params->{collections_flag}    = $config->{collections_flag};
      $params->{fees_newer}     = $config->{fees_newer};
      $params->{fees_older}     = $config->{fees_older};
@@ -336,6 +351,8 @@ warn $config_type . " " . $config_branch_helper;
      $params->{clear_threshold}     = $config->{clear_threshold};
      $params->{ignore_before} = $config->{ignore_before};
      $params->{umsconfig_type}    = $config_type;
+     $params->{collection_flag_type} = $collections_flag_type;
+     $params->{exemptions_flag_type} = $exemptions_flag_type;
      #fees_newer should be the large of the two numbers
     #  ( $params->{fees_newer}, $params->{fees_older} ) =
     #  ( $params->{fees_older}, $params->{fees_newer} )
@@ -374,7 +391,7 @@ warn $config_type . " " . $config_branch_helper;
          };
          $ums_submission_query .= q{
      MAX(attribute),
-         } if $params->{collections_flag} eq 'attribute_field';
+         } if $params->{collections_flag_type} eq 'attribute_field';
 
          $ums_submission_query .= q{
      MAX(borrowers.cardnumber)         AS "cardnumber",
@@ -403,7 +420,7 @@ warn $config_type . " " . $config_branch_helper;
          $ums_submission_query .= qq{
             LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
                AND code = '$params->{collections_flag}'
-             } if $params->{flag_type} eq 'attribute_field';
+             } if $params->{collection_flag} eq 'attribute_field';
 
          $ums_submission_query .= qq{
              LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
@@ -420,7 +437,7 @@ warn $config_type . " " . $config_branch_helper;
 
              LEFT JOIN ( SELECT
                REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
-               REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
+               REPLACE( FORMAT( SUM(accountlines.amountoutstanding) . $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
                    borrowernumber
                FROM accountlines
                GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
