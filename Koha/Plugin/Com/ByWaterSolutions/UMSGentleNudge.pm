@@ -223,39 +223,42 @@ sub static_routes {
 
 =cut
 
- sub cronjob_nightly {
+  sub cronjob_nightly {
+    warn "in nightly";
     my ( $self, $p ) = @_;
-    my $branch_query
+    my $branch_query;
     my $global_enabled = $self->retrieve_data('global_enabled');
     my $global_fine_branch = $self->retrieve_data('global_fine_branch');
-    unless $global_enabled = '0';
-    if $global_fine_branch = 'patron' {
-        $branch_query = "AND borrower.homebranch "
-    }
-    if $global_fine_branch = 'item_home' {
-        my $item_join = " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber"
-        $branch_query = "AND items.homebranch "
-    }
-    if $global_fine_branch = 'item_checkout' {
-        $branch_query = "AND accountlines.branchcode "
-    }
-    $self->prune_old_logs();
+warn "debug 1";
+     if ($global_enabled == '1') {
+        if ($global_fine_branch eq 'patron') {
+            $branch_query = "AND borrower.homebranch "};
+        if ($global_fine_branch eq 'item_home') {
+            my $item_join = " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber $branch_query = AND items.homebranch "
+     };
+        if ($global_fine_branch eq 'item_checkout') {
+            $branch_query = "AND accountlines.branchcode "
+        };
+     }
+#        $self->prune_old_logs();
+warn "in prune";
+        my $todays_configs = KohaPluginComBywatersolutionsUmsgentlenudgeConfig->today_enabled_configs();
+        foreach my $config ($todays_configs) {
+            my $config_code = "global";
+            my $config_type = "global";
+            my $config_branch_where;
+            my $config_branch_helper;
+           if ($config->{type => 'group'}){
+                $config_code = $config->{config_group};
+                $config_type = "group";
+            }
+            if ($config->{type => 'library'}){
+                $config_code = $config->{branch};
+                $config_type = "library";
+            }
 
-    foreach my $config (@todays_configs) {
-        my $config_code = "global";
-        my $config_type = "global";
-        my $config_branch_where;
-        my $config_branch_helper;
-        if ($config->{type => 'group'}){
-            $config_code = $config->{config_group};
-            $config_type = "group";
-        }
-        if ($config->{type => 'library'}){
-            $config_code = $config->{branch};
-            $config_type = "library";
-        }
-
-        # Clear up archives older than 30 days
+         # Clear up archives older than 30 days
+         warn "clear archives";
         if ($archive_dir) {
             if ( -d $archive_dir ) {
                 my $dt = dt_from_string();
@@ -264,363 +267,360 @@ sub static_routes {
                 opendir my $dir, $archive_dir or die "Cannot open directory: $!";
                 my @files = readdir $dir;
                 closedir $dir;
+                 my $thresholds = {
+                     new_submissions => "$config_code-ums-new-submissions-$age_threshold.csv",
+                     sync    => "$config_code-ums-sync-$age_threshold.csv",
+                     updates     => "$config_code-ums-updates-$age_threshold.csv",
+                   };
 
-                my $thresholds = {
-                    new_submissions => "$config_code-ums-new-submissions-$age_threshold.csv",
-                    sync    => "$config_code-ums-sync-$age_threshold.csv",
-                    updates     => "$config_code-ums-updates-$age_threshold.csv",
-                  };
+                 foreach my $f (@files) {
+                     next unless $f =~ /csv$/;
 
-                foreach my $f (@files) {
-                    next unless $f =~ /csv$/;
+                     my $threshold_filename =
+                     $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
+                     : $f =~ /^$config_code-ums-sync/    ? $thresholds->{sync}
+                     : $f =~ /^$config_code-ums-updates/     ? $thresholds->{updates}
+                     :    undef;
 
-                    my $threshold_filename =
-                    $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
-                    : $f =~ /^$config_code-ums-sync/    ? $thresholds->{sync}
-                    : $f =~ /^$config_code-ums-updates/     ? $thresholds->{updates}
-                    :    undef;
+                     next unless $threshold_filename;
 
-                    next unless $threshold_filename;
+                     if ( $f lt $threshold_filename ) {
+                         unlink( $archive_dir . "/" . $f );
+                     }
+                 }
+               } else {
+                 make_path $archive_dir or die "Failed to create path: $archive_dir";
 
-                    if ( $f lt $threshold_filename ) {
-                        unlink( $archive_dir . "/" . $f );
-                    }
-                }
-              } else {
-                make_path $archive_dir or die "Failed to create path: $archive_dir";
-              }
+            }
         }
-        if $config_type = "library" {
-            $config_branch_helper = "$branch_query= $config_code";
+        if ($config_type eq "library") {
+            $config_branch_helper = "$branch_query $config_code";
         }
-        if $config_type = "group" {
-            $config_branch_helper = "$branch_query IN (
-                SELECT library_groups.branchcode 
-                FROM library_groups 
-                WHERE library_groups.parent_id  = $config_group 
+        if ($config_type eq "group") {
+              $config_branch_helper = $branch_query + "IN (SELECT library_groups.branchcode 
+                FROM library_groups WHERE library_groups.parent_id = " + $config_code + "
                 AND library_groups.branchcode NOT IN 
-                    (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch 
-                    FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
-                    WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch IS NOT NULL)
-)"
-        }
-        if $config_type = "global"{
-            $config_branch_helper = "$branch_query IN (
-                SELECT branches.branchcode 
-                FROM branches 
-                WHERE branches.branchcode NOT IN
-                    (SELECT branch 
-                    FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
-                    WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch IS NOT NULL)
-                AND branches.branchcode NOT IN
-                    (SELECT branchcode 
-                    FROM library_groups
-                    WHERE library_groups.parent_id IN 
-                        (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group 
+                        (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch 
                         FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
-                        WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL))"
-        }
-    my $params = { send_sync_report => $p->{send_sync_report} };
-    $params->{require_lost_fee}    = $config->{require_lost};
-    $params->{fees_threshold}    = $config->{threshold};
-    $params->{processing_fee}    = $config->{processing_fee};
-    $params->{collections_flag}    = $config->{collections_flag};
-    $params->{fees_newer}     = $config->{fees_newer};
-    $params->{fees_older}     = $config->{fees_older};
-    $params->{clear_below}     = $config->{clear_below};
-    $params->{restriction}     = $config->{restriction};
-    $params->{remove_restriction}    = $config->{remove_restriction};
-    $params->{remove_minors}    = $config->{remove_minors};
-    $params->{clear_threshold}     = $config->{clear_threshold};
-    $params->{ignore_before} = $config->{ignore_before};
-    $params->{umsconfig_type}    = $config_type;
-    # fees_newer should be the large of the two numbers
-    ( $params->{fees_newer}, $params->{fees_older} ) =
-    ( $params->{fees_older}, $params->{fees_newer} )
-    if $params->{fees_newer} < $params->{fees_older}; {
-       # warn?
-    }
+                     WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch IS NOT NULL)
+     )"
+         }
+         if ($config_type eq "global") {
+            $config_branch_helper = $branch_query + "IN (SELECT branches.branchcode 
+            FROM branches
+            WHERE branches.branchcode NOT IN 
+                (SELECT branch 
+                FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config
+                WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch IS NOT NULL)
+            AND branches.branchcode NOT IN 
+                (SELECT branchcode 
+                FROM library_groups
+                WHERE library_groups.parent_id IN
+                    (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group 
+                    FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config
+                    WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL)
+                )"
+         }
+warn $config_type . " " . $config_branch_helper;
+     my $params = { send_sync_report => $p->{send_sync_report} };
+     $params->{require_lost_fee}    = $config->{require_lost};
+     $params->{fees_threshold}    = $config->{threshold};
+     $params->{processing_fee}    = $config->{processing_fee};
+     $params->{collections_flag}    = $config->{collections_flag};
+     $params->{fees_newer}     = $config->{fees_newer};
+     $params->{fees_older}     = $config->{fees_older};
+     $params->{clear_below}     = $config->{clear_below};
+     $params->{restriction}     = $config->{restriction};
+     $params->{remove_restriction}    = $config->{remove_restriction};
+     $params->{remove_minors}    = $config->{remove_minors};
+     $params->{clear_threshold}     = $config->{clear_threshold};
+     $params->{ignore_before} = $config->{ignore_before};
+     $params->{umsconfig_type}    = $config_type;
+     #fees_newer should be the large of the two numbers
+    #  ( $params->{fees_newer}, $params->{fees_older} ) =
+    #  ( $params->{fees_older}, $params->{fees_newer} )
+#      if $params->{fees_newer} < $params->{fees_older}; {
+# #        # warn?
+#      }
 
-    my $today = dt_from_string();
-    $params->{date} = $today->ymd();
-    ### Process new submissions
-    if ( $run_weeklys && !$params->{send_sync_report} ) {
-    $self->run_submissions_report($params);
-    } elsif ( !$params->{send_sync_report} ) {
-    log_info("NOT THE DOW TO RUN SUBMISSIONS");
-    }
+     my $today = dt_from_string();
+     $params->{date} = $today->ymd();
+    #  ### Process new submissions
+    #  if ( $run_weeklys && !$params->{send_sync_report} ) {
+      $self->run_submissions_report($params);
+    #  } elsif ( !$params->{send_sync_report} ) {
+    #  log_info("NOT THE DOW TO RUN SUBMISSIONS");
+    #  }
 
-    ### Process UMS Update Report
-    $self->run_update_report_and_clear_paid($params, $config_branch_helper);
-        } #/foreach config
+#     ### Process UMS Update Report
+     $self->run_update_report_and_clear_paid($params);
+         } #/foreach config
 
- } # /cronjob_nightly
+  } # /cronjob_nightly
 
-# sub run_submissions_report {
-#     my ( $self, $params ) = @_;
-#     my $age_limitation = $params->{age_limitation};
+ sub run_submissions_report {
+     my ( $self, $params ) = @_;
+     my $remove_minors = $params->{remove_minors};
 
-#     my $dbh = C4::Context->dbh;
-#     $dbh->{RaiseError} = 1;    # die if a query has problems
+     my $dbh = C4::Context->dbh;
+     $dbh->{RaiseError} = 1;    # die if a query has problems
 
-#     my $info = {};
-#     try {
-#         my $sth;
+     my $info = {};
+     try {
+         my $sth;
 
-#         my $ums_submission_query = q{
-#     SELECT
-#         };
+        my $ums_submission_query = q{
+     SELECT
+         };
+         $ums_submission_query .= q{
+     MAX(attribute),
+         } if $params->{collections_flag} eq 'attribute_field';
 
-#         $ums_submission_query .= q{
-#     MAX(attribute),
-#         } if $params->{flag_type} eq 'attribute_field';
+         $ums_submission_query .= q{
+     MAX(borrowers.cardnumber)         AS "cardnumber",
+     MAX(borrowers.borrowernumber)     AS "borrowernumber",
+     MAX(borrowers.surname)            AS "surname",
+     MAX(borrowers.firstname)          AS "firstname",
+     MAX(borrowers.address)            AS "address",
+     MAX(borrowers.address2)           AS "address2",
+     MAX(borrowers.city)               AS "city",
+     MAX(borrowers.zipcode)            AS "zipcode",
+     MAX(borrowers.state)              AS "state",
+     MAX(borrowers.phone)              AS "phone",
+    MAX(borrowers.mobile)             AS "mobile",
+     MAX(borrowers.phonepro)           AS "Alt Ph 1",
+     MAX(borrowers.b_phone)            AS "Alt Ph 2",
+     MAX(borrowers.branchcode)         AS "branchcode",
+     MAX(categories.category_type)     AS "Adult or Child",
+     MAX(borrowers.dateofbirth)        AS "dateofbirth",
+     MAX(accountlines.date)            AS "Most recent charge",
+    FORMAT(Sum(amountoutstanding), 2) AS "Amt_In_Range",
+     MAX(sub.due)                      AS "Total_Due",
+     MAX(sub.dueplus)                  AS "Total_Plus_Fee",
+     MAX(borrowers.email)              AS "email"
+     FROM accountlines
+         };
+         $ums_submission_query .= qq{
+            LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
+               AND code = '$params->{collections_flag}'
+             } if $params->{flag_type} eq 'attribute_field';
 
-#         $ums_submission_query .= q{
-#     MAX(borrowers.cardnumber)         AS "cardnumber",
-#     MAX(borrowers.borrowernumber)     AS "borrowernumber",
-#     MAX(borrowers.surname)            AS "surname",
-#     MAX(borrowers.firstname)          AS "firstname",
-#     MAX(borrowers.address)            AS "address",
-#     MAX(borrowers.address2)           AS "address2",
-#     MAX(borrowers.city)               AS "city",
-#     MAX(borrowers.zipcode)            AS "zipcode",
-#     MAX(borrowers.state)              AS "state",
-#     MAX(borrowers.phone)              AS "phone",
-#     MAX(borrowers.mobile)             AS "mobile",
-#     MAX(borrowers.phonepro)           AS "Alt Ph 1",
-#     MAX(borrowers.b_phone)            AS "Alt Ph 2",
-#     MAX(borrowers.branchcode)         AS "branchcode",
-#     MAX(categories.category_type)     AS "Adult or Child",
-#     MAX(borrowers.dateofbirth)        AS "dateofbirth",
-#     MAX(accountlines.date)            AS "Most recent charge",
-#     FORMAT(Sum(amountoutstanding), 2) AS "Amt_In_Range",
-#     MAX(sub.due)                      AS "Total_Due",
-#     MAX(sub.dueplus)                  AS "Total_Plus_Fee",
-#     MAX(borrowers.email)              AS "email"
-#     FROM accountlines
-#         };
+         $ums_submission_query .= qq{
+             LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
 
-#         $ums_submission_query .= qq{
-#            LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-#                AND code = '$params->{collections_flag}'
-#             } if $params->{flag_type} eq 'attribute_field';
+             LEFT JOIN (
+               SELECT borrowernumber, COUNT(*) AS lost_fees_count
+               FROM accountlines
+               WHERE debit_type_code = 'LOST'
+                 AND amountoutstanding > 0
+               GROUP BY borrowernumber
+             ) AS lost_fees_count ON ( lost_fees_count.borrowernumber = borrowers.borrowernumber)
 
-#         $ums_submission_query .= qq{
-#             LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+             LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
 
-#             LEFT JOIN (
-#               SELECT borrowernumber, COUNT(*) AS lost_fees_count
-#               FROM accountlines
-#               WHERE debit_type_code = 'LOST'
-#                 AND amountoutstanding > 0
-#               GROUP BY borrowernumber
-#             ) AS lost_fees_count ON ( lost_fees_count.borrowernumber = borrowers.borrowernumber)
+             LEFT JOIN ( SELECT
+               REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
+               REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
+                   borrowernumber
+               FROM accountlines
+               GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
 
-#             LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
+             WHERE  1=1
+               AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
+               AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
+             };
 
-#             LEFT JOIN ( SELECT
-#               REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
-#               REPLACE( FORMAT( SUM(accountlines.amountoutstanding) + $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
-#                   borrowernumber
-#               FROM accountlines
-#               GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
+         $ums_submission_query .= qq{
+               AND lost_fees_count.lost_fees_count > 0
+             } if $params->{require_lost_fee} && $params->{require_lost_fee} eq 'yes';
 
-#             WHERE  1=1
-#               AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
-#               AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
-#             };
+         $ums_submission_query .= qq{
+                 AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" )
+             } if $params->{flag_type} eq 'borrower_field';
 
-#         $ums_submission_query .= qq{
-#               AND lost_fees_count.lost_fees_count > 0
-#             } if $params->{require_lost_fee} && $params->{require_lost_fee} eq 'yes';
+         $ums_submission_query .= q{
+                 AND ( attribute = '0' OR attribute IS NULL )
+             } if $params->{flag_type} eq 'attribute_field';
 
-#         $ums_submission_query .= qq{
-#                 AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" )
-#             } if $params->{flag_type} eq 'borrower_field';
+         if ( @{ $params->{categorycodes} } ) {
+             my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
+             $ums_submission_query .= qq{
+                     AND borrowers.categorycode IN ( $codes )
+                 };
+         }
 
-#         $ums_submission_query .= q{
-#                 AND ( attribute = '0' OR attribute IS NULL )
-#             } if $params->{flag_type} eq 'attribute_field';
+         if ( $remove_minors == 1 ) {
+             $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
+         }
 
-#         if ( @{ $params->{categorycodes} } ) {
-#             my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
-#             $ums_submission_query .= qq{
-#                     AND borrowers.categorycode IN ( $codes )
-#                 };
-#         }
+         if ( $params->{fees_created_before_date_filter} ) {
+             $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
+         }
 
-#         if ( $age_limitation eq 'yes' ) {
-#             $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
-#         }
+         $ums_submission_query .= qq{
+                 GROUP BY borrowers.borrowernumber
+                     HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
+                     ORDER BY borrowers.surname ASC
+             };
 
-#         if ( $params->{fees_created_before_date_filter} ) {
-#             $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
-#         }
+        log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
 
-#         $ums_submission_query .= qq{
-#                 GROUP BY borrowers.borrowernumber
-#                     HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
-#                     ORDER BY borrowers.surname ASC
-#             };
+ ### Update new submissions patrons, add fee, mark as being in collections
+         $sth = $dbh->prepare($ums_submission_query);
+         $sth->execute();
+         my @ums_new_submissions;
+         while ( my $r = $sth->fetchrow_hashref ) {
+             log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
 
-#         log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
+             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
+             next unless $patron;
 
-# ### Update new submissions patrons, add fee, mark as being in collections
-#         $sth = $dbh->prepare($ums_submission_query);
-#         $sth->execute();
-#         my @ums_new_submissions;
-#         while ( my $r = $sth->fetchrow_hashref ) {
-#             log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
+             if ( $params->{add_restriction} eq 'yes' ) {
+                 AddDebarment(
+                     {
+                         borrowernumber => $patron->borrowernumber,
+                         expiration     => undef,
+                         type           => 'MANUAL',
+                         comment        => "Patron sent to collections on $params->{date}",
+                     }
+                 );
+             }
 
-#             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
-#             next unless $patron;
+             if ( $params->{flag_type} eq 'borrower_field' ) {
+                 $patron->update( { $params->{collections_flag} => 'yes' } );
+             }
+             if ( $params->{flag_type} eq 'attribute_field' ) {
+                 my $a = Koha::Patron::Attributes->find(
+                     {
+                         borrowernumber => $patron->id,
+                         code           => $params->{collections_flag},
+                     }
+                 );
 
-#             if ( $params->{add_restriction} eq 'yes' ) {
-#                 AddDebarment(
-#                     {
-#                         borrowernumber => $patron->borrowernumber,
-#                         expiration     => undef,
-#                         type           => 'MANUAL',
-#                         comment        => "Patron sent to collections on $params->{date}",
-#                     }
-#                 );
-#             }
+                 if ($a) {
+                     $a->attribute(1)->store();
+                 } else {
+                     Koha::Patron::Attribute->new(
+                         {
+                             borrowernumber => $patron->id,
+                             code           => $params->{collections_flag},
+                             attribute      => 1,
+                         }
+                     )->store();
+                 }
+             }
 
-#             if ( $params->{flag_type} eq 'borrower_field' ) {
-#                 $patron->update( { $params->{collections_flag} => 'yes' } );
-#             }
-#             if ( $params->{flag_type} eq 'attribute_field' ) {
-#                 my $a = Koha::Patron::Attributes->find(
-#                     {
-#                         borrowernumber => $patron->id,
-#                         code           => $params->{collections_flag},
-#                     }
-#                 );
+             my $processing_fee = $params->{processing_fee};
+             $patron->account->add_debit(
+                 {
+                     amount      => $params->{processing_fee},
+                     description => "UMS Processing Fee",
+                     interface   => 'cron',
+                     type        => 'MANUAL',
+                 }
+             ) if $processing_fee && $processing_fee > 0;
 
-#                 if ($a) {
-#                     $a->attribute(1)->store();
-#                 } else {
-#                     Koha::Patron::Attribute->new(
-#                         {
-#                             borrowernumber => $patron->id,
-#                             code           => $params->{collections_flag},
-#                             attribute      => 1,
-#                         }
-#                     )->store();
-#                 }
-#             }
+             push( @ums_new_submissions, $r );
+         }
 
-#             my $processing_fee = $params->{processing_fee};
-#             $patron->account->add_debit(
-#                 {
-#                     amount      => $params->{processing_fee},
-#                     description => "UMS Processing Fee",
-#                     interface   => 'cron',
-#                     type        => 'MANUAL',
-#                 }
-#             ) if $processing_fee && $processing_fee > 0;
+         my $columns = [
+             "borrowernumber",     "surname",
+             "firstname",          "cardnumber",
+             "address",            "address2",
+             "city",               "zipcode",
+             "state",              "phone",
+             "mobile",             "Alt Ph 1",
+             "Alt Ph 2",           "branchcode",
+             "Adult or Child",     "dateofbirth",
+             "Most recent charge", "Amt_In_Range",
+             "Total_Due",          "Total_Plus_Fee",
+             "email"
+         ];
 
-#             push( @ums_new_submissions, $r );
-#         }
+         ## Email the results
+         my $csv =
+             @ums_new_submissions
+             ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
+             : 'No qualifying records';
+         log_trace( "CSV:\n" . $csv );
 
-#         my $columns = [
-#             "borrowernumber",     "surname",
-#             "firstname",          "cardnumber",
-#             "address",            "address2",
-#             "city",               "zipcode",
-#             "state",              "phone",
-#             "mobile",             "Alt Ph 1",
-#             "Alt Ph 2",           "branchcode",
-#             "Adult or Child",     "dateofbirth",
-#             "Most recent charge", "Amt_In_Range",
-#             "Total_Due",          "Total_Plus_Fee",
-#             "email"
-#         ];
+         $archive_dir ||= "/tmp";
 
-#         ## Email the results
-#         my $csv =
-#             @ums_new_submissions
-#             ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
-#             : 'No qualifying records';
-#         log_trace( "CSV:\n" . $csv );
+         my $filename  = "ums-new-submissions-$params->{date}.csv";
+         my $file_path = "$archive_dir/$filename";
 
-#         $archive_dir ||= "/tmp";
+         write_file( $file_path, $csv );
+         log_info("ARCHIVE WRITTEN TO $file_path");
 
-#         my $filename  = "ums-new-submissions-$params->{date}.csv";
-#         my $file_path = "$archive_dir/$filename";
+         my $email_to   = $self->retrieve_data('unique_email');
+         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+         my $email_cc   = $self->retrieve_data('cc_email');
 
-#         write_file( $file_path, $csv );
-#         log_info("ARCHIVE WRITTEN TO $file_path");
+         $info = {
+             count     => scalar @ums_new_submissions,
+             filename  => $filename,
+             file_path => $file_path,
+         };
 
-#         my $email_to   = $self->retrieve_data('unique_email');
-#         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-#         my $email_cc   = $self->retrieve_data('cc_email');
+         foreach my $email_address ( $email_to, $email_cc ) {
+             next unless $email_address;
+             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
 
-#         $info = {
-#             count     => scalar @ums_new_submissions,
-#             filename  => $filename,
-#             file_path => $file_path,
-#         };
+             $info->{email_to}   = $email_address;
+             $info->{email_from} = $email_from;
 
-#         foreach my $email_address ( $email_to, $email_cc ) {
-#             next unless $email_address;
-#             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
+             my $p = {
+                 to      => $email_address,
+                 from    => $email_from,
+                 subject => "UMS New Submissions for " . C4::Context->preference('LibraryName'),
+             };
+             my $email = Koha::Email->new($p);
 
-#             $info->{email_to}   = $email_address;
-#             $info->{email_from} = $email_from;
+             $email->attach(
+                 Encode::encode_utf8($csv),
+                 content_type => "text/csv",
+                 filename     => "ums-new-submissions-$params->{date}.csv",
+                 name         => "ums-new-submissions-$params->{date}.csv",
+                 disposition  => 'attachment',
+             );
 
-#             my $p = {
-#                 to      => $email_address,
-#                 from    => $email_from,
-#                 subject => "UMS New Submissions for " . C4::Context->preference('LibraryName'),
-#             };
-#             my $email = Koha::Email->new($p);
+             my $smtp_server = Koha::SMTP::Servers->get_default;
+             $email->transport( $smtp_server->transport );
 
-#             $email->attach(
-#                 Encode::encode_utf8($csv),
-#                 content_type => "text/csv",
-#                 filename     => "ums-new-submissions-$params->{date}.csv",
-#                 name         => "ums-new-submissions-$params->{date}.csv",
-#                 disposition  => 'attachment',
-#             );
+             try {
+                 $email->send_or_die unless $no_email;
+             } catch {
+                 $info->{email_failed}  = 'true';
+                 $info->{email_address} = $email_address;
+                 $info->{email_error}   = $_;
 
-#             my $smtp_server = Koha::SMTP::Servers->get_default;
-#             $email->transport( $smtp_server->transport );
+                 logaction(
+                     'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
+                     $json->encode($info), 'cron'
+                 );
 
-#             try {
-#                 $email->send_or_die unless $no_email;
-#             } catch {
-#                 $info->{email_failed}  = 'true';
-#                 $info->{email_address} = $email_address;
-#                 $info->{email_error}   = $_;
+                 die "Mail not sent: $_";
+             };
+         }
 
-#                 logaction(
-#                     'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
-#                     $json->encode($info), 'cron'
-#                 );
+         logaction(
+             'GENTLENUDGE',        'NEW_SUBMISSIONS', undef,
+             $json->encode($info), 'cron'
+         );
+     } catch {
+         if ( $_->isa('Koha::Exception') ) {
+             $info->{error} = $_->error . "\n" . $_->trace->as_string;
+         } else {
+             $info->{error} = $_;
+         }
 
-#                 die "Mail not sent: $_";
-#             };
-#         }
-
-#         logaction(
-#             'GENTLENUDGE',        'NEW_SUBMISSIONS', undef,
-#             $json->encode($info), 'cron'
-#         );
-#     } catch {
-#         if ( $_->isa('Koha::Exception') ) {
-#             $info->{error} = $_->error . "\n" . $_->trace->as_string;
-#         } else {
-#             $info->{error} = $_;
-#         }
-
-#         logaction(
-#             'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
-#             $json->encode($info), 'cron'
-#         );
-#         die "error in run_update_report_and_clear_paid: " . $info->{error};
-#     };
-# }
+         logaction(
+             'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
+             $json->encode($info), 'cron'
+         );
+         die "error in run_update_report_and_clear_paid: " . $info->{error};
+     };
+ }
 
 # sub run_update_report_and_clear_paid {
 #     my ( $self, $params ) = @_;
@@ -990,57 +990,6 @@ sub prune_old_logs {
     }
     closedir $dh;
 }
-
-# sub get_all_configs {
-#     my @libraries =  Koha::UMSConfigs->find( { config_type => "library"} );
-#     my @groups = Koha::UMSConfigs->find( { config_type => "group"} );
-#     my @global = Koha::UMSConfigs->find( { config_type => "global"} );
-
-# return (@libraries,@groups,$global);
-
-#     }
-
-
-
-# sub get_today_configs {
-#     my (@libraries,@groups,@global) = @_;
-#     my @today_libraries;
-#     my @today_groups;
-#     my @today_global;
-# }
-    #get all branches (and their groups?)
-    #get all groups & (their branches?)
-    #get all branch configs
-    #get all group configs
-    #get global config
-    #each branch config
-        #enabled?
-            #no  - remove from all branches/the branches in groups  (log all skips together)
-            #yes - 
-                #day_to_run match?
-                    #no  - remove from all branches/the branches in groups (log day doesn't match)
-                    #yes - Build and run the report, save the file and send if needed
-                        #save/send report, remove from all branches/the branches in groups- done
-    #each group config
-        #enabled?
-            #no  - remove from groups and remove branches from all branches
-            #yes - 
-                #day_to_run match?
-                    #no  - remove from groups and remove branches from all branches
-                    #yes - build and run report minus branches with their own config
-                        #save/send report, remove from all branches/the branches in groups- done
-    #global config
-        #Are there any branches/groups left?
-            #no  - done
-            #yes - 
-                #enabled?
-                    #no  - done
-                    #yes - 
-                #day_to_run match?
-                    #no  - remove from all branches/the branches in groups (log day doesn't match)
-                    #yes - Build and run the report, save the file and send if needed
-                        #save/send report, remove from all branches/the branches in groups- done
-
 
 sub _log {
     warn "warn log";

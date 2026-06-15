@@ -7,6 +7,7 @@ use Koha::Library::Group;
 use Koha::Libraries;
 use UMS::GentleNudge::Config;
 use base qw(Koha::Objects);
+use Koha::DateUtils qw(dt_from_string);
 
 =head1 NAME
 
