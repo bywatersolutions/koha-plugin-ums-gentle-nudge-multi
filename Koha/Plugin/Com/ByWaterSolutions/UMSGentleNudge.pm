@@ -184,6 +184,14 @@ sub configure {
     $self->output_html( $template->output() );
  }
 
+sub admin {
+    my ( $self ) = @_;
+    my $cgi          = $self->{'cgi'};
+    my $template     = $self->get_template( { file => 'templates/tool.tt' } );
+    my @today = UMS::GentleNudge::Configs->today_enabled_configs();
+    $template->param( @today );
+
+}
 # =head3 intranet_js
 
 # Get the configure.js file
@@ -211,117 +219,142 @@ sub static_routes {
 
 # =cut
 
-#  sub cronjob_nightly {
-#      my ( $self, $p ) = @_;
+=head3 cronjob_nightly
 
-#      $self->prune_old_logs();
+=cut
 
-#      # Clear up archives older than 30 days
-#      if ($archive_dir) {
-#          if ( -d $archive_dir ) {
-#              my $dt = dt_from_string();
-#              $dt->subtract( days => 30 );
-#              my $age_threshold = $dt->ymd;
-#              opendir my $dir, $archive_dir or die "Cannot open directory: $!";
-#              my @files = readdir $dir;
-#             closedir $dir;
+ sub cronjob_nightly {
+    my ( $self, $p ) = @_;
+    my $branch_query
+    my $global_enabled = $self->retrieve_data('global_enabled');
+    my $global_fine_branch = $self->retrieve_data('global_fine_branch');
+    unless $global_enabled = '0';
+    if $global_fine_branch = 'patron' {
+        $branch_query = "AND borrower.homebranch "
+    }
+    if $global_fine_branch = 'item_home' {
+        my $item_join = " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber"
+        $branch_query = "AND items.homebranch "
+    }
+    if $global_fine_branch = 'item_checkout' {
+        $branch_query = "AND accountlines.branchcode "
+    }
+    $self->prune_old_logs();
 
-#              my $thresholds = {
-#                  new_submissions => "ums-new-submissions-$age_threshold.csv",
-#                  sync            => "ums-sync-$age_threshold.csv",
-#                  updates         => "ums-updates-$age_threshold.csv",
-#              };
+    foreach my $config (@todays_configs) {
+        my $config_code = "global";
+        my $config_type = "global";
+        my $config_branch_where;
+        my $config_branch_helper;
+        if ($config->{type => 'group'}){
+            $config_code = $config->{config_group};
+            $config_type = "group";
+        }
+        if ($config->{type => 'library'}){
+            $config_code = $config->{branch};
+            $config_type = "library";
+        }
 
-#              foreach my $f (@files) {
-#                  next unless $f =~ /csv$/;
+        # Clear up archives older than 30 days
+        if ($archive_dir) {
+            if ( -d $archive_dir ) {
+                my $dt = dt_from_string();
+                $dt->subtract( days => 30 );
+                my $age_threshold = $dt->ymd;
+                opendir my $dir, $archive_dir or die "Cannot open directory: $!";
+                my @files = readdir $dir;
+                closedir $dir;
 
-#                  my $threshold_filename =
-#                        $f =~ /^ums-new-submissions/ ? $thresholds->{new_submissions}
-#                      : $f =~ /^ums-sync/            ? $thresholds->{sync}
-#                      : $f =~ /^ums-updates/         ? $thresholds->{updates}
-#                      :                                undef;
+                my $thresholds = {
+                    new_submissions => "$config_code-ums-new-submissions-$age_threshold.csv",
+                    sync    => "$config_code-ums-sync-$age_threshold.csv",
+                    updates     => "$config_code-ums-updates-$age_threshold.csv",
+                  };
 
-#                  next unless $threshold_filename;
+                foreach my $f (@files) {
+                    next unless $f =~ /csv$/;
 
-#                  if ( $f lt $threshold_filename ) {
-#                      unlink( $archive_dir . "/" . $f );
-#                  }
-#              }
-#          } else {
-#              make_path $archive_dir or die "Failed to create path: $archive_dir";
-#          }
-#      }
+                    my $threshold_filename =
+                    $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
+                    : $f =~ /^$config_code-ums-sync/    ? $thresholds->{sync}
+                    : $f =~ /^$config_code-ums-updates/     ? $thresholds->{updates}
+                    :    undef;
 
-#       get_global();
-#       my $run_weeklys;
-#       my $weekly_branches;
-#       my @today_enabled = Koha::UMSConfigs->search( { enabled => 1 }, { day_of_week => (localtime)[6] } );
-#       foreach my $config_today in @today_enabled {
-#           if $config_today.config_type == 'library' {
-#             $weekly_branches == ''
-#           } else if $config_today.config_type == 'group' {
+                    next unless $threshold_filename;
 
-#           } else {
+                    if ( $f lt $threshold_filename ) {
+                        unlink( $archive_dir . "/" . $f );
+                    }
+                }
+              } else {
+                make_path $archive_dir or die "Failed to create path: $archive_dir";
+              }
+        }
+        if $config_type = "library" {
+            $config_branch_helper = "$branch_query= $config_code";
+        }
+        if $config_type = "group" {
+            $config_branch_helper = "$branch_query IN (
+                SELECT library_groups.branchcode 
+                FROM library_groups 
+                WHERE library_groups.parent_id  = $config_group 
+                AND library_groups.branchcode NOT IN 
+                    (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch 
+                    FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
+                    WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch IS NOT NULL)
+)"
+        }
+        if $config_type = "global"{
+            $config_branch_helper = "$branch_query IN (
+                SELECT branches.branchcode 
+                FROM branches 
+                WHERE branches.branchcode NOT IN
+                    (SELECT branch 
+                    FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
+                    WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch IS NOT NULL)
+                AND branches.branchcode NOT IN
+                    (SELECT branchcode 
+                    FROM library_groups
+                    WHERE library_groups.parent_id IN 
+                        (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group 
+                        FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
+                        WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL))"
+        }
+    my $params = { send_sync_report => $p->{send_sync_report} };
+    $params->{require_lost_fee}    = $config->{require_lost};
+    $params->{fees_threshold}    = $config->{threshold};
+    $params->{processing_fee}    = $config->{processing_fee};
+    $params->{collections_flag}    = $config->{collections_flag};
+    $params->{fees_newer}     = $config->{fees_newer};
+    $params->{fees_older}     = $config->{fees_older};
+    $params->{clear_below}     = $config->{clear_below};
+    $params->{restriction}     = $config->{restriction};
+    $params->{remove_restriction}    = $config->{remove_restriction};
+    $params->{remove_minors}    = $config->{remove_minors};
+    $params->{clear_threshold}     = $config->{clear_threshold};
+    $params->{ignore_before} = $config->{ignore_before};
+    $params->{umsconfig_type}    = $config_type;
+    # fees_newer should be the large of the two numbers
+    ( $params->{fees_newer}, $params->{fees_older} ) =
+    ( $params->{fees_older}, $params->{fees_newer} )
+    if $params->{fees_newer} < $params->{fees_older}; {
+       # warn?
+    }
 
-#           }
-          
-#       }
+    my $today = dt_from_string();
+    $params->{date} = $today->ymd();
+    ### Process new submissions
+    if ( $run_weeklys && !$params->{send_sync_report} ) {
+    $self->run_submissions_report($params);
+    } elsif ( !$params->{send_sync_report} ) {
+    log_info("NOT THE DOW TO RUN SUBMISSIONS");
+    }
 
-      #get today's run (day matches + enabled)
-      #foreach library config, run
-      #foreach group config, run but exclude any that are seperately config'd
-      #if default is today, run any that don't have other config
-#      }
+    ### Process UMS Update Report
+    $self->run_update_report_and_clear_paid($params, $config_branch_helper);
+        } #/foreach config
 
-
-
-#      my $run_on_dow = $self->retrieve_data('run_on_dow');
-#      unless ( (localtime)[6] == $run_on_dow ) {
-#          log_info( "Run on Day of Week $run_on_dow does not match current day of week " . (localtime)[6] );
-#      } else {
-#          $run_weeklys = 1;
-#      }
-
-#     my $params = { send_sync_report => $p->{send_sync_report} };
-
-#     $params->{require_lost_fee}                = $self->retrieve_data('require_lost_fee');
-#     $params->{fees_threshold}                  = $self->retrieve_data('fees_threshold');
-#     $params->{processing_fee}                  = $self->retrieve_data('processing_fee');
-#     $params->{collections_flag}                = $self->retrieve_data('collections_flag');
-#     $params->{fees_starting_age}               = $self->retrieve_data('fees_starting_age');
-#     $params->{fees_ending_age}                 = $self->retrieve_data('fees_ending_age');
-#     $params->{auto_clear_paid}                 = $self->retrieve_data('auto_clear_paid');
-#     $params->{add_restriction}                 = $self->retrieve_data('add_restriction');
-#     $params->{remove_restriction}              = $self->retrieve_data('remove_restriction');
-#     $params->{age_limitation}                  = $self->retrieve_data('age_limitation');
-#     $params->{auto_clear_paid_threshold}       = $self->retrieve_data('auto_clear_paid_threshold');
-#     $params->{fees_created_before_date_filter} = $self->retrieve_data('fees_created_before_date_filter');
-#     $params->{umsconfig_type}                  = $self->retrieve_data('umsconfig_type');
-#     # Starting age should be the large of the two numbers
-#     ( $params->{fees_starting_age}, $params->{fees_ending_age} ) =
-#         ( $params->{fees_ending_age}, $params->{fees_starting_age} )
-#         if $params->{fees_starting_age} < $params->{fees_ending_age};
-
-#     $params->{flag_type} =
-#         $params->{collections_flag} eq 'sort1' || $params->{collections_flag} eq 'sort2'
-#         ? 'borrower_field'
-#         : 'attribute_field';
-
-#     my @categorycodes = split( /,/, $self->retrieve_data('categorycodes') );
-#     $params->{categorycodes} = \@categorycodes;
-
-#     my $today = dt_from_string();
-#     $params->{date} = $today->ymd();
-#     ### Process new submissions
-#     if ( $run_weeklys && !$params->{send_sync_report} ) {
-#         $self->run_submissions_report($params);
-#     } elsif ( !$params->{send_sync_report} ) {
-#         log_info("NOT THE DOW TO RUN SUBMISSIONS");
-#     }
-
-#     ### Process UMS Update Report
-#     $self->run_update_report_and_clear_paid($params);
-# }
+ } # /cronjob_nightly
 
 # sub run_submissions_report {
 #     my ( $self, $params ) = @_;
