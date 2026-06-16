@@ -13,14 +13,36 @@
     <div class="alert alert-danger" role="alert"><h2>Beta! In testing for user experience testing only right now.</h2>
         <h3>Known UI issues</h3>
         <ul>
-            <li>logging failures. May need a seperate table for logging instead of using action log</li>
-            <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a>. It will not show as an option if there are no SFTP instances present.</li>
-            <li>Report option, see the reports that were sent before they're purged?</li>
-            <ul><li>Once we can store reports in Koha, save the report and link to it?</li></ul>
-            <li>Disable/remove libraries from list of options when they've already been used.</li>
-            <li>Add option to library groups to limit for ums?</li>
-            <li>@todayconfigs helper</li>
-            <li>finish the subs for the nightly crons</li>
+            <li>Notes & Known Issues</li>
+            <ul>
+                <li>SFTP will use <a href="/cgi-bin/koha/admin/smtp_servers.pl">the built in system</a>. It will not show as an option if there are no SFTP instances present.</li>
+            </ul>
+            <br/>
+            <li>To do</li>
+            <ul>
+                <li>finish the subs for the nightly crons</li>
+                <li>Sync</li>
+                <ul>
+                    <li>load sync modal</li>
+                    <li>Finish subs to make it happen</li>
+                    <li>Add tests</li>
+                </ul>
+                <li>Confirm feature parity</li>
+                <ul>
+                    <li>Logging?</li>
+                </ul>
+            </ul>
+            <br/>
+            <li>Nice in the future</li>
+            <ul>
+                <li>logging failures. May need a seperate table for logging instead of using action log</li>
+                <li>Add option to library groups to limit for ums?</li>
+                <li>Report option, see the reports that were sent before they're purged?</li>
+                <ul>
+                    <li>Once we can store reports in Koha, save the report and link to it?</li>
+                </ul>
+                <li>Disable/remove libraries from list of options when they've already been used.</li>
+            </ul>
           </ul>
       </div> <!-- /alert -->
   </div> <!-- /message -->
@@ -121,6 +143,7 @@
                                     <div class="alert alert-danger" role="alert"><h2>Global Settings</h2>
                                         <p>These settings impact ALL configurations. </p>
                                     </div> <!-- /alert -->
+                                   <div> <button data-bs-toggle="modal" data-bs-target="#UMSSync" data-bs-mode="Sync" id="syncconfig" class= "btn btn-primary sync-config"><i class="fa fa-rotate"></i> Sync all enabled</button> <p><br/></p></div>
                                 </div> <!-- /message -->
                                 <form  id="global_form" method="post" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
@@ -492,7 +515,43 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->
         </form><!-- /#deleteForm -->
-      </div><!-- /#UMSDeleteModal -->
+      </div><!-- /#UMSDeleteModal --> 
+    <!-- Sync Configuration Modal -->
+    <div class="modal fade modal-lg" id="UMSSyncModal" aria-labelledby="UMSSyncLabel" aria-hidden="true">
+        <form  id="SyncForm" method="sync" class="form">
+            <input type="hidden" name="class" value="[% CLASS %]"/>
+            <input type="hidden" name="method" value="[% METHOD %]"/>
+            <input type="hidden" name="action" id="modal_button" value="sync_report"/>
+            <input type="hidden" class="modal-type" name="type"/>
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="sync-modal-label">Sync Configuration</h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div><!-- /.modal-header -->
+                    <div class="modal-body">
+                        <div class="form-group" >
+                            <p>Are you sure you want to sync the configuration "<span id="sync-config-name"></span>"?</p>
+                            <p>This will send an updated report for any impacted branches.</p>
+                          </div><!-- /form-group -->
+                      </div><!-- /.modal-body -->
+                    <div class="modal-footer">
+                        <input type="hidden" id="sync-config-id">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-rotate"></i> Sync configuration
+                          </button>
+                        <fieldset class="action">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fa fa-times"></i> Cancel
+                            </button>
+                            <input type="hidden" name="op" value="sync-report" />
+                            [% INCLUDE 'csrf-token.inc' %]
+                          </fieldset>
+                    </div><!-- /.modal-footer -->
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </form><!-- /#syncForm -->
+      </div><!-- /#UMSSyncModal -->
       </div><!--end panel div-->
   </body>
         [% END %]<!--wrapper-->
@@ -504,7 +563,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
             $(document).ready(function() {
                 var UMSDeleteModal = document.getElementById('UMSDeleteModal');
                 var UMSConfigModal = document.getElementById('UMSConfigModal');
-                
+                var UMSSyncModal   = document.getElementById('UMSSyncModal');
+
             UMSDeleteModal.addEventListener('show.bs.modal', function (event){
                 var button = event.relatedTarget;
                 delete_id = button.getAttribute('data-delete-id');
@@ -514,6 +574,17 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 var deleteName = UMSDeleteModal.querySelector('#delete-config-name');
                 deleteName.textContent = delete_name;
             });
+
+            UMSSyncModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                sync_id = button.getAttribute('data-sync-id');
+                sync_name = button.getAttribute('data-sync-name');
+                var modalTitle = UMSSyncModal.querySelector('.modal-title');
+                modalTitle.textContent = 'Sync configuration for ' + delete_name;
+                var syncName = UMSSyncModal.querySelector('#sync-config-name');
+                syncName.textContent = sync_name;
+            });
+
             UMSConfigModal.addEventListener('show.bs.modal', function (event){
                 console.log('modellistener');
                 //Button that triggered the modal
@@ -522,6 +593,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 configtype = button.getAttribute('data-bs-type');
                 umsmode = button.getAttribute('data-bs-mode');
                 ums_id = button.getAttribute('data-config-id');
+                ums_tab = button.getAttribute('data-bs-tab');
                 //update the modal content
                 //These get information from the button that was clicked
                 var modalTitle = UMSConfigModal.querySelector('.modal-title');
@@ -637,11 +709,19 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                 let configId = $(this).data('data-config-id');
                 openConfigModal();
             });
+
+             $('#syncconfig').on('click', function() {
+                let configId = $(this).data('data-config-id');
+                openSyncModal();
+            });
+
             // Form submissions
             $('#config_form').on('submit', function(e) {
                 e.preventDefault();
                 saveConfig();
                 loadAll();
+                loadGroups();
+                loadBranches();
             });
             // Form submissions
             $('#deleteForm').on('submit', function(e) {
@@ -711,12 +791,14 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="allTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSSync" data-bs-sync_name="' +row["config_name"] +'"  data-bs-mode="Sync" id="syncconfig" class= "btn btn-xs btn-primary sync-config" data-sync-id="' + data+ '"><i class="fa fa-rotate"></i> Sync </button>';
+                                } else {
+                                 return '<button  type="button"data-bs-tab="allTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSSync"  data-bs-sync_name="' +row["config_name"] +'" data-bs-mode="Sync" id="syncconfig" class= "btn btn-xs btn-primary sync-config" data-sync-id="' + data+ '"><i class="fa fa-rotate"></i> Sync </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
                             }
                         },
-
-                        title: "Actions"}]
+                        title: "Actions"
+                        }
+                    ]
             });
                 }
 
@@ -774,8 +856,9 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="groupTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSSync" data-bs-mode="Sync" id="syncconfig" class= "btn btn-xs btn-primary sync-config" data-sync-id="' + data+ '"><i class="fa fa-rotate"></i> Sync </button>';
+                            } else {
+                                 return '<button type="button" data-bs-tab="groupTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSSync" data-bs-mode="Sync" id="syncconfig" class= "btn btn-xs btn-primary sync-config" data-sync-id="' + data+ '"><i class="fa fa-rotate"></i> Sync </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
                             }
                         },
 
@@ -836,8 +919,9 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                         {data: "config_id",
                         render: function (data, type, row, meta) {
                             if (data === 1) 
-                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary " edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button>';
-                            } else {return '<button data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
+                                {return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSSync" data-bs-mode="Sync" id="syncconfig" class= "btn btn-xs btn-primary sync-config" data-sync-id="' + data+ '"><i class="fa fa-rotate"></i> Sync </button>';
+                            } else {
+                                 return '<button type="button" data-bs-tab="libraryTab" data-bs-toggle="modal" data-bs-target="#UMSConfigModal" data-bs-mode="Edit" id ="editconfig" data-bs-type="' +row["config_type"] + '" class="btn btn-xs btn-primary edit-config" data-config-id="' + data + '"><i class="fa fa-edit"></i> Edit </button> <button data-bs-toggle="modal" data-bs-target="#UMSSync" data-bs-mode="Sync" id="syncconfig" class= "btn btn-xs btn-primary sync-config" data-sync-id="' + data+ '"><i class="fa fa-rotate"></i> Sync </button> <button data-bs-toggle="modal" data-bs-target="#UMSDeleteModal" data-bs-mode="Delete" id="deleteconfig" class= "btn btn-xs btn-primary delete-config" data-delete-name="' +row["config_name"] +'" data-delete-id="' + data+ '"><i class="fa fa-trash"></i> Delete </button>';
                             }
                         },
 

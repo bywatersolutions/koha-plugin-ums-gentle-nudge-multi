@@ -171,15 +171,18 @@ sub configure {
                         global_fine_branch => scalar $cgi->param('global_fine_branch_selector'),
                     }
                 );
-        } else {
-            warn 'in else';
-            $self->store_data(
-                {
-                    config_id => scalar $cgi->param('config_id'),
-                }
-            );
+            } elsif ( $action_type eq 'sync_report' ) {
+                warn 'sync_report';
+            } else {
+                warn 'in else';
+                $self->store_data(
+                    {
+                        config_id => scalar $cgi->param('config_id'),
+                    }
+                );
+            }
         }
-    }}
+    }
     $template->param( groups => $groups, debit_types => \@debit_types, servers => @servers, global_enabled => $self->retrieve_data('global_enabled'), global_fine_branch => $self->retrieve_data('global_fine_branch') );
     $self->output_html( $template->output() );
  }
