@@ -356,6 +356,14 @@ warn "in prune";
      $params->{umsconfig_type}    = $config_type;
      $params->{collection_flag_type} = $collections_flag_type;
      $params->{exemptions_flag_type} = $exemptions_flag_type;
+
+     my @patron_cat_codes = map { $_->categorycode } $config->patron_categories->as_list;
+     $params->{categorycodes} = \@patron_cat_codes;
+
+     my @debit_codes = map { $_->code } $config->debit_types->as_list;
+     $params->{debit_type_codes} = \@debit_codes;
+
+     $params->{config_debit_type} = $config->config_debit_type;
      #fees_newer should be the large of the two numbers
     #  ( $params->{fees_newer}, $params->{fees_older} ) =
     #  ( $params->{fees_older}, $params->{fees_newer} )
@@ -450,6 +458,13 @@ warn "in prune";
                AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
              };
 
+         if ( @{ $params->{debit_type_codes} } ) {
+             my $codes = join( ',', map { $dbh->quote($_) } @{ $params->{debit_type_codes} } );
+             $ums_submission_query .= qq{
+                 AND accountlines.debit_type_code IN ( $codes )
+             };
+         }
+
          $ums_submission_query .= qq{
                AND lost_fees_count.lost_fees_count > 0
              } if $params->{require_lost_fee} && $params->{require_lost_fee} eq 'yes';
@@ -536,7 +551,7 @@ warn "in prune";
                      amount      => $params->{processing_fee},
                      description => "UMS Processing Fee",
                      interface   => 'cron',
-                     type        => 'MANUAL',
+                     type        => $params->{config_debit_type},
                  }
              ) if $processing_fee && $processing_fee > 0;
 
