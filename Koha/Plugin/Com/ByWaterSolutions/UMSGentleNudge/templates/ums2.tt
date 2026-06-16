@@ -585,14 +585,15 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     method: 'GET',
                     headers: { 'x-koha-embed': 'debit_types,patron_categories' },
                     success: function(config) {
-
+                         
+console.log(config.patron_categories.map(element => element.patron_category_id));
                         if (config.config_type == "library") {
                             document.getElementById("umsconfig_id_select").value = config.branch;
                         }
-                        if (config.config_type== "group") {
+                        if (config.config_type == "group") {
                             document.getElementById("umsconfig_id_select").value = config.config_group;
                         }
-                        if (config.config_type== "global") {
+                        if (config.config_type == "global") {
                             document.getElementById("umsconfig_id_select").value = 'global';
                         }
                         document.getElementById("umsconfig_id_select").setAttribute("disabled","disabled");
@@ -607,8 +608,9 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("fees_starting_age").value = config.fees_newer;
                         document.getElementById("fees_ending_age").value = config.fees_older;
                         document.getElementById("fees_created_before_date_filter").value = config.ignore_before;
-                        document.getElementById("umsconfig_categories").value = (config.patron_categories || []).map(c => c.categorycode).join(',');
+                        $('#umsconfig_categories').val((config.patron_categories).map(element => element.patron_category_id));
                         $('#umsconfig_categories').trigger('change');
+                        $('#umsconfig_debit_types').val((config.debit_types).map(element => element.code));
                         $('#umsconfig_debit_types').trigger('change');
                         document.getElementById("processing_fee").value = config.processing_fee;
                         document.getElementById("add_restriction").value = config.restriction;
@@ -881,7 +883,9 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     config_type= "group";
                 };
                 const patron_categories_array = $('#umsconfig_categories').select2('data');
+                const debit_types_array = $('#umsconfig_debit_types').select2('data');
                 patron_categories = patron_categories_array.map(value => value.id);
+                debit_types = debit_types_array.map(value =>value.id);
                 //patron_categories = patron_categories.toString();
                 console.log (patron_categories);
                 var debit_type_select = document.getElementById('processing_debit');
@@ -903,6 +907,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     config_type: configtype,
                     config_name: ums_name,
                     day_of_week: $('#run_on_dow').val(),
+                    debit_type_codes: debit_types,
                     config_debit_type: debit_type,
                     enabled: $('#config-enabled').val(),
                     exemptions_flag: $('#exemption_flag').val(),
