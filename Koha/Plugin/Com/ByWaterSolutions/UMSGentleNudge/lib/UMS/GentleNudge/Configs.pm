@@ -81,32 +81,25 @@ sub check_for_existing_branch {
 }
 
 
-=head3 sub today_enabled_configs {
-    my ( $self ) = @_;
+=head3 today_enabled_configs
 
-    my $todays_configs = UMS::GentleNudge::Configs->search( { enabled => "1" }, { run_on_dow => });
-    if ( $todays_configs->count > 0 ) {
-        return { $todays_configs };
-    }
-    return { 'no_enabled_configs' => 1 };
-}
+    my $configs = UMS::GentleNudge::Configs->today_enabled_configs;
+
+Returns the resultset of configs that are enabled and scheduled for today.
 
 =cut
 
 sub today_enabled_configs {
-    my ( $self ) = @_;
-    my $today = dt_from_string->day_of_week();
-    warn $today;
-    my $todays_configs;
-    $todays_configs = UMS::GentleNudge::Configs->search({ run_on_dow => $today });
-    
-    if ( defined $todays_configs) {
-        warn "defined";
-        return { $todays_configs };
-    } else {
-        warn "undefined";
-    return { 'no_enabled_configs'};
-}
+    my ($self) = @_;
+
+    my $dow = dt_from_string->day_of_week;
+
+    return $self->search(
+        {
+            enabled     => 1,
+            day_of_week => $dow,
+        }
+    );
 }
 
 1;
