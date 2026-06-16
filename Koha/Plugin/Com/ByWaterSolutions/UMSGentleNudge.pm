@@ -188,7 +188,7 @@ sub admin {
     my ( $self ) = @_;
     my $cgi          = $self->{'cgi'};
     my $template     = $self->get_template( { file => 'templates/tool.tt' } );
-    my $configs = UMS::GentleNudge::Configs->today_enabled_configs;
+    my $configs = $self->configs->today_enabled_configs;
     $template->param( configs => $configs );
 
 }
@@ -242,7 +242,7 @@ warn "debug 1";
      } else {return 0;}
 #        $self->prune_old_logs();
 warn "in prune";
-        my $todays_configs = UMS::GentleNudge::Configs->today_enabled_configs;
+        my $todays_configs = $self->configs->today_enabled_configs;
         while ( my $config = $todays_configs->next ) {
             my $config_code = "global";
             my $config_type = "global";

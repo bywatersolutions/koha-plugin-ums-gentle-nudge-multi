@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-06-16
+
+### Fixed
+- `today_enabled_configs` now returns a proper `UMS::GentleNudge::Configs` resultset instead of a broken hashref
+- Fixed filtering: method now filters on both `enabled` and `day_of_week` (previously used non-existent `run_on_dow` column)
+- Callers use `$self->configs->today_enabled_configs` factory method instead of direct class calls
+- Fixed fat comma (`=>`) used instead of assignment (`=`) in cronjob caller
+- Fixed `foreach` on scalar replaced with proper `->next` iteration
+- Replaced hashref field access (`$config->{field}`) with object accessors (`$config->field`)
+- Removed stale `warn` statements from production code
+
+### Added
+- Unit tests for `today_enabled_configs` with deterministic date mocking
+
 ## [0.7.1] - 2026-06-08
 
 ### Fixed
