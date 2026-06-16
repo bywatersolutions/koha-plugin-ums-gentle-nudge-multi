@@ -7,7 +7,7 @@ use Koha::Library::Group;
 use Koha::Libraries;
 use UMS::GentleNudge::Config;
 use base qw(Koha::Objects);
-use Koha::DateUtils;
+use Koha::DateUtils qw(dt_from_string);
 
 =head1 NAME
 
@@ -95,10 +95,10 @@ sub check_for_existing_branch {
 
 sub today_enabled_configs {
     my ( $self ) = @_;
-    my $thisdate = (0, 1, 2, 3, 4, 5, 6)[(localtime)[6]];
+    my $today = dt_from_string->day_of_week();
+    warn $today;
     my $todays_configs;
-    warn $thisdate;
-    $todays_configs = UMS::GentleNudge::Configs->find();
+    $todays_configs = UMS::GentleNudge::Configs->search({ run_on_dow => $today });
     
     if ( defined $todays_configs) {
         warn "defined";
