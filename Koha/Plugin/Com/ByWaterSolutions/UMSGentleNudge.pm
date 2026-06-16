@@ -188,8 +188,8 @@ sub admin {
     my ( $self ) = @_;
     my $cgi          = $self->{'cgi'};
     my $template     = $self->get_template( { file => 'templates/tool.tt' } );
-    my @today = UMS::GentleNudge::Configs->today_enabled_configs();
-    $template->param( @today );
+    my $configs = UMS::GentleNudge::Configs->today_enabled_configs;
+    $template->param( configs => $configs );
 
 }
 # =head3 intranet_js
@@ -242,13 +242,13 @@ warn "debug 1";
      } else {return 0;}
 #        $self->prune_old_logs();
 warn "in prune";
-        my $todays_configs => UMS::GentleNudge::Configs->today_enabled_configs();
-        foreach my $config ($todays_configs) {
+        my $todays_configs = UMS::GentleNudge::Configs->today_enabled_configs;
+        while ( my $config = $todays_configs->next ) {
             my $config_code = "global";
             my $config_type = "global";
-            my $collections_flag = $config->{collections_flag};
+            my $collections_flag = $config->collections_flag;
             my $collections_flag_type = 'attribute';
-            my $exemptions_flag = $config->{exemptions_flag};
+            my $exemptions_flag = $config->exemptions_flag;
             my $exemptions_flag_type  = 'attribute';
             if ( $collections_flag eq 'sort1'){
                 $collections_flag_type = 'sort'
@@ -264,12 +264,12 @@ warn "in prune";
             }
             my $config_branch_where;
             my $config_branch_helper;
-           if ($config->{type => 'group'}){
-                $config_code = $config->{config_group};
+           if ($config->config_type eq 'group'){
+                $config_code = $config->config_group;
                 $config_type = "group";
             }
-            if ($config->{type => 'library'}){
-                $config_code = $config->{branch};
+            if ($config->config_type eq 'library'){
+                $config_code = $config->branch;
                 $config_type = "library";
             }
 
@@ -338,18 +338,18 @@ warn "in prune";
                 )"
          }
      my $params = { send_sync_report => $p->{send_sync_report} };
-     $params->{require_lost_fee}    = $config->{require_lost};
-     $params->{fees_threshold}    = $config->{threshold};
-     $params->{processing_fee}    = $config->{processing_fee} || 0 ;
-     $params->{collections_flag}    = $config->{collections_flag};
-     $params->{fees_newer}     = $config->{fees_newer};
-     $params->{fees_older}     = $config->{fees_older};
-     $params->{clear_below}     = $config->{clear_below};
-     $params->{restriction}     = $config->{restriction};
-     $params->{remove_restriction}    = $config->{remove_restriction};
-     $params->{remove_minors}    = $config->{remove_minors};
-     $params->{clear_threshold}     = $config->{clear_threshold};
-     $params->{ignore_before} = $config->{ignore_before};
+     $params->{require_lost_fee}    = $config->require_lost;
+     $params->{fees_threshold}    = $config->threshold;
+     $params->{processing_fee}    = $config->processing_fee || 0 ;
+     $params->{collections_flag}    = $config->collections_flag;
+     $params->{fees_newer}     = $config->fees_newer;
+     $params->{fees_older}     = $config->fees_older;
+     $params->{clear_below}     = $config->clear_below;
+     $params->{restriction}     = $config->restriction;
+     $params->{remove_restriction}    = $config->remove_restriction;
+     $params->{remove_minors}    = $config->remove_minors;
+     $params->{clear_threshold}     = $config->clear_threshold;
+     $params->{ignore_before} = $config->ignore_before;
      $params->{umsconfig_type}    = $config_type;
      $params->{collection_flag_type} = $collections_flag_type;
      $params->{exemptions_flag_type} = $exemptions_flag_type;
