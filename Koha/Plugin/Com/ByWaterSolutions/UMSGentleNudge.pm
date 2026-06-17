@@ -13,7 +13,9 @@ use C4::Installer qw(TableExists);
 use C4::Log       qw(logaction);
 use C4::Templates;
 use Koha::Account::DebitTypes;
+use Koha::CSV;
 use Koha::DateUtils qw(dt_from_string);
+use Koha::File::Transports;
 use Koha::Libraries;
 use Koha::Library::Groups;
 use Koha::Patron::Attribute::Types;
@@ -27,7 +29,6 @@ use File::Path qw( make_path );
 use JSON;
 use Module::Metadata;
 use Net::SFTP::Foreign;
-use Text::CSV;
 use Try::Tiny;
 use POSIX qw( strftime );
 
@@ -234,8 +235,9 @@ sub static_routes {
     my $global_fine_branch = $self->retrieve_data('global_fine_branch');
 warn "debug 1";
      if ($global_enabled == '1') {
+        warn "enabled";
         if ($global_fine_branch eq 'patron') {
-            $branch_query = "AND borrower.homebranch "};
+            $branch_query = "AND borrowers.branchcode "};
         if ($global_fine_branch eq 'item_home') {
             my $item_join = " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber $branch_query = AND items.homebranch "
      };
@@ -247,24 +249,35 @@ warn "debug 1";
 warn "in prune";
         my $todays_configs = $self->configs->today_enabled_configs;
         while ( my $config = $todays_configs->next ) {
+            warn $config->config_id;
             my $config_code = "global";
             my $config_type = "global";
-            my $collections_flag = $config->collections_flag;
+            my $collections_flag = $config->collections_flag || undef ;
             my $collections_flag_type = 'attribute';
-            my $exemptions_flag = $config->exemptions_flag;
+            my $exemptions_flag = $config->exemptions_flag || undef ;
             my $exemptions_flag_type  = 'attribute';
-            if ( $collections_flag eq 'sort1'){
-                $collections_flag_type = 'sort'
+  
+            if ($collections_flag) {
+                if ( $collections_flag eq 'sort1'){
+                    $collections_flag_type = 'sort'
+                }
             }
-            if ( $collections_flag eq 'sort2'){
-                $collections_flag_type = 'sort'
+            if ($collections_flag) {
+                if ( $collections_flag eq 'sort2'){
+                    $collections_flag_type = 'sort'
+                }
             }
-            if ( $exemptions_flag eq 'sort1'){
-                $exemptions_flag_type = 'sort'
+            if ($exemptions_flag) {
+                if ($exemptions_flag eq 'sort1'){
+                    $exemptions_flag_type = 'sort'
+                }
             }
-            if ( $exemptions_flag eq 'sort2'){
-                $exemptions_flag_type = 'sort'
+            if ($exemptions_flag) {
+                if ( $exemptions_flag eq 'sort2'){
+                    $exemptions_flag_type = 'sort'
+                }
             }
+                                  warn $exemptions_flag_type;
             my $config_branch_where;
             my $config_branch_helper;
            if ($config->config_type eq 'group'){
@@ -313,7 +326,7 @@ warn "in prune";
             }
         }
         if ($config_type eq "library") {
-            $config_branch_helper = "$branch_query $config_code";
+            $config_branch_helper = "$branch_query ='$config_code'";
         }
         if ($config_type eq "group") {
               $config_branch_helper = $branch_query . "IN (SELECT library_groups.branchcode 
@@ -353,9 +366,19 @@ warn "in prune";
      $params->{remove_minors}    = $config->remove_minors;
      $params->{clear_threshold}     = $config->clear_threshold;
      $params->{ignore_before} = $config->ignore_before;
+     $params->{unique_email} = $config->unique_email;
+     $params->{additional_email} = $config->additional_email;
+     $params->{config_name} = $config->config_name;
      $params->{umsconfig_type}    = $config_type;
      $params->{collection_flag_type} = $collections_flag_type;
      $params->{exemptions_flag_type} = $exemptions_flag_type;
+     $params->{file_id} = $config_code;
+     $params->{config_code} = $config_code;
+     $params->{config_branch_helper} = $config_branch_helper;
+     my $today = dt_from_string();
+     warn $today;
+     $params->{date} = $today->ymd();
+     warn $params->{date};
 
      my @patron_cat_codes = map { $_->categorycode } $config->patron_categories->as_list;
      $params->{categorycodes} = \@patron_cat_codes;
@@ -371,8 +394,6 @@ warn "in prune";
 # #        # warn?
 #      }
 
-     my $today = dt_from_string();
-     $params->{date} = $today->ymd();
     #  ### Process new submissions
     #  if ( $run_weeklys && !$params->{send_sync_report} ) {
       $self->run_submissions_report($params);
@@ -387,275 +408,278 @@ warn "in prune";
   } # /cronjob_nightly
 
  sub run_submissions_report {
-     my ( $self, $params ) = @_;
-     my $remove_minors = $params->{remove_minors};
+    my ( $self, $params ) = @_;
+    my $remove_minors = $params->{remove_minors};
+warn "params " . Data::Dumper::Dumper($params);
+    my $dbh = C4::Context->dbh;
+    $dbh->{RaiseError} = 1;    # die if a query has problems
 
-     my $dbh = C4::Context->dbh;
-     $dbh->{RaiseError} = 1;    # die if a query has problems
-
-     my $info = {};
-     try {
-         my $sth;
+    my $info = {};
+    try {
+        my $sth;
 
         my $ums_submission_query = q{
-     SELECT
-         };
-         $ums_submission_query .= q{
-     MAX(attribute),
-         } if $params->{collections_flag_type} eq 'attribute_field';
+            SELECT
+        };
+        $ums_submission_query .= qq{
+            MAX(borrower_attributes.attribute) AS "collections_flag",
+         } if $params->{collection_flag_type} eq 'attribute';
 
-         $ums_submission_query .= q{
-     MAX(borrowers.cardnumber)         AS "cardnumber",
-     MAX(borrowers.borrowernumber)     AS "borrowernumber",
-     MAX(borrowers.surname)            AS "surname",
-     MAX(borrowers.firstname)          AS "firstname",
-     MAX(borrowers.address)            AS "address",
-     MAX(borrowers.address2)           AS "address2",
-     MAX(borrowers.city)               AS "city",
-     MAX(borrowers.zipcode)            AS "zipcode",
-     MAX(borrowers.state)              AS "state",
-     MAX(borrowers.phone)              AS "phone",
-    MAX(borrowers.mobile)             AS "mobile",
-     MAX(borrowers.phonepro)           AS "Alt Ph 1",
-     MAX(borrowers.b_phone)            AS "Alt Ph 2",
-     MAX(borrowers.branchcode)         AS "branchcode",
-     MAX(categories.category_type)     AS "Adult or Child",
-     MAX(borrowers.dateofbirth)        AS "dateofbirth",
-     MAX(accountlines.date)            AS "Most recent charge",
-    FORMAT(Sum(amountoutstanding), 2) AS "Amt_In_Range",
-     MAX(sub.due)                      AS "Total_Due",
-     MAX(sub.dueplus)                  AS "Total_Plus_Fee",
-     MAX(borrowers.email)              AS "email"
-     FROM accountlines
+        $ums_submission_query .= q{
+            MAX(borrowers.cardnumber)         AS "cardnumber",
+            MAX(borrowers.borrowernumber)     AS "borrowernumber",
+            MAX(borrowers.surname)            AS "surname",
+            MAX(borrowers.firstname)          AS "firstname",
+            MAX(borrowers.address)            AS "address",
+            MAX(borrowers.address2)           AS "address2",
+            MAX(borrowers.city)               AS "city",
+            MAX(borrowers.zipcode)            AS "zipcode",
+            MAX(borrowers.state)              AS "state",
+            MAX(borrowers.phone)              AS "phone",
+            MAX(borrowers.mobile)             AS "mobile",
+            MAX(borrowers.phonepro)           AS "Alt Ph 1",
+            MAX(borrowers.b_phone)            AS "Alt Ph 2",
+            MAX(borrowers.branchcode)         AS "branchcode",
+            MAX(categories.category_type)     AS "Adult or Child",
+            MAX(borrowers.dateofbirth)        AS "dateofbirth",
+            MAX(accountlines.date)            AS "Most recent charge",
+            FORMAT(Sum(amountoutstanding), 2) AS "Amt_In_Range",
+            MAX(sub.due)                      AS "Total_Due",
+            MAX(sub.dueplus)                  AS "Total_Plus_Fee",
+            MAX(borrowers.email)              AS "email"
+            FROM accountlines
          };
-         $ums_submission_query .= qq{
+
+        $ums_submission_query .= qq{
             LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-               AND code = '$params->{collections_flag}'
-             } if $params->{collection_flag} eq 'attribute_field';
+            AND code = '$params->{collections_flag}'
+             } if $params->{collection_flag_type} eq 'attribute';
 
          $ums_submission_query .= qq{
-             LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+            LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+            LEFT JOIN (
+                SELECT borrowernumber, COUNT(*) AS lost_fees_count
+            FROM accountlines
+            WHERE debit_type_code = 'LOST'
+                AND amountoutstanding > 0
+            GROUP BY borrowernumber
+            ) AS lost_fees_count ON ( lost_fees_count.borrowernumber = borrowers.borrowernumber)
+            LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
+            LEFT JOIN ( SELECT
+                REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
+                REPLACE( FORMAT( SUM(accountlines.amountoutstanding), '$params->{processing_fee}' , 2), ',', '' ) AS DuePlus,
+                borrowernumber
+            FROM accountlines
+            GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
+            WHERE DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_newer} DAY)
+                AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_older} DAY)
+            };
 
-             LEFT JOIN (
-               SELECT borrowernumber, COUNT(*) AS lost_fees_count
-               FROM accountlines
-               WHERE debit_type_code = 'LOST'
-                 AND amountoutstanding > 0
-               GROUP BY borrowernumber
-             ) AS lost_fees_count ON ( lost_fees_count.borrowernumber = borrowers.borrowernumber)
-
-             LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
-
-             LEFT JOIN ( SELECT
-               REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
-               REPLACE( FORMAT( SUM(accountlines.amountoutstanding) . $params->{processing_fee}, 2), ',', '' ) AS DuePlus,
-                   borrowernumber
-               FROM accountlines
-               GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
-
-             WHERE  1=1
-               AND DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_starting_age} DAY)
-               AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_ending_age} DAY)
-             };
-
-         if ( @{ $params->{debit_type_codes} } ) {
-             my $codes = join( ',', map { $dbh->quote($_) } @{ $params->{debit_type_codes} } );
-             $ums_submission_query .= qq{
-                 AND accountlines.debit_type_code IN ( $codes )
-             };
+        if ( @{ $params->{debit_type_codes} } ) {
+            my $codes = join( ',', map { $dbh->quote($_) } @{ $params->{debit_type_codes} } );
+            $ums_submission_query .= qq{
+                AND accountlines.debit_type_code IN ( $codes )
+            };
          }
 
-         $ums_submission_query .= qq{
-               AND lost_fees_count.lost_fees_count > 0
-             } if $params->{require_lost_fee} && $params->{require_lost_fee} eq 'yes';
+        $ums_submission_query .= qq{
+                AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" OR borrowers.$params->{collections_flag} = "0")
+            } if $params->{collection_flag_type} eq 'sort';
 
-         $ums_submission_query .= qq{
-                 AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" )
-             } if $params->{flag_type} eq 'borrower_field';
+        $ums_submission_query .= qq{
+                AND ( borrower_attributes.attribute = 'no' OR borrower_attributes.attribute IS NULL OR borrower_attributes.attribute = "" OR borrower_attributes.attribute = "0" )
+            } if $params->{collection_flag_type} eq 'attribute';
 
-         $ums_submission_query .= q{
-                 AND ( attribute = '0' OR attribute IS NULL )
-             } if $params->{flag_type} eq 'attribute_field';
+        $ums_submission_query .= q{
+                AND ( attribute = '0' OR attribute IS NULL )
+            } if $params->{exemptions_flag_type} eq 'attribute';
 
-         if ( @{ $params->{categorycodes} } ) {
-             my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
-             $ums_submission_query .= qq{
-                     AND borrowers.categorycode IN ( $codes )
-                 };
-         }
+        $ums_submission_query .= q{
+                AND ( attribute = '0' OR attribute IS NULL )
+            } if $params->{exemptions_flag_type} eq 'attribute';
 
-         if ( $remove_minors == 1 ) {
-             $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
-         }
+        if ( @{ $params->{categorycodes} } ) {
+            my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
+            $ums_submission_query .= qq{
+                    AND borrowers.categorycode IN ( $codes )
+                };
+        }
 
-         if ( $params->{fees_created_before_date_filter} ) {
-             $ums_submission_query .= qq{ AND accountlines.date > "$params->{fees_created_before_date_filter}" };
-         }
+        if ( $remove_minors == 1 ) {
+            $ums_submission_query .= qq{ AND TIMESTAMPDIFF( YEAR, borrowers.dateofbirth, CURDATE() ) >= 18 };
+        }
 
-         $ums_submission_query .= qq{
-                 GROUP BY borrowers.borrowernumber
-                     HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
-                     ORDER BY borrowers.surname ASC
-             };
+        if ( $params->{ignore_before} ) {
+            $ums_submission_query .= qq{ AND accountlines.date > "$params->{ignore_before}" };
+        }
 
+        $ums_submission_query .= qq{
+                $params->{config_branch_helper} 
+                GROUP BY borrowers.borrowernumber
+                    HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
+                    ORDER BY borrowers.surname ASC
+            };
+
+warn $ums_submission_query;
         log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
 
- ### Update new submissions patrons, add fee, mark as being in collections
-         $sth = $dbh->prepare($ums_submission_query);
-         $sth->execute();
-         my @ums_new_submissions;
-         while ( my $r = $sth->fetchrow_hashref ) {
-             log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
+### Update new submissions patrons, add fee, mark as being in collections
+        $sth = $dbh->prepare($ums_submission_query);
+        $sth->execute();
 
-             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
-             next unless $patron;
+        my @ums_new_submissions;
+        warn Data::Dumper::Dumper(@ums_new_submissions);
+        while ( my $r = $sth->fetchrow_hashref ) {
+            log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
 
-             if ( $params->{add_restriction} eq 'yes' ) {
-                 AddDebarment(
-                     {
-                         borrowernumber => $patron->borrowernumber,
-                         expiration     => undef,
-                         type           => 'MANUAL',
-                         comment        => "Patron sent to collections on $params->{date}",
-                     }
-                 );
-             }
+            my $patron = Koha::Patrons->find( $r->{borrowernumber} );
+            next unless $patron;
 
-             if ( $params->{flag_type} eq 'borrower_field' ) {
-                 $patron->update( { $params->{collections_flag} => 'yes' } );
-             }
-             if ( $params->{flag_type} eq 'attribute_field' ) {
-                 my $a = Koha::Patron::Attributes->find(
-                     {
-                         borrowernumber => $patron->id,
-                         code           => $params->{collections_flag},
-                     }
-                 );
+            if ( $params->{restriction} eq 'yes' ) {
+                AddDebarment(
+                    {
+                        borrowernumber => $patron->borrowernumber,
+                        expiration     => undef,
+                        type           => 'MANUAL',
+                        comment        => "Patron sent to collections on $params->{date}",
+                    }
+                );
+            }
 
-                 if ($a) {
-                     $a->attribute(1)->store();
-                 } else {
-                     Koha::Patron::Attribute->new(
-                         {
-                             borrowernumber => $patron->id,
-                             code           => $params->{collections_flag},
-                             attribute      => 1,
-                         }
-                     )->store();
-                 }
-             }
+            if ( $params->{collection_flag_type} eq 'sort' ) {
+                $patron->update( { $params->{collections_flag} => 'yes' } );
+            }
+            if ( $params->{collection_flag_type} eq 'attribute' ) {
+                my $a = Koha::Patron::Attributes->find(
+                    {
+                        borrowernumber => $patron->id,
+                        code           => $params->{collections_flag},
+                    }
+                );
 
-             my $processing_fee = $params->{processing_fee};
-             $patron->account->add_debit(
-                 {
-                     amount      => $params->{processing_fee},
-                     description => "UMS Processing Fee",
-                     interface   => 'cron',
-                     type        => $params->{config_debit_type},
-                 }
-             ) if $processing_fee && $processing_fee > 0;
+                if ($a) {
+                    $a->attribute(1)->store();
+                } else {
+                    Koha::Patron::Attribute->new(
+                        {
+                            borrowernumber => $patron->id,
+                            code           => $params->{collections_flag},
+                            attribute      => 1,
+                        }
+                    )->store();
+                }
+            }
 
-             push( @ums_new_submissions, $r );
-         }
+            my $processing_fee = $params->{processing_fee};
+            $patron->account->add_debit(
+                {
+                    amount      => $params->{processing_fee},
+                    description => "UMS Processing Fee",
+                    interface   => 'cron',
+                    type        => $params->{config_debit_type},
+                }
+            ) if $processing_fee && $processing_fee > 0;
 
-         my $columns = [
-             "borrowernumber",     "surname",
-             "firstname",          "cardnumber",
-             "address",            "address2",
-             "city",               "zipcode",
-             "state",              "phone",
-             "mobile",             "Alt Ph 1",
-             "Alt Ph 2",           "branchcode",
-             "Adult or Child",     "dateofbirth",
-             "Most recent charge", "Amt_In_Range",
-             "Total_Due",          "Total_Plus_Fee",
-             "email"
-         ];
+            push( @ums_new_submissions, $r );
+                    warn @ums_new_submissions;
+        }
 
-         ## Email the results
-         my $csv =
-             @ums_new_submissions
-             ? Text::CSV::Slurp->create( input => \@ums_new_submissions, field_order => $columns )
-             : 'No qualifying records';
-         log_trace( "CSV:\n" . $csv );
+        my $columns = [
+            "borrowernumber",     "surname",
+            "firstname",          "cardnumber",
+            "address",            "address2",
+            "city",               "zipcode",
+            "state",              "phone",
+            "mobile",             "Alt Ph 1",
+            "Alt Ph 2",           "branchcode",
+            "Adult or Child",     "dateofbirth",
+            "Most recent charge", "Amt_In_Range",
+            "Total_Due",          "Total_Plus_Fee",
+            "email"
+        ];
 
-         $archive_dir ||= "/tmp";
+    my $csv = Koha::CSV->new();
+warn Data::Dumper::Dumper($csv);
+    $csv->add_row($columns);
+warn Data::Dumper::Dumper($csv);
+    $csv->combine(@ums_new_submissions);
+warn Data::Dumper::Dumper($csv);
 
-         my $filename  = "ums-new-submissions-$params->{date}.csv";
-         my $file_path = "$archive_dir/$filename";
+        ## Email the results
+#          my $csv =
+#              @ums_new_submissions
+#              ? Koha::CSV->new( input => \@ums_new_submissions, fields => $columns )
+#              : 'No qualifying records';
+#          log_trace( "CSV:\n" . $csv );
 
-         write_file( $file_path, $csv );
-         log_info("ARCHIVE WRITTEN TO $file_path");
+        $archive_dir ||= "/tmp";
 
-         my $email_to   = $self->retrieve_data('unique_email');
-         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-         my $email_cc   = $self->retrieve_data('cc_email');
+        my $filename  = "ums-new-submissions-$params->{date}-$params->{config_code}.csv";
+        my $file_path = "$archive_dir/$filename";
 
-         $info = {
-             count     => scalar @ums_new_submissions,
-             filename  => $filename,
-             file_path => $file_path,
-         };
+# warn @ums_new_submissions;
+# warn $csv;
+# warn $file_path;
+        #write_file( $file_path, $csv );
+        log_info("ARCHIVE WRITTEN TO $file_path");
 
-         foreach my $email_address ( $email_to, $email_cc ) {
-             next unless $email_address;
-             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
+        my $email_to   = $params->{unique_email};
+        my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+        my $email_cc   = $params->{additional_email};
 
-             $info->{email_to}   = $email_address;
-             $info->{email_from} = $email_from;
+        $info = {
+            count     => scalar @ums_new_submissions,
+            filename  => $filename,
+            file_path => $file_path,
+        };
 
-             my $p = {
-                 to      => $email_address,
-                 from    => $email_from,
-                 subject => "UMS New Submissions for " . C4::Context->preference('LibraryName'),
-             };
-             my $email = Koha::Email->new($p);
+        foreach my $email_address ( $email_to, $email_cc ) {
+            next unless $email_address;
+            log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
 
-             $email->attach(
-                 Encode::encode_utf8($csv),
-                 content_type => "text/csv",
-                 filename     => "ums-new-submissions-$params->{date}.csv",
-                 name         => "ums-new-submissions-$params->{date}.csv",
-                 disposition  => 'attachment',
-             );
+            $info->{email_to}   = $email_address;
+            $info->{email_from} = $email_from;
 
-             my $smtp_server = Koha::SMTP::Servers->get_default;
-             $email->transport( $smtp_server->transport );
+            my $p = {
+                to      => $email_address,
+                from    => $email_from,
+                subject => "UMS New Submissions for $params->{config_name}",
+            };
+            my $email = Koha::Email->new($p);
 
-             try {
-                 $email->send_or_die unless $no_email;
-             } catch {
-                 $info->{email_failed}  = 'true';
-                 $info->{email_address} = $email_address;
-                 $info->{email_error}   = $_;
+            $email->attach(
+                Encode::encode_utf8($csv),
+                content_type => "text/csv",
+                filename     => "ums-new-submissions-$params->{date}-$params->{config_code}.csv",
+                name         => "ums-new-submissions-$params->{date}-$params->{config_code}.csv",
+                disposition  => 'attachment',
+            );
 
-                 logaction(
-                     'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
-                     $json->encode($info), 'cron'
-                 );
+            my $smtp_server = Koha::SMTP::Servers->get_default;
+            $email->transport( $smtp_server->transport );
 
-                 die "Mail not sent: $_";
-             };
-         }
+            try {
+                $email->send_or_die unless $no_email;
+            } catch {
+                $info->{email_failed}  = 'true';
+                $info->{email_address} = $email_address;
+                $info->{email_error}   = $_;
 
-         logaction(
-             'GENTLENUDGE',        'NEW_SUBMISSIONS', undef,
-             $json->encode($info), 'cron'
-         );
-     } catch {
-         if ( $_->isa('Koha::Exception') ) {
-             $info->{error} = $_->error . "\n" . $_->trace->as_string;
-         } else {
-             $info->{error} = $_;
-         }
+                die "Mail not sent: $_";
+            };
+        }
 
-         logaction(
-             'GENTLENUDGE',        'NEW_SUBMISSIONS_ERROR', undef,
-             $json->encode($info), 'cron'
-         );
-         die "error in run_update_report_and_clear_paid: " . $info->{error};
-     };
- }
+
+    } catch {
+        if ( $_->isa('Koha::Exception') ) {
+            $info->{error} = $_->error . "\n" . $_->trace->as_string;
+        } else {
+            $info->{error} = $_;
+        }
+
+        die "error in  run_submissions_report: " . $info->{error};
+    };
+}
 
 # sub run_update_report_and_clear_paid {
 #     my ( $self, $params ) = @_;
