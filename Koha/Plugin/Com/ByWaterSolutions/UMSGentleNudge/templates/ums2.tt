@@ -650,6 +650,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("umsconfig_id_select").removeAttribute("disabled");
                         $('#umsconfig_categories').val(null).trigger('change');
                         $('#umsconfig_debit_types').val(null).trigger('change');
+                        let calendar = flatpickr('#fees_created_before_date_filter');
+                        calendar.clear();
             }
             function loadConfigForEdit() {
                 $.ajax({
@@ -657,7 +659,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     method: 'GET',
                     headers: { 'x-koha-embed': 'debit_types,patron_categories' },
                     success: function(config) {
-                         
+                        let calendar = flatpickr('#fees_created_before_date_filter');
+                        calendar.setDate(config.ignore_before);
 console.log(config.patron_categories.map(element => element.patron_category_id));
                         if (config.config_type == "library") {
                             document.getElementById("umsconfig_id_select").value = config.branch;
@@ -668,6 +671,7 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                         if (config.config_type == "global") {
                             document.getElementById("umsconfig_id_select").value = 'global';
                         }
+
                         document.getElementById("umsconfig_id_select").setAttribute("disabled","disabled");
                         document.getElementById("cc_email").value = config.additional_email;
                         document.getElementById("clear_below").value = config.clear_below;
@@ -679,7 +683,7 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                         document.getElementById("exemption_flag").value = config.exemptions_flag;
                         document.getElementById("fees_starting_age").value = config.fees_newer;
                         document.getElementById("fees_ending_age").value = config.fees_older;
-                        document.getElementById("fees_created_before_date_filter").value = config.ignore_before;
+                        //document.getElementById("fees_created_before_date_filter").value = config.$ignore_before;
                         $('#umsconfig_categories').val((config.patron_categories).map(element => element.patron_category_id));
                         $('#umsconfig_categories').trigger('change');
                         $('#umsconfig_debit_types').val((config.debit_types).map(element => element.code));
@@ -978,9 +982,10 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                 var exemption = exemption_select.value;
                 var ignore_before = document.getElementById('fees_created_before_date_filter').value;
 
-                if (ignore_before === ""){
+                if (!ignore_before){
                    ignore_before = null;
                 };
+
                 let configData = {
                     additional_email: $('#cc_email').val(),
                     branch: umslibrary,
@@ -997,7 +1002,7 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                     exemptions_flag: $('#exemption_flag').val(),
                     fees_newer: $('#fees_starting_age').val(),
                     fees_older: $('#fees_ending_age').val(),
-                    ignore_before: $('#fees_created_before_date_filter').val(),
+                    ignore_before: ignore_before,
                     patron_categories: patron_categories,
                     processing_fee: $('#processing_fee').val(),
                     remove_minors: $('#age_limitation').val(),
