@@ -188,14 +188,7 @@ sub configure {
     $self->output_html( $template->output() );
  }
 
-sub admin {
-    my ( $self ) = @_;
-    my $cgi          = $self->{'cgi'};
-    my $template     = $self->get_template( { file => 'templates/tool.tt' } );
-    my $configs = $self->configs->today_enabled_configs;
-    $template->param( configs => $configs );
 
-}
 # =head3 intranet_js
 
 # Get the configure.js file
