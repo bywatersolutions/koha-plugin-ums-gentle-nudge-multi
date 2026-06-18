@@ -20,7 +20,7 @@
             <br/>
             <li>To do</li>
             <ul>
-                <li>finish the subs for the nightly crons</li>
+                <li>Build CSVs for the nightly crons</li>
                 <li>Sync</li>
                 <ul>
                     <li>load sync modal</li>
