@@ -674,197 +674,192 @@ warn Data::Dumper::Dumper($csv);
     };
 }
 
-# sub run_update_report_and_clear_paid {
-#     my ( $self, $params ) = @_;
+ sub run_update_report_and_clear_paid {
+     my ( $self, $params ) = @_;
 
-#     my $dbh = C4::Context->dbh;
-#     $dbh->{RaiseError} = 1;    # die if a query has problems
+     my $dbh = C4::Context->dbh;
+     $dbh->{RaiseError} = 1;    # die if a query has problems
 
-#     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
-#     my $info = {};
-#     try {
-#         my $sth;
+     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
+     my $info = {};
+     try {
+         my $sth;
 
-#         my $ums_update_query = q{
-#             SELECT borrowers.cardnumber,
-#                    borrowers.borrowernumber,
-#                    MAX(borrowers.surname)                         AS "surname",
-#                    MAX(borrowers.firstname)                       AS "firstname",
-#                    FORMAT(Sum(accountlines.amountoutstanding), 2) AS "Due"
-#                        FROM   accountlines
-#                        LEFT JOIN borrowers USING(borrowernumber)
-#                        LEFT JOIN categories USING(categorycode)
-#         };
+         my $ums_update_query = q{
+             SELECT borrowers.cardnumber,
+                    borrowers.borrowernumber,
+                    MAX(borrowers.surname)                         AS "surname",
+                    MAX(borrowers.firstname)                       AS "firstname",
+                    FORMAT(Sum(accountlines.amountoutstanding), 2) AS "Due"
+                        FROM   accountlines
+                        LEFT JOIN borrowers USING(borrowernumber)
+                        LEFT JOIN categories USING(categorycode)
+         };
 
-#         $ums_update_query .= qq{
-#             LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-#                 AND code = '$params->{collections_flag}'
-#         } if $params->{flag_type} eq 'attribute_field';
+        $ums_update_query .= qq{
+            LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
+            AND code = '$params->{collections_flag}'
+             } if $params->{collection_flag_type} eq 'attribute';
 
-#         $ums_update_query .= q{
-#             WHERE  1=1
-#         };
+         $ums_update_query .= q{
+             WHERE  1=1
+         };
 
-#         $ums_update_query .= qq{
-#             AND ( attribute = '1' OR attribute = 'yes' )
-#         } if $params->{flag_type} eq 'attribute_field';
+         $ums_update_query .= qq{
+             AND ( attribute = '1' OR attribute = 'yes' )
+         } if $params->{collection_flag_type} eq 'attribute';
 
-#         $ums_update_query .= qq{
-#             AND ( borrowers.$params->{collections_flag} = 'yes' OR  borrowers.$params->{collections_flag} = '1' )
-#         } if $params->{flag_type} eq 'borrower_field';
+         $ums_update_query .= qq{
+             AND ( borrowers.$params->{collections_flag} = 'yes' OR  borrowers.$params->{collections_flag} = '1' )
+         } if $params->{collection_flag_type} eq 'sort';
 
-#         $ums_update_query .= q{
-#             GROUP BY borrowers.borrowernumber
-#                 ORDER BY borrowers.surname ASC
-#         };
+        $ums_update_query .= qq{
+                $params->{config_branch_helper} 
+            };
 
-#         log_debug("UMS UPDATE QUERY:\n$ums_update_query")
-#             if ( !$params->{send_sync_report} );
+         $ums_update_query .= q{
+             GROUP BY borrowers.borrowernumber, borrowers.cardnumber
+                 ORDER BY borrowers.surname ASC
+         };
+warn $ums_update_query;
+         log_debug("UMS UPDATE QUERY:\n$ums_update_query")
+             if ( !$params->{send_sync_report} );
+         $sth = $dbh->prepare($ums_update_query);
+         $sth->execute();
+         my @ums_updates;
+         while ( my $r = $sth->fetchrow_hashref ) {
+             log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
+             push( @ums_updates, $r );
 
-#         $sth = $dbh->prepare($ums_update_query);
-#         $sth->execute();
-#         my @ums_updates;
-#         while ( my $r = $sth->fetchrow_hashref ) {
-#             log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
-#             push( @ums_updates, $r );
+             my $due = $r->{Due} || 0;
+             $due =~ s/,//;
+             if ( $params->{remove_restriction} eq 'yes' && $due <= $params->{clear_threshold} ) {
+                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
+                 if ( $params->{remove_restriction} ) {
+                     Koha::Patron::Restrictions->search(
+                         {
+                             borrowernumber => $r->{borrowernumber},
+                             comment        => { 'like' => "Patron sent to collections on %" }
+                         }
+                     )->delete();
+                     Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
+                 }
+             }
+         }
+         ## Email the results
+         $archive_dir ||= "/tmp";
+         my $filename  = "ums-$type-$params->{date}.csv";
+         my $file_path = "$archive_dir/$filename";
+         $info = {
+             count     => scalar @ums_updates,
+             type      => $type,
+             filename  => $filename,
+             file_path => $file_path,
+         };
 
-#             my $due = $r->{Due} || 0;
-#             $due =~ s/,//;
-#             if ( $params->{auto_clear_paid} eq 'yes' && $due <= $params->{auto_clear_paid_threshold} ) {
-#                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
-#                 if ( $params->{remove_restriction} ) {
-#                     Koha::Patron::Restrictions->search(
-#                         {
-#                             borrowernumber => $r->{borrowernumber},
-#                             comment        => { 'like' => "Patron sent to collections on %" }
-#                         }
-#                     )->delete();
-#                     Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
-#                 }
-#             }
-#         }
+         my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
 
-#         ## Email the results
+         my $csv; #=
+   #          @ums_updates
+   #          ? Koha::CSV->new( input => \@ums_updates, field_order => $columns )
+    #         : 'No qualifying records';
+        # log_trace( "CSV:\n" . $csv );
+         #write_file( $file_path, $csv )
+            # if $archive_dir;
+         log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv")
+             if $archive_dir;
 
-#         $archive_dir ||= "/tmp";
-#         my $filename  = "ums-$type-$params->{date}.csv";
-#         my $file_path = "$archive_dir/$filename";
+         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+         my $email_to   = $self->retrieve_data('unique_email');
+         my $email_cc   = $self->retrieve_data('cc_email');
+         foreach my $email_address ( $email_to, $email_cc ) {
+             next unless $email_address;
+             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
 
-#         $info = {
-#             count     => scalar @ums_updates,
-#             type      => $type,
-#             filename  => $filename,
-#             file_path => $file_path,
-#         };
+             my $p = {
+                 to      => $email_address,
+                 from    => $email_from,
+                 subject => sprintf(
+                     "UMS %s for %s",
+                     ucfirst($type), C4::Context->preference('LibraryName')
+                 ),
+             };
+             my $email = Koha::Email->new($p);
+             $email->attach(
+                 Encode::encode_utf8($csv),
+                 content_type => "text/csv",
+                 filename     => $filename,
+                 name         => $filename,
+                 disposition  => 'attachment',
+             );
+             my $smtp_server = Koha::SMTP::Servers->get_default;
+             $email->transport( $smtp_server->transport );
 
-#         my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
+             try {
+                 $email->send_or_die unless $no_email;
+             } catch {
+                 $info->{email_failed}  = 'true';
+                 $info->{email_address} = $email_address;
+                 $info->{email_error}   = $_;
+                 logaction(
+                     'GENTLENUDGE',        uc($type) . "_ERROR", undef,
+                     $json->encode($info), 'cron'
+                 );
 
-#         my $csv =
-#             @ums_updates
-#             ? Text::CSV::Slurp->create( input => \@ums_updates, field_order => $columns )
-#             : 'No qualifying records';
-#         log_trace( "CSV:\n" . $csv );
+                 die "Mail not sent: $_";
+             };
+         }
 
-#         write_file( $file_path, $csv )
-#             if $archive_dir;
-#         log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv")
-#             if $archive_dir;
+         logaction(
+             'GENTLENUDGE',        uc($type), undef,
+             $json->encode($info), 'cron'
+         );
 
-#         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-#         my $email_to   = $self->retrieve_data('unique_email');
-#         my $email_cc   = $self->retrieve_data('cc_email');
+     } catch {
+         if ( $_->isa('Koha::Exception') ) {
+            $info->{error} = $_->error . "\n" . $_->trace->as_string;
+        } else {
+            $info->{error} = $_;
+        }
 
-#         foreach my $email_address ( $email_to, $email_cc ) {
-#             next unless $email_address;
-#             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
+        logaction(
+            'GENTLENUDGE',        uc($type) . "_ERROR", undef,
+            $json->encode($info), 'cron'
+        );
+        die "error in run_update_report_and_clear_paid: $_";
+    };
+}
 
-#             my $p = {
-#                 to      => $email_address,
-#                 from    => $email_from,
-#                 subject => sprintf(
-#                     "UMS %s for %s",
-#                     ucfirst($type), C4::Context->preference('LibraryName')
-#                 ),
-#             };
-#             my $email = Koha::Email->new($p);
+ sub clear_patron_from_collections {
+     warn "warn clear patron";
+     my ( $self, $params, $borrowernumber ) = @_;
 
-#             $email->attach(
-#                 Encode::encode_utf8($csv),
-#                 content_type => "text/csv",
-#                 filename     => $filename,
-#                 name         => $filename,
-#                 disposition  => 'attachment',
-#             );
+     log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
 
-#             my $smtp_server = Koha::SMTP::Servers->get_default;
-#             $email->transport( $smtp_server->transport );
+     my $patron = Koha::Patrons->find($borrowernumber);
+     next unless $patron;
 
-#             try {
-#                 $email->send_or_die unless $no_email;
-#             } catch {
-#                 $info->{email_failed}  = 'true';
-#                 $info->{email_address} = $email_address;
-#                 $info->{email_error}   = $_;
+     if ( $params->{collection_flag_type} eq 'sort' ) {
+         $patron->_result->update( { $params->{collections_flag} => 'no' } );
+     }
+     if ( $params->{collection_flag_type} eq 'attribute' ) {
+         my $a = Koha::Patron::Attributes->find(
+             {
+                 borrowernumber => $patron->id,
+                 code           => $params->{collections_flag},
+             }
+         );
 
-#                 logaction(
-#                     'GENTLENUDGE',        uc($type) . "_ERROR", undef,
-#                     $json->encode($info), 'cron'
-#                 );
-
-#                 die "Mail not sent: $_";
-#             };
-#         }
-
-#         logaction(
-#             'GENTLENUDGE',        uc($type), undef,
-#             $json->encode($info), 'cron'
-#         );
-
-#     } catch {
-#         if ( $_->isa('Koha::Exception') ) {
-#             $info->{error} = $_->error . "\n" . $_->trace->as_string;
-#         } else {
-#             $info->{error} = $_;
-#         }
-
-#         logaction(
-#             'GENTLENUDGE',        uc($type) . "_ERROR", undef,
-#             $json->encode($info), 'cron'
-#         );
-#         die "error in run_update_report_and_clear_paid: $_";
-#     };
-# }
-
-# sub clear_patron_from_collections {
-#     warn "warn clear patron";
-#     my ( $self, $params, $borrowernumber ) = @_;
-
-#     log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
-
-#     my $patron = Koha::Patrons->find($borrowernumber);
-#     next unless $patron;
-
-#     if ( $params->{flag_type} eq 'borrower_field' ) {
-#         $patron->_result->update( { $params->{collections_flag} => 'no' } );
-#     }
-#     if ( $params->{flag_type} eq 'attribute_field' ) {
-#         my $a = Koha::Patron::Attributes->find(
-#             {
-#                 borrowernumber => $patron->id,
-#                 code           => $params->{collections_flag},
-#             }
-#         );
-
-#         # At the time of this writing it is not possible to update a repeatable
-#         # attribute. Instead, it must be deleted and recreated.
-#         if ($a) {
-#             $a->delete();
-#             $a->attribute(0);
-#             Koha::Patron::Attribute->new( $a->unblessed )->store();
-#         }
-#     }
-#     warn "warn clear patron end";
-# }
+         # At the time of this writing it is not possible to update a repeatable
+         # attribute. Instead, it must be deleted and recreated.
+         if ($a) {
+             $a->delete();
+             $a->attribute(0);
+             Koha::Patron::Attribute->new( $a->unblessed )->store();
+         }
+     }
+     warn "warn clear patron end";
+ }
 
 sub api_routes {
     my ($self) = @_;
