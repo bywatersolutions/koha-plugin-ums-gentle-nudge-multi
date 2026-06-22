@@ -93,7 +93,6 @@ FIXME: Should be made available to plugins in core
 =cut
 
 sub _table_exists {
-    warn "warn table_exists";
     my ( $self, $table ) = @_;
     eval {
         C4::Context->dbh->{PrintError} = 0;
@@ -102,7 +101,6 @@ sub _table_exists {
     };
     return 1 unless $@;
     return 0;
-    warn "table_exists end";
 }
 
 =head3 _column_exists (helper)
@@ -113,7 +111,6 @@ Method to check if a column exists in a table in Koha.
 =cut
 
 sub _column_exists {
-    warn "warn column_exists";
     my ( $self, $table, $column ) = @_;
     eval {
         C4::Context->dbh->{PrintError} = 0;
@@ -122,7 +119,6 @@ sub _column_exists {
     };
     return 1 unless $@;
     return 0;
-    warn "warn column_exists end";
 
 }
 
@@ -159,7 +155,7 @@ sub configure {
     my @group_array  = Koha::Library::Groups->search();
     my @branch_array = Koha::Libraries->search();
     my $action_type  = scalar $cgi->param('step');
-    warn 'after all the my';
+    warn $action;
     if ($action) {
         warn 'in action';
         if ( $action eq 'cud-save' ) {
@@ -172,8 +168,6 @@ sub configure {
                         global_fine_branch => scalar $cgi->param('global_fine_branch_selector'),
                     }
                 );
-            } elsif ( $action_type eq 'sync_report' ) {
-                warn 'sync_report';
             } else {
                 warn 'in else';
                 $self->store_data(
@@ -182,8 +176,18 @@ sub configure {
                     }
                 );
             }
+        } elsif ( $action eq 'sync-report' ) {
+                warn "in syncelse";
+                my $sync_id= $cgi->param('config_id');
+                warn $sync_id;
+                my $sync->{sync_id} = $sync_id;
+                $sync->{send_sync_report} = "1";
+                warn $sync->{sync_id};
+                warn Data::Dumper::Dumper($sync);
+                $self->cronjob_nightly($sync);
+            } 
         }
-    }
+    
     $template->param( groups => $groups, debit_types => \@debit_types, servers => @servers, global_enabled => $self->retrieve_data('global_enabled'), global_fine_branch => $self->retrieve_data('global_fine_branch') );
     $self->output_html( $template->output() );
  }
@@ -222,13 +226,13 @@ sub static_routes {
 
   sub cronjob_nightly {
     warn "in nightly";
-    my ( $self, $p ) = @_;
+    my ( $self, $p, $sync ) = @_;
+    #warn $sync->{sync_id};
     my $branch_query;
     my $global_enabled = $self->retrieve_data('global_enabled');
     my $global_fine_branch = $self->retrieve_data('global_fine_branch');
 warn "debug 1";
      if ($global_enabled == '1') {
-        warn "enabled";
         if ($global_fine_branch eq 'patron') {
             $branch_query = "AND borrowers.branchcode "};
         if ($global_fine_branch eq 'item_home') {
@@ -238,11 +242,12 @@ warn "debug 1";
             $branch_query = "AND accountlines.branchcode "
         };
      } else {return 0;}
-#        $self->prune_old_logs();
-warn "in prune";
+       $self->prune_old_logs();
+        # if (($sync->send_sync_report) = "1") {
+        #     warn "send sync";
+        # }
         my $todays_configs = $self->configs->today_enabled_configs;
         while ( my $config = $todays_configs->next ) {
-            warn $config->config_id;
             my $config_code = "global";
             my $config_type = "global";
             my $collections_flag = $config->collections_flag || undef ;
@@ -270,7 +275,6 @@ warn "in prune";
                     $exemptions_flag_type = 'sort'
                 }
             }
-                                  warn $exemptions_flag_type;
             my $config_branch_where;
             my $config_branch_helper;
            if ($config->config_type eq 'group'){
@@ -283,7 +287,6 @@ warn "in prune";
             }
 
          # Clear up archives older than 30 days
-         warn "clear archives";
         if ($archive_dir) {
             if ( -d $archive_dir ) {
                 my $dt = dt_from_string();
@@ -346,7 +349,7 @@ warn "in prune";
                     WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL)
                 )"
          }
-     my $params = { send_sync_report => $p->{send_sync_report} };
+     my $params = { send_sync_report => $sync->{send_sync_report} };
      $params->{require_lost_fee}    = $config->require_lost;
      $params->{fees_threshold}    = $config->threshold;
      $params->{processing_fee}    = $config->processing_fee || 0 ;
@@ -369,9 +372,7 @@ warn "in prune";
      $params->{config_code} = $config_code;
      $params->{config_branch_helper} = $config_branch_helper;
      my $today = dt_from_string();
-     warn $today;
      $params->{date} = $today->ymd();
-     warn $params->{date};
 
      my @patron_cat_codes = map { $_->categorycode } $config->patron_categories->as_list;
      $params->{categorycodes} = \@patron_cat_codes;
@@ -388,7 +389,7 @@ warn "in prune";
 #      }
 
     #  ### Process new submissions
-    #  if ( $run_weeklys && !$params->{send_sync_report} ) {
+    #  if ( !$params->{send_sync_report} ) {
       $self->run_submissions_report($params);
     #  } elsif ( !$params->{send_sync_report} ) {
     #  log_info("NOT THE DOW TO RUN SUBMISSIONS");
@@ -513,69 +514,11 @@ warn "params " . Data::Dumper::Dumper($params);
                     ORDER BY borrowers.surname ASC
             };
 
-warn $ums_submission_query;
         log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
 
 ### Update new submissions patrons, add fee, mark as being in collections
         $sth = $dbh->prepare($ums_submission_query);
         $sth->execute();
-
-        my @ums_new_submissions;
-        warn Data::Dumper::Dumper(@ums_new_submissions);
-        while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
-
-            my $patron = Koha::Patrons->find( $r->{borrowernumber} );
-            next unless $patron;
-
-            if ( $params->{restriction} eq 'yes' ) {
-                AddDebarment(
-                    {
-                        borrowernumber => $patron->borrowernumber,
-                        expiration     => undef,
-                        type           => 'MANUAL',
-                        comment        => "Patron sent to collections on $params->{date}",
-                    }
-                );
-            }
-
-            if ( $params->{collection_flag_type} eq 'sort' ) {
-                $patron->update( { $params->{collections_flag} => 'yes' } );
-            }
-            if ( $params->{collection_flag_type} eq 'attribute' ) {
-                my $a = Koha::Patron::Attributes->find(
-                    {
-                        borrowernumber => $patron->id,
-                        code           => $params->{collections_flag},
-                    }
-                );
-
-                if ($a) {
-                    $a->attribute(1)->store();
-                } else {
-                    Koha::Patron::Attribute->new(
-                        {
-                            borrowernumber => $patron->id,
-                            code           => $params->{collections_flag},
-                            attribute      => 1,
-                        }
-                    )->store();
-                }
-            }
-
-            my $processing_fee = $params->{processing_fee};
-            $patron->account->add_debit(
-                {
-                    amount      => $params->{processing_fee},
-                    description => "UMS Processing Fee",
-                    interface   => 'cron',
-                    type        => $params->{config_debit_type},
-                }
-            ) if $processing_fee && $processing_fee > 0;
-
-            push( @ums_new_submissions, $r );
-                    warn @ums_new_submissions;
-        }
 
         my $columns = [
             "borrowernumber",     "surname",
@@ -592,29 +535,92 @@ warn $ums_submission_query;
         ];
 
     my $csv = Koha::CSV->new();
-warn Data::Dumper::Dumper($csv);
     $csv->add_row($columns);
-warn Data::Dumper::Dumper($csv);
-    $csv->combine(@ums_new_submissions);
-warn Data::Dumper::Dumper($csv);
-
-        ## Email the results
-#          my $csv =
-#              @ums_new_submissions
-#              ? Koha::CSV->new( input => \@ums_new_submissions, fields => $columns )
-#              : 'No qualifying records';
-#          log_trace( "CSV:\n" . $csv );
-
-        $archive_dir ||= "/tmp";
+    #$csv->combine(@ums_new_submissions);
+$archive_dir = "/kohadevbox/koha/shared";
+        #$archive_dir ||= "/tmp";
 
         my $filename  = "ums-new-submissions-$params->{date}-$params->{config_code}.csv";
         my $file_path = "$archive_dir/$filename";
+        warn 'file path = ' . $file_path;
+open (my $fh, '<', $file_path) ;
+warn $fh;
+        my @ums_new_submissions;
+        warn 'file path = ' . $file_path;
+        while ( my $r = $sth->fetchrow_hashref ) {
+                    warn 'file path = ' . $file_path;
+            log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
+warn 'r ' . Data::Dumper::Dumper($r);
+            my $patron = Koha::Patrons->find( $r->{borrowernumber} );
+            next unless $patron;
+            my @patron_row = $r;
+                    warn 'file path = ' . $file_path;
+            if ( $params->{restriction} eq 'yes' ) {
+                AddDebarment(
+                    {
+                        borrowernumber => $patron->borrowernumber,
+                        expiration     => undef,
+                        type           => 'MANUAL',
+                        comment        => "Patron sent to collections on $params->{date}",
+                    }
+                );
+            }
+                    warn 'file path = ' . $file_path;
 
+            if ( $params->{collection_flag_type} eq 'sort' ) {
+                $patron->update( { $params->{collections_flag} => 'yes' } );
+            }
+            if ( $params->{collection_flag_type} eq 'attribute' ) {
+                my $a = Koha::Patron::Attributes->find(
+                    {
+                        borrowernumber => $patron->id,
+                        code           => $params->{collections_flag},
+                    }
+                );
+                    warn 'file path = ' . $file_path;
+
+                if ($a) {
+                    $a->attribute(1)->store();
+                } else {
+                    Koha::Patron::Attribute->new(
+                        {
+                            borrowernumber => $patron->id,
+                            code           => $params->{collections_flag},
+                            attribute      => 1,
+                        }
+                    )->store();
+                }
+            }
+                    warn 'file path = ' . $file_path;
+
+            my $processing_fee = $params->{processing_fee};
+            $patron->account->add_debit(
+                {
+                    amount      => $params->{processing_fee},
+                    description => "UMS Processing Fee",
+                    interface   => 'cron',
+                    type        => $params->{config_debit_type},
+                }
+            ) if $processing_fee && $processing_fee > 0;
+            #$csv->print( $fh, \@patron_row );
+            $csv->combine(@patron_row);
+            push( @ums_new_submissions, $r );
+                    warn Data::Dumper::Dumper(@ums_new_submissions);
+                                        warn 'file path = ' . $file_path;
+
+        }
+close $fh;
+warn 'csv ' . Data::Dumper::Dumper($csv);
+warn 'file path after close ' . $file_path;
+        #csv (in=>@ums_new_submissions, out =>$filepath);
 # warn @ums_new_submissions;
 # warn $csv;
-# warn $file_path;
+
         #write_file( $file_path, $csv );
         log_info("ARCHIVE WRITTEN TO $file_path");
+        warn "ARCHIVE WRITTEN TO ". $file_path;
+
+        ## Email the results
 
         my $email_to   = $params->{unique_email};
         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
@@ -625,7 +631,7 @@ warn Data::Dumper::Dumper($csv);
             filename  => $filename,
             file_path => $file_path,
         };
-
+warn Data::Dumper::Dumper($info);
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
@@ -721,7 +727,7 @@ warn Data::Dumper::Dumper($csv);
              GROUP BY borrowers.borrowernumber, borrowers.cardnumber
                  ORDER BY borrowers.surname ASC
          };
-warn $ums_update_query;
+#warn $ums_update_query;
          log_debug("UMS UPDATE QUERY:\n$ums_update_query")
              if ( !$params->{send_sync_report} );
          $sth = $dbh->prepare($ums_update_query);
