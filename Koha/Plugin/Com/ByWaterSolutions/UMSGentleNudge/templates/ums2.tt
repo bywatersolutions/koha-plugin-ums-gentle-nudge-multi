@@ -142,7 +142,7 @@
                                     <div class="alert alert-danger" role="alert"><h2>Global Settings</h2>
                                         <p>These settings impact ALL configurations. </p>
                                     </div> <!-- /alert -->
-                                   <div> <button data-bs-toggle="modal" data-bs-target="#UMSSyncModal" data-bs-mode="Sync" id="syncconfig" class="btn btn-primary sync-config" data-sync-name="all enabled configurations"><i class="fa fa-rotate"></i> Sync all enabled</button> <p><br/></p></div>
+                                   <div> <button data-bs-toggle="modal" data-bs-target="#UMSSyncModal" data-bs-mode="Sync" id="syncconfig" data-sync-id="sync-all" class="btn btn-primary sync-config" data-sync-name="all enabled configurations"><i class="fa fa-rotate"></i> Sync all enabled</button> <p><br/></p></div>
                                 </div> <!-- /message -->
                                 <form  id="global_form" method="post" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
@@ -521,6 +521,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
             <input type="hidden" name="class" value="[% CLASS %]"/>
             <input type="hidden" name="method" value="[% METHOD %]"/>
             <input type="hidden" name="action" id="modal_button" value="sync_report"/>
+            <input type="hidden" name="config_id" id="sync_modal_id"/>
             <input type="hidden" class="modal-type" name="type"/>
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -582,6 +583,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 modalTitle.textContent = 'Sync configuration for ' + sync_name;
                 var syncName = UMSSyncModal.querySelector('#sync-config-name');
                 syncName.textContent = sync_name;
+                var syncModalId = UMSSyncModal.querySelector('#sync_modal_id');
+                syncModalId.value = sync_id;
             });
 
             UMSConfigModal.addEventListener('show.bs.modal', function (event){
