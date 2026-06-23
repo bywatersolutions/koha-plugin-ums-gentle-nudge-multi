@@ -2,6 +2,9 @@ package UMS::GentleNudge::CSV;
 
 use Modern::Perl;
 
+# TODO: When $MINIMUM_VERSION is raised to 26.05, make this a subclass
+# of Koha::CSV instead of wrapping Text::CSV_XS directly.
+
 use Text::CSV_XS;
 use C4::Context;
 
