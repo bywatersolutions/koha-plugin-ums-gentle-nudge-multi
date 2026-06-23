@@ -536,7 +536,7 @@ warn "params " . Data::Dumper::Dumper($params);
 
     my $csv = UMS::GentleNudge::CSV->new;
 
-        $archive_dir ||= "/tmp";
+        $archive_dir ||= C4::Context->temporary_directory;
 
         my $filename  = "ums-new-submissions-$params->{date}-$params->{config_code}.csv";
         my $file_path = "$archive_dir/$filename";
@@ -736,7 +736,7 @@ warn Data::Dumper::Dumper($info);
              }
          }
          ## Email the results
-         $archive_dir ||= "/tmp";
+         $archive_dir ||= C4::Context->temporary_directory;
          my $filename  = "ums-$type-$params->{date}.csv";
          my $file_path = "$archive_dir/$filename";
          $info = {
