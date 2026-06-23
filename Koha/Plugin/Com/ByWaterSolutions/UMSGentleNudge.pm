@@ -156,6 +156,7 @@ sub configure {
     my @branch_array = Koha::Libraries->search();
     my $action_type  = scalar $cgi->param('step');
     warn $action;
+
     if ($action) {
         warn 'in action';
         if ( $action eq 'cud-save' ) {
@@ -164,7 +165,7 @@ sub configure {
                 warn 'in plugin';
                 $self->store_data(
                     {
-                        global_enabled => scalar $cgi->param('global_enabled_selector'),
+                        global_enabled     => scalar $cgi->param('global_enabled_selector'),
                         global_fine_branch => scalar $cgi->param('global_fine_branch_selector'),
                     }
                 );
@@ -177,21 +178,24 @@ sub configure {
                 );
             }
         } elsif ( $action eq 'sync-report' ) {
-                warn "in syncelse";
-                my $sync_id= $cgi->param('config_id');
-                warn $sync_id;
-                my $sync->{sync_id} = $sync_id;
-                $sync->{send_sync_report} = "1";
-                warn $sync->{sync_id};
-                warn Data::Dumper::Dumper($sync);
-                $self->cronjob_nightly($sync);
-            } 
+            warn "in syncelse";
+            my $sync_id = $cgi->param('config_id');
+            warn $sync_id;
+            my $sync->{sync_id} = $sync_id;
+            $sync->{send_sync_report} = "1";
+            warn $sync->{sync_id};
+            warn Data::Dumper::Dumper($sync);
+            $self->cronjob_nightly($sync);
         }
-    
-    $template->param( groups => $groups, debit_types => \@debit_types, servers => @servers, global_enabled => $self->retrieve_data('global_enabled'), global_fine_branch => $self->retrieve_data('global_fine_branch') );
-    $self->output_html( $template->output() );
- }
+    }
 
+    $template->param(
+        groups             => $groups, debit_types => \@debit_types, servers => @servers,
+        global_enabled     => $self->retrieve_data('global_enabled'),
+        global_fine_branch => $self->retrieve_data('global_fine_branch')
+    );
+    $self->output_html( $template->output() );
+}
 
 # =head3 intranet_js
 
@@ -224,69 +228,75 @@ sub static_routes {
 
 =cut
 
-  sub cronjob_nightly {
+sub cronjob_nightly {
     warn "in nightly";
     my ( $self, $p, $sync ) = @_;
+
     #warn $sync->{sync_id};
     my $branch_query;
-    my $global_enabled = $self->retrieve_data('global_enabled');
+    my $global_enabled     = $self->retrieve_data('global_enabled');
     my $global_fine_branch = $self->retrieve_data('global_fine_branch');
-warn "debug 1";
-     if ($global_enabled == '1') {
-        if ($global_fine_branch eq 'patron') {
-            $branch_query = "AND borrowers.branchcode "};
-        if ($global_fine_branch eq 'item_home') {
-            my $item_join = " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber $branch_query = AND items.homebranch "
-     };
-        if ($global_fine_branch eq 'item_checkout') {
-            $branch_query = "AND accountlines.branchcode "
-        };
-     } else {return 0;}
-       $self->prune_old_logs();
-        # if (($sync->send_sync_report) = "1") {
-        #     warn "send sync";
-        # }
-        my $todays_configs = $self->configs->today_enabled_configs;
-        while ( my $config = $todays_configs->next ) {
-            my $config_code = "global";
-            my $config_type = "global";
-            my $collections_flag = $config->collections_flag || undef ;
-            my $collections_flag_type = 'attribute';
-            my $exemptions_flag = $config->exemptions_flag || undef ;
-            my $exemptions_flag_type  = 'attribute';
-  
-            if ($collections_flag) {
-                if ( $collections_flag eq 'sort1'){
-                    $collections_flag_type = 'sort'
-                }
-            }
-            if ($collections_flag) {
-                if ( $collections_flag eq 'sort2'){
-                    $collections_flag_type = 'sort'
-                }
-            }
-            if ($exemptions_flag) {
-                if ($exemptions_flag eq 'sort1'){
-                    $exemptions_flag_type = 'sort'
-                }
-            }
-            if ($exemptions_flag) {
-                if ( $exemptions_flag eq 'sort2'){
-                    $exemptions_flag_type = 'sort'
-                }
-            }
-            my $config_branch_where;
-            my $config_branch_helper;
-           if ($config->config_type eq 'group'){
-                $config_code = $config->config_group;
-                $config_type = "group";
-            }
-            if ($config->config_type eq 'library'){
-                $config_code = $config->branch;
-                $config_type = "library";
-            }
+    warn "debug 1";
+    if ( $global_enabled == '1' ) {
+        if ( $global_fine_branch eq 'patron' ) {
+            $branch_query = "AND borrowers.branchcode ";
+        }
+        if ( $global_fine_branch eq 'item_home' ) {
+            my $item_join =
+                " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber $branch_query = AND items.homebranch ";
+        }
+        if ( $global_fine_branch eq 'item_checkout' ) {
+            $branch_query = "AND accountlines.branchcode ";
+        }
+    } else {
+        return 0;
+    }
+    $self->prune_old_logs();
 
-         # Clear up archives older than 30 days
+    # if (($sync->send_sync_report) = "1") {
+    #     warn "send sync";
+    # }
+    my $todays_configs = $self->configs->today_enabled_configs;
+    while ( my $config = $todays_configs->next ) {
+        my $config_code           = "global";
+        my $config_type           = "global";
+        my $collections_flag      = $config->collections_flag || undef;
+        my $collections_flag_type = 'attribute';
+        my $exemptions_flag       = $config->exemptions_flag || undef;
+        my $exemptions_flag_type  = 'attribute';
+
+        if ($collections_flag) {
+            if ( $collections_flag eq 'sort1' ) {
+                $collections_flag_type = 'sort';
+            }
+        }
+        if ($collections_flag) {
+            if ( $collections_flag eq 'sort2' ) {
+                $collections_flag_type = 'sort';
+            }
+        }
+        if ($exemptions_flag) {
+            if ( $exemptions_flag eq 'sort1' ) {
+                $exemptions_flag_type = 'sort';
+            }
+        }
+        if ($exemptions_flag) {
+            if ( $exemptions_flag eq 'sort2' ) {
+                $exemptions_flag_type = 'sort';
+            }
+        }
+        my $config_branch_where;
+        my $config_branch_helper;
+        if ( $config->config_type eq 'group' ) {
+            $config_code = $config->config_group;
+            $config_type = "group";
+        }
+        if ( $config->config_type eq 'library' ) {
+            $config_code = $config->branch;
+            $config_type = "library";
+        }
+
+        # Clear up archives older than 30 days
         if ($archive_dir) {
             if ( -d $archive_dir ) {
                 my $dt = dt_from_string();
@@ -295,45 +305,45 @@ warn "debug 1";
                 opendir my $dir, $archive_dir or die "Cannot open directory: $!";
                 my @files = readdir $dir;
                 closedir $dir;
-                 my $thresholds = {
-                     new_submissions => "$config_code-ums-new-submissions-$age_threshold.csv",
-                     sync    => "$config_code-ums-sync-$age_threshold.csv",
-                     updates     => "$config_code-ums-updates-$age_threshold.csv",
-                   };
+                my $thresholds = {
+                    new_submissions => "$config_code-ums-new-submissions-$age_threshold.csv",
+                    sync            => "$config_code-ums-sync-$age_threshold.csv",
+                    updates         => "$config_code-ums-updates-$age_threshold.csv",
+                };
 
-                 foreach my $f (@files) {
-                     next unless $f =~ /csv$/;
+                foreach my $f (@files) {
+                    next unless $f =~ /csv$/;
 
-                     my $threshold_filename =
-                     $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
-                     : $f =~ /^$config_code-ums-sync/    ? $thresholds->{sync}
-                     : $f =~ /^$config_code-ums-updates/     ? $thresholds->{updates}
-                     :    undef;
+                    my $threshold_filename =
+                          $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
+                        : $f =~ /^$config_code-ums-sync/            ? $thresholds->{sync}
+                        : $f =~ /^$config_code-ums-updates/         ? $thresholds->{updates}
+                        :                                             undef;
 
-                     next unless $threshold_filename;
+                    next unless $threshold_filename;
 
-                     if ( $f lt $threshold_filename ) {
-                         unlink( $archive_dir . "/" . $f );
-                     }
-                 }
-               } else {
-                 make_path $archive_dir or die "Failed to create path: $archive_dir";
+                    if ( $f lt $threshold_filename ) {
+                        unlink( $archive_dir . "/" . $f );
+                    }
+                }
+            } else {
+                make_path $archive_dir or die "Failed to create path: $archive_dir";
 
             }
         }
-        if ($config_type eq "library") {
+        if ( $config_type eq "library" ) {
             $config_branch_helper = "$branch_query ='$config_code'";
         }
-        if ($config_type eq "group") {
-              $config_branch_helper = $branch_query . "IN (SELECT library_groups.branchcode 
+        if ( $config_type eq "group" ) {
+            $config_branch_helper = $branch_query . "IN (SELECT library_groups.branchcode 
                 FROM library_groups WHERE library_groups.parent_id = " . $config_code . "
                 AND library_groups.branchcode NOT IN 
                         (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch 
                         FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
                      WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch IS NOT NULL)
      )"
-         }
-         if ($config_type eq "global") {
+        }
+        if ( $config_type eq "global" ) {
             $config_branch_helper = $branch_query . "IN (SELECT branches.branchcode 
             FROM branches
             WHERE branches.branchcode NOT IN 
@@ -348,63 +358,65 @@ warn "debug 1";
                     FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config
                     WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL)
                 )"
-         }
-     my $params = { send_sync_report => $sync->{send_sync_report} };
-     $params->{require_lost_fee}    = $config->require_lost;
-     $params->{fees_threshold}    = $config->threshold;
-     $params->{processing_fee}    = $config->processing_fee || 0 ;
-     $params->{collections_flag}    = $config->collections_flag;
-     $params->{fees_newer}     = $config->fees_newer;
-     $params->{fees_older}     = $config->fees_older;
-     $params->{clear_below}     = $config->clear_below;
-     $params->{restriction}     = $config->restriction;
-     $params->{remove_restriction}    = $config->remove_restriction;
-     $params->{remove_minors}    = $config->remove_minors;
-     $params->{clear_threshold}     = $config->clear_threshold;
-     $params->{ignore_before} = $config->ignore_before;
-     $params->{unique_email} = $config->unique_email;
-     $params->{additional_email} = $config->additional_email;
-     $params->{config_name} = $config->config_name;
-     $params->{umsconfig_type}    = $config_type;
-     $params->{collection_flag_type} = $collections_flag_type;
-     $params->{exemptions_flag_type} = $exemptions_flag_type;
-     $params->{file_id} = $config_code;
-     $params->{config_code} = $config_code;
-     $params->{config_branch_helper} = $config_branch_helper;
-     my $today = dt_from_string();
-     $params->{date} = $today->ymd();
+        }
+        my $params = { send_sync_report => $sync->{send_sync_report} };
+        $params->{require_lost_fee}     = $config->require_lost;
+        $params->{fees_threshold}       = $config->threshold;
+        $params->{processing_fee}       = $config->processing_fee || 0;
+        $params->{collections_flag}     = $config->collections_flag;
+        $params->{fees_newer}           = $config->fees_newer;
+        $params->{fees_older}           = $config->fees_older;
+        $params->{clear_below}          = $config->clear_below;
+        $params->{restriction}          = $config->restriction;
+        $params->{remove_restriction}   = $config->remove_restriction;
+        $params->{remove_minors}        = $config->remove_minors;
+        $params->{clear_threshold}      = $config->clear_threshold;
+        $params->{ignore_before}        = $config->ignore_before;
+        $params->{unique_email}         = $config->unique_email;
+        $params->{additional_email}     = $config->additional_email;
+        $params->{config_name}          = $config->config_name;
+        $params->{umsconfig_type}       = $config_type;
+        $params->{collection_flag_type} = $collections_flag_type;
+        $params->{exemptions_flag_type} = $exemptions_flag_type;
+        $params->{file_id}              = $config_code;
+        $params->{config_code}          = $config_code;
+        $params->{config_branch_helper} = $config_branch_helper;
+        my $today = dt_from_string();
+        $params->{date} = $today->ymd();
 
-     my @patron_cat_codes = map { $_->categorycode } $config->patron_categories->as_list;
-     $params->{categorycodes} = \@patron_cat_codes;
+        my @patron_cat_codes = map { $_->categorycode } $config->patron_categories->as_list;
+        $params->{categorycodes} = \@patron_cat_codes;
 
-     my @debit_codes = map { $_->code } $config->debit_types->as_list;
-     $params->{debit_type_codes} = \@debit_codes;
+        my @debit_codes = map { $_->code } $config->debit_types->as_list;
+        $params->{debit_type_codes} = \@debit_codes;
 
-     $params->{config_debit_type} = $config->config_debit_type;
-     #fees_newer should be the large of the two numbers
-    #  ( $params->{fees_newer}, $params->{fees_older} ) =
-    #  ( $params->{fees_older}, $params->{fees_newer} )
-#      if $params->{fees_newer} < $params->{fees_older}; {
-# #        # warn?
-#      }
+        $params->{config_debit_type} = $config->config_debit_type;
 
-    #  ### Process new submissions
-    #  if ( !$params->{send_sync_report} ) {
-      $self->run_submissions_report($params);
-    #  } elsif ( !$params->{send_sync_report} ) {
-    #  log_info("NOT THE DOW TO RUN SUBMISSIONS");
-    #  }
+        #fees_newer should be the large of the two numbers
+        #  ( $params->{fees_newer}, $params->{fees_older} ) =
+        #  ( $params->{fees_older}, $params->{fees_newer} )
+        #      if $params->{fees_newer} < $params->{fees_older}; {
+        # #        # warn?
+        #      }
 
-#     ### Process UMS Update Report
-     $self->run_update_report_and_clear_paid($params);
-         } #/foreach config
+        #  ### Process new submissions
+        #  if ( !$params->{send_sync_report} ) {
+        $self->run_submissions_report($params);
 
-  } # /cronjob_nightly
+        #  } elsif ( !$params->{send_sync_report} ) {
+        #  log_info("NOT THE DOW TO RUN SUBMISSIONS");
+        #  }
 
- sub run_submissions_report {
+        #     ### Process UMS Update Report
+        $self->run_update_report_and_clear_paid($params);
+    }    #/foreach config
+
+}    # /cronjob_nightly
+
+sub run_submissions_report {
     my ( $self, $params ) = @_;
     my $remove_minors = $params->{remove_minors};
-warn "params " . Data::Dumper::Dumper($params);
+    warn "params " . Data::Dumper::Dumper($params);
     my $dbh = C4::Context->dbh;
     $dbh->{RaiseError} = 1;    # die if a query has problems
 
@@ -449,7 +461,7 @@ warn "params " . Data::Dumper::Dumper($params);
             AND code = '$params->{collections_flag}'
              } if $params->{collection_flag_type} eq 'attribute';
 
-         $ums_submission_query .= qq{
+        $ums_submission_query .= qq{
             LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
             LEFT JOIN (
                 SELECT borrowernumber, COUNT(*) AS lost_fees_count
@@ -474,7 +486,7 @@ warn "params " . Data::Dumper::Dumper($params);
             $ums_submission_query .= qq{
                 AND accountlines.debit_type_code IN ( $codes )
             };
-         }
+        }
 
         $ums_submission_query .= qq{
                 AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" OR borrowers.$params->{collections_flag} = "0")
@@ -534,7 +546,7 @@ warn "params " . Data::Dumper::Dumper($params);
             "email"
         ];
 
-    my $csv = UMS::GentleNudge::CSV->new;
+        my $csv = UMS::GentleNudge::CSV->new;
 
         $archive_dir ||= C4::Context->temporary_directory;
 
@@ -614,7 +626,7 @@ warn "params " . Data::Dumper::Dumper($params);
             filename  => $filename,
             file_path => $file_path,
         };
-warn Data::Dumper::Dumper($info);
+        warn Data::Dumper::Dumper($info);
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
@@ -651,7 +663,6 @@ warn Data::Dumper::Dumper($info);
             };
         }
 
-
     } catch {
         if ( $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
@@ -663,18 +674,18 @@ warn Data::Dumper::Dumper($info);
     };
 }
 
- sub run_update_report_and_clear_paid {
-     my ( $self, $params ) = @_;
+sub run_update_report_and_clear_paid {
+    my ( $self, $params ) = @_;
 
-     my $dbh = C4::Context->dbh;
-     $dbh->{RaiseError} = 1;    # die if a query has problems
+    my $dbh = C4::Context->dbh;
+    $dbh->{RaiseError} = 1;    # die if a query has problems
 
-     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
-     my $info = {};
-     try {
-         my $sth;
+    my $type = $params->{send_sync_report} ? 'sync' : 'updates';
+    my $info = {};
+    try {
+        my $sth;
 
-         my $ums_update_query = q{
+        my $ums_update_query = q{
              SELECT borrowers.cardnumber,
                     borrowers.borrowernumber,
                     MAX(borrowers.surname)                         AS "surname",
@@ -690,15 +701,15 @@ warn Data::Dumper::Dumper($info);
             AND code = '$params->{collections_flag}'
              } if $params->{collection_flag_type} eq 'attribute';
 
-         $ums_update_query .= q{
+        $ums_update_query .= q{
              WHERE  1=1
          };
 
-         $ums_update_query .= qq{
+        $ums_update_query .= qq{
              AND ( attribute = '1' OR attribute = 'yes' )
          } if $params->{collection_flag_type} eq 'attribute';
 
-         $ums_update_query .= qq{
+        $ums_update_query .= qq{
              AND ( borrowers.$params->{collections_flag} = 'yes' OR  borrowers.$params->{collections_flag} = '1' )
          } if $params->{collection_flag_type} eq 'sort';
 
@@ -706,106 +717,107 @@ warn Data::Dumper::Dumper($info);
                 $params->{config_branch_helper} 
             };
 
-         $ums_update_query .= q{
+        $ums_update_query .= q{
              GROUP BY borrowers.borrowernumber, borrowers.cardnumber
                  ORDER BY borrowers.surname ASC
          };
-#warn $ums_update_query;
-         log_debug("UMS UPDATE QUERY:\n$ums_update_query")
-             if ( !$params->{send_sync_report} );
-         $sth = $dbh->prepare($ums_update_query);
-         $sth->execute();
-         my @ums_updates;
-         while ( my $r = $sth->fetchrow_hashref ) {
-             log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
-             push( @ums_updates, $r );
 
-             my $due = $r->{Due} || 0;
-             $due =~ s/,//;
-             if ( $params->{remove_restriction} eq 'yes' && $due <= $params->{clear_threshold} ) {
-                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
-                 if ( $params->{remove_restriction} ) {
-                     Koha::Patron::Restrictions->search(
-                         {
-                             borrowernumber => $r->{borrowernumber},
-                             comment        => { 'like' => "Patron sent to collections on %" }
-                         }
-                     )->delete();
-                     Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
-                 }
-             }
-         }
-         ## Email the results
-         $archive_dir ||= C4::Context->temporary_directory;
-         my $filename  = "ums-$type-$params->{date}.csv";
-         my $file_path = "$archive_dir/$filename";
-         $info = {
-             count     => scalar @ums_updates,
-             type      => $type,
-             filename  => $filename,
-             file_path => $file_path,
-         };
+        #warn $ums_update_query;
+        log_debug("UMS UPDATE QUERY:\n$ums_update_query")
+            if ( !$params->{send_sync_report} );
+        $sth = $dbh->prepare($ums_update_query);
+        $sth->execute();
+        my @ums_updates;
+        while ( my $r = $sth->fetchrow_hashref ) {
+            log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
+            push( @ums_updates, $r );
 
-         my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
+            my $due = $r->{Due} || 0;
+            $due =~ s/,//;
+            if ( $params->{remove_restriction} eq 'yes' && $due <= $params->{clear_threshold} ) {
+                $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
+                if ( $params->{remove_restriction} ) {
+                    Koha::Patron::Restrictions->search(
+                        {
+                            borrowernumber => $r->{borrowernumber},
+                            comment        => { 'like' => "Patron sent to collections on %" }
+                        }
+                    )->delete();
+                    Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
+                }
+            }
+        }
+        ## Email the results
+        $archive_dir ||= C4::Context->temporary_directory;
+        my $filename  = "ums-$type-$params->{date}.csv";
+        my $file_path = "$archive_dir/$filename";
+        $info = {
+            count     => scalar @ums_updates,
+            type      => $type,
+            filename  => $filename,
+            file_path => $file_path,
+        };
 
-         my $csv; #=
-   #          @ums_updates
-   #          ? Koha::CSV->new( input => \@ums_updates, field_order => $columns )
-    #         : 'No qualifying records';
-        # log_trace( "CSV:\n" . $csv );
-         #write_file( $file_path, $csv )
-            # if $archive_dir;
-         log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv")
-             if $archive_dir;
+        my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
 
-         my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-         my $email_to   = $self->retrieve_data('unique_email');
-         my $email_cc   = $self->retrieve_data('cc_email');
-         foreach my $email_address ( $email_to, $email_cc ) {
-             next unless $email_address;
-             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
+        my $csv;    #=
+                    #          @ums_updates
+                    #          ? Koha::CSV->new( input => \@ums_updates, field_order => $columns )
+                    #         : 'No qualifying records';
+                    # log_trace( "CSV:\n" . $csv );
+                    #write_file( $file_path, $csv )
+                    # if $archive_dir;
+        log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}.csv")
+            if $archive_dir;
 
-             my $p = {
-                 to      => $email_address,
-                 from    => $email_from,
-                 subject => sprintf(
-                     "UMS %s for %s",
-                     ucfirst($type), C4::Context->preference('LibraryName')
-                 ),
-             };
-             my $email = Koha::Email->new($p);
-             $email->attach(
-                 Encode::encode_utf8($csv),
-                 content_type => "text/csv",
-                 filename     => $filename,
-                 name         => $filename,
-                 disposition  => 'attachment',
-             );
-             my $smtp_server = Koha::SMTP::Servers->get_default;
-             $email->transport( $smtp_server->transport );
+        my $email_from = C4::Context->preference('KohaAdminEmailAddress');
+        my $email_to   = $self->retrieve_data('unique_email');
+        my $email_cc   = $self->retrieve_data('cc_email');
+        foreach my $email_address ( $email_to, $email_cc ) {
+            next unless $email_address;
+            log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
 
-             try {
-                 $email->send_or_die unless $no_email;
-             } catch {
-                 $info->{email_failed}  = 'true';
-                 $info->{email_address} = $email_address;
-                 $info->{email_error}   = $_;
-                 logaction(
-                     'GENTLENUDGE',        uc($type) . "_ERROR", undef,
-                     $json->encode($info), 'cron'
-                 );
+            my $p = {
+                to      => $email_address,
+                from    => $email_from,
+                subject => sprintf(
+                    "UMS %s for %s",
+                    ucfirst($type), C4::Context->preference('LibraryName')
+                ),
+            };
+            my $email = Koha::Email->new($p);
+            $email->attach(
+                Encode::encode_utf8($csv),
+                content_type => "text/csv",
+                filename     => $filename,
+                name         => $filename,
+                disposition  => 'attachment',
+            );
+            my $smtp_server = Koha::SMTP::Servers->get_default;
+            $email->transport( $smtp_server->transport );
 
-                 die "Mail not sent: $_";
-             };
-         }
+            try {
+                $email->send_or_die unless $no_email;
+            } catch {
+                $info->{email_failed}  = 'true';
+                $info->{email_address} = $email_address;
+                $info->{email_error}   = $_;
+                logaction(
+                    'GENTLENUDGE',        uc($type) . "_ERROR", undef,
+                    $json->encode($info), 'cron'
+                );
 
-         logaction(
-             'GENTLENUDGE',        uc($type), undef,
-             $json->encode($info), 'cron'
-         );
+                die "Mail not sent: $_";
+            };
+        }
 
-     } catch {
-         if ( $_->isa('Koha::Exception') ) {
+        logaction(
+            'GENTLENUDGE',        uc($type), undef,
+            $json->encode($info), 'cron'
+        );
+
+    } catch {
+        if ( $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
         } else {
             $info->{error} = $_;
@@ -819,36 +831,36 @@ warn Data::Dumper::Dumper($info);
     };
 }
 
- sub clear_patron_from_collections {
-     warn "warn clear patron";
-     my ( $self, $params, $borrowernumber ) = @_;
+sub clear_patron_from_collections {
+    warn "warn clear patron";
+    my ( $self, $params, $borrowernumber ) = @_;
 
-     log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
+    log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
 
-     my $patron = Koha::Patrons->find($borrowernumber);
-     next unless $patron;
+    my $patron = Koha::Patrons->find($borrowernumber);
+    next unless $patron;
 
-     if ( $params->{collection_flag_type} eq 'sort' ) {
-         $patron->_result->update( { $params->{collections_flag} => 'no' } );
-     }
-     if ( $params->{collection_flag_type} eq 'attribute' ) {
-         my $a = Koha::Patron::Attributes->find(
-             {
-                 borrowernumber => $patron->id,
-                 code           => $params->{collections_flag},
-             }
-         );
+    if ( $params->{collection_flag_type} eq 'sort' ) {
+        $patron->_result->update( { $params->{collections_flag} => 'no' } );
+    }
+    if ( $params->{collection_flag_type} eq 'attribute' ) {
+        my $a = Koha::Patron::Attributes->find(
+            {
+                borrowernumber => $patron->id,
+                code           => $params->{collections_flag},
+            }
+        );
 
-         # At the time of this writing it is not possible to update a repeatable
-         # attribute. Instead, it must be deleted and recreated.
-         if ($a) {
-             $a->delete();
-             $a->attribute(0);
-             Koha::Patron::Attribute->new( $a->unblessed )->store();
-         }
-     }
-     warn "warn clear patron end";
- }
+        # At the time of this writing it is not possible to update a repeatable
+        # attribute. Instead, it must be deleted and recreated.
+        if ($a) {
+            $a->delete();
+            $a->attribute(0);
+            Koha::Patron::Attribute->new( $a->unblessed )->store();
+        }
+    }
+    warn "warn clear patron end";
+}
 
 sub api_routes {
     my ($self) = @_;
@@ -939,7 +951,7 @@ sub install() {
     );    #Create default configuration
 
     my $config_debit_type = $self->get_qualified_table_name('config_dt');
-    $dbh->do("
+    $dbh->do( "
         CREATE TABLE IF NOT EXISTS $config_debit_type (
             config_id int(11) NOT NULL,
             debit_type_code VARCHAR(64) NOT NULL,
@@ -947,10 +959,10 @@ sub install() {
             CONSTRAINT config_dt_cfg_fk FOREIGN KEY (config_id) REFERENCES $configuration (config_id) ON DELETE CASCADE ON UPDATE CASCADE,
             CONSTRAINT config_dt_code_fk FOREIGN KEY (debit_type_code) REFERENCES account_debit_types (code) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ");
+    " );
 
     my $config_patron_category = $self->get_qualified_table_name('config_pc');
-    $dbh->do("
+    $dbh->do( "
         CREATE TABLE IF NOT EXISTS $config_patron_category (
             config_id int(11) NOT NULL,
             category_code VARCHAR(10) NOT NULL,
@@ -958,7 +970,7 @@ sub install() {
             CONSTRAINT config_pc_cfg_fk FOREIGN KEY (config_id) REFERENCES $configuration (config_id) ON DELETE CASCADE ON UPDATE CASCADE,
             CONSTRAINT config_pc_code_fk FOREIGN KEY (category_code) REFERENCES categories (categorycode) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ");
+    " );
 
     my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
     return 1;
