@@ -13,7 +13,7 @@ use C4::Installer qw(TableExists);
 use C4::Log       qw(logaction);
 use C4::Templates;
 use Koha::Account::DebitTypes;
-use Koha::CSV;
+use UMS::GentleNudge::CSV;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::File::Transports;
 use Koha::Libraries;
@@ -534,27 +534,22 @@ warn "params " . Data::Dumper::Dumper($params);
             "email"
         ];
 
-    my $csv = Koha::CSV->new();
-    $csv->add_row($columns);
-    #$csv->combine(@ums_new_submissions);
-$archive_dir = "/kohadevbox/koha/shared";
-        #$archive_dir ||= "/tmp";
+    my $csv = UMS::GentleNudge::CSV->new;
+
+        $archive_dir ||= "/tmp";
 
         my $filename  = "ums-new-submissions-$params->{date}-$params->{config_code}.csv";
         my $file_path = "$archive_dir/$filename";
-        warn 'file path = ' . $file_path;
-open (my $fh, '<', $file_path) ;
-warn $fh;
+
+        open( my $fh, '>:encoding(UTF-8)', $file_path ) or die "Cannot write to $file_path: $!";
+        $csv->print( $fh, $columns );
+
         my @ums_new_submissions;
-        warn 'file path = ' . $file_path;
         while ( my $r = $sth->fetchrow_hashref ) {
-                    warn 'file path = ' . $file_path;
             log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
-warn 'r ' . Data::Dumper::Dumper($r);
+
             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
             next unless $patron;
-            my @patron_row = $r;
-                    warn 'file path = ' . $file_path;
             if ( $params->{restriction} eq 'yes' ) {
                 AddDebarment(
                     {
@@ -565,7 +560,6 @@ warn 'r ' . Data::Dumper::Dumper($r);
                     }
                 );
             }
-                    warn 'file path = ' . $file_path;
 
             if ( $params->{collection_flag_type} eq 'sort' ) {
                 $patron->update( { $params->{collections_flag} => 'yes' } );
@@ -577,7 +571,6 @@ warn 'r ' . Data::Dumper::Dumper($r);
                         code           => $params->{collections_flag},
                     }
                 );
-                    warn 'file path = ' . $file_path;
 
                 if ($a) {
                     $a->attribute(1)->store();
@@ -591,7 +584,6 @@ warn 'r ' . Data::Dumper::Dumper($r);
                     )->store();
                 }
             }
-                    warn 'file path = ' . $file_path;
 
             my $processing_fee = $params->{processing_fee};
             $patron->account->add_debit(
@@ -602,23 +594,14 @@ warn 'r ' . Data::Dumper::Dumper($r);
                     type        => $params->{config_debit_type},
                 }
             ) if $processing_fee && $processing_fee > 0;
-            #$csv->print( $fh, \@patron_row );
-            $csv->combine(@patron_row);
+            my @row = @{$r}{@$columns};
+            $csv->print( $fh, \@row );
             push( @ums_new_submissions, $r );
-                    warn Data::Dumper::Dumper(@ums_new_submissions);
-                                        warn 'file path = ' . $file_path;
 
         }
-close $fh;
-warn 'csv ' . Data::Dumper::Dumper($csv);
-warn 'file path after close ' . $file_path;
-        #csv (in=>@ums_new_submissions, out =>$filepath);
-# warn @ums_new_submissions;
-# warn $csv;
+        close $fh;
 
-        #write_file( $file_path, $csv );
         log_info("ARCHIVE WRITTEN TO $file_path");
-        warn "ARCHIVE WRITTEN TO ". $file_path;
 
         ## Email the results
 
