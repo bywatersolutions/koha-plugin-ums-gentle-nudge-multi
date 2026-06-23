@@ -357,7 +357,7 @@ sub cronjob_nightly {
                     (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group 
                     FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config
                     WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL)
-                )"
+                ))"
         }
         my $params = { send_sync_report => $sync->{send_sync_report} };
         $params->{require_lost_fee}     = $config->require_lost;
