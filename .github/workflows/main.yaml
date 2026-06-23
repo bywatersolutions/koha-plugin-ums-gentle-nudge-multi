@@ -75,7 +75,7 @@ jobs:
     - name: Install plugins in KTD
       run: |
         export KTD_HOME=$(pwd)/../koha-testing-docker
-        ktd --name  umstest --shell --run "cd /kohadevbox/koha && perl misc/devel/install_plugins.pl"
+        ktd --name  umstest --shell --run "export PERL5LIB=\$PERL5LIB:/var/lib/koha/kohadev/plugins/${{ env.GITHUB_REPO }}/Koha/Plugin/Com/ByWaterSolutions/UMSGentleNudge/lib && cd /kohadevbox/koha && perl misc/devel/install_plugins.pl"
 
     - name: Run plugin tests
       run: |

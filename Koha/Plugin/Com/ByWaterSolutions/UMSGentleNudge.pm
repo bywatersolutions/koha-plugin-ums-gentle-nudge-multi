@@ -60,7 +60,7 @@ BEGIN {
     my $path = Module::Metadata->find_module_by_name(__PACKAGE__);
     $path =~ s!\.pm$!/lib!;
     unshift @INC, $path;
-    require UMS::GentleNudge::Configs;
+
     require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfig;
     require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigDebitType;
     require Koha::Schema::Result::KohaPluginComBywatersolutionsUmsgentlenudgeConfigPatronCategory;
@@ -181,7 +181,7 @@ sub configure {
             warn "in syncelse";
             my $sync_id = $cgi->param('config_id');
             warn $sync_id;
-            my $sync->{sync_id} = $sync_id;
+            my $sync = { sync_id => $sync_id };
             $sync->{send_sync_report} = "1";
             warn $sync->{sync_id};
             warn Data::Dumper::Dumper($sync);
