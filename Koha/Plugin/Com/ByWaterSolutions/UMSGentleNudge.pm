@@ -13,7 +13,7 @@ use C4::Installer qw(TableExists);
 use C4::Log       qw(logaction);
 use C4::Templates;
 use Koha::Account::DebitTypes;
-use UMS::GentleNudge::CSV;
+require UMS::GentleNudge::CSV;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::File::Transports;
 use Koha::Libraries;
