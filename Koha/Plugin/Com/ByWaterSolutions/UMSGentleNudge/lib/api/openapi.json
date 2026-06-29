@@ -238,7 +238,13 @@
                                             ],
                                             "description": "What debit type should be used"
                                         },
-
+                                        "sftp": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "description": "What debit type should be used"
+                                        },
                                         "updated_at": {
                                             "type": [
                                                 "string",
@@ -538,7 +544,13 @@
                     ],
                     "description": "What debit type should be used"
                 },
-
+                "sftp": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "What debit type should be used"
+                },
                 "updated_at": {
                     "type": [
                         "string",

@@ -151,7 +151,8 @@ sub configure {
     my $config       = $cgi->param('config');
     my $groups       = Koha::Library::Groups->search( { branchcode => undef }, { order_by => ['title'] } );
     my @debit_types  = Koha::Account::DebitTypes->search()->as_list;
-    my @servers      = Koha::SMTP::Servers->search();
+    my @smtp_servers = Koha::SMTP::Servers->search();
+    my @sftp_servers = Koha::File::Transports->search();
     my @group_array  = Koha::Library::Groups->search();
     my @branch_array = Koha::Libraries->search();
     my $action_type  = scalar $cgi->param('step');
@@ -190,7 +191,10 @@ sub configure {
     }
 
     $template->param(
-        groups             => $groups, debit_types => \@debit_types, servers => @servers,
+        groups             => $groups, 
+        debit_types => \@debit_types, 
+        smtp_servers => @smtp_servers,
+        sftp_servers => @sftp_servers,
         global_enabled     => $self->retrieve_data('global_enabled'),
         global_fine_branch => $self->retrieve_data('global_fine_branch')
     );
@@ -362,6 +366,7 @@ sub cronjob_nightly {
         my $params = { send_sync_report => $sync->{send_sync_report} };
         $params->{require_lost_fee}     = $config->require_lost;
         $params->{fees_threshold}       = $config->threshold;
+        $params->{exemptions_flag}      = $config->exemptions_flag;
         $params->{processing_fee}       = $config->processing_fee || 0;
         $params->{collections_flag}     = $config->collections_flag;
         $params->{fees_newer}           = $config->fees_newer;
@@ -381,6 +386,8 @@ sub cronjob_nightly {
         $params->{file_id}              = $config_code;
         $params->{config_code}          = $config_code;
         $params->{config_branch_helper} = $config_branch_helper;
+        $params->{sftp_server_id}       = $config->sftp_server;
+        $params->{smtp_server}          = $config->smtp_server;
         my $today = dt_from_string();
         $params->{date} = $today->ymd();
 
@@ -615,6 +622,13 @@ sub run_submissions_report {
 
         log_info("ARCHIVE WRITTEN TO $file_path");
 
+            if ($params->{sftp_server}) {
+                my $transport_id = $params->{sftp_server};
+                my $transport = Koha::File::Transports->find($transport_id);
+                $transport->upload_file($file_path, $filename);
+            }
+
+
         ## Email the results
 
         my $email_to   = $params->{unique_email};
@@ -648,8 +662,14 @@ sub run_submissions_report {
                 name         => "ums-new-submissions-$params->{date}-$params->{config_code}.csv",
                 disposition  => 'attachment',
             );
-
-            my $smtp_server = Koha::SMTP::Servers->get_default;
+            my $smtp_id =$params->{smtp_server};
+            my $smtp_server;
+            if ( $smtp_id ) {
+                warn "in smtp_id";
+                $smtp_server = Koha::SMTP::Servers->find($smtp_id);
+            } else {
+            $smtp_server = Koha::SMTP::Servers->get_default;
+            }
             $email->transport( $smtp_server->transport );
 
             try {
@@ -934,14 +954,17 @@ sub install() {
                     config_debit_type VARCHAR(191) NOT NULL,
                     # updated_at timestamp NOT NULL COMMENT 'When the config was last updated',
                     require_lost TINYINT(1) NOT NULL COMMENT 'Does patron require a lost fee to go to collections',
-                    smpt_server int(11) NULL COMMENT 'The ID of the SMPT server to use',
+                    smtp_server int(11) NULL COMMENT 'The ID of the SMPT server to use',
+                    sftp_server int(11) NULL COMMENT 'The ID of the SFTP server to use',
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
                     KEY config_group (config_group),
-                    KEY smpt_server (smpt_server),
+                    KEY smtp_server (smtp_server),
+                    KEY sftp_server (sftp_server),
                     CONSTRAINT config_branch FOREIGN KEY (branch) REFERENCES branches (branchcode) ON DElETE CASCADE ON UPDATE CASCADE,
                     CONSTRAINT config_library_group FOREIGN KEY (config_group) REFERENCES library_groups (id) ON DELETE CASCADE ON UPDATE CASCADE,
-                    CONSTRAINT config_smtp FOREIGN KEY (smpt_server) REFERENCES smtp_servers (id) ON DELETE CASCADE ON UPDATE CASCADE
+                    CONSTRAINT config_smtp FOREIGN KEY (smtp_server) REFERENCES smtp_servers (id) ON DELETE CASCADE ON UPDATE CASCADE,
+                    CONSTRAINT config_sftp FOREIGN KEY (sftp_server) REFERENCES file_transports (file_transport_id) ON DELETE CASCADE ON UPDATE CASCADE
                     ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
        " );
