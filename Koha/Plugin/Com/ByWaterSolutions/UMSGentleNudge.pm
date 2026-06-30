@@ -955,8 +955,15 @@ sub install() {
        " );
     }
     $dbh->do(
-        "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, config_debit_type, require_lost, remove_minors, fees_newer, fees_older, remove_restriction, restriction) VALUES ('Global', 'global', 0, '10', 'manual', 0, 0, '90', '60', 0, 0)"
+        "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, config_debit_type, clear_below, require_lost, remove_minors, fees_newer, fees_older, remove_restriction, restriction, collections_flag, exemptions_flag) VALUES ('Global', 'global', 0, '10', 'MANUAL', 0, 0, 0, '90', '60', 0, 0, 'sort1', 'sort2')"
     );    #Create default configuration
+
+$self->store_data(
+                    {
+                        global_enabled => '0',
+                        global_fine_branch => 'patron',
+                    }
+                );
 
     my $config_debit_type = $self->get_qualified_table_name('config_dt');
     $dbh->do( "
