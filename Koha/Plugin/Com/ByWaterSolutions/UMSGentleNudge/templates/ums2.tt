@@ -131,7 +131,7 @@
                             <select name="global_fine_branch_selector" class="form-control" id="global_fine_branch">
                                 <option value="patron"[% IF global_fine_branch == 'patron' %] selected="selected"[% END %]>Patron home branch</option>
                                 <option value="item_home"[% IF global_fine_branch == 'item_home' %] selected="selected"[% END %]>Item home branch</option>
-                                <option value="item_checkout"[% IF global_fine_branch == 'item_checkout' %] selected="selected"[% END %]>Checkout branch of the item</option>
+                                <option value="accountline"[% IF global_fine_branch == 'accountline' %] selected="selected"[% END %]>Accountline branch of the fine</option>
                                 </select>
                         </div><!-- /global_fine_branch group -->
                     </div><!-- /global_fine column -->

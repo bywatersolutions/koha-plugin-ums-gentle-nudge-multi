@@ -141,7 +141,7 @@ sub new {
 =cut
 
 sub configure {
-    warn 'configure';
+
     my ( $self, $args ) = @_;
     my $cgi          = $self->{'cgi'};
     my $template     = $self->get_template( { file => 'templates/ums2.tt' } );
@@ -156,14 +156,11 @@ sub configure {
     my @group_array  = Koha::Library::Groups->search();
     my @branch_array = Koha::Libraries->search();
     my $action_type  = scalar $cgi->param('step');
-    warn $action;
+
 
     if ($action) {
-        warn 'in action';
         if ( $action eq 'cud-save' ) {
-            warn 'in save';
             if ( $action_type eq 'plugin_settings' ) {
-                warn 'in plugin';
                 $self->store_data(
                     {
                         global_enabled     => scalar $cgi->param('global_enabled_selector'),
@@ -171,7 +168,6 @@ sub configure {
                     }
                 );
             } else {
-                warn 'in else';
                 $self->store_data(
                     {
                         config_id => scalar $cgi->param('config_id'),
@@ -179,13 +175,9 @@ sub configure {
                 );
             }
         } elsif ( $action eq 'sync-report' ) {
-            warn "in syncelse";
             my $sync_id = $cgi->param('config_id');
-            warn $sync_id;
             my $sync = { sync_id => $sync_id };
             $sync->{send_sync_report} = "1";
-            warn $sync->{sync_id};
-            warn Data::Dumper::Dumper($sync);
             $self->cronjob_nightly($sync);
         }
     }
@@ -233,14 +225,13 @@ sub static_routes {
 =cut
 
 sub cronjob_nightly {
-    warn "in nightly";
+
     my ( $self, $p, $sync ) = @_;
 
-    #warn $sync->{sync_id};
     my $branch_query;
     my $global_enabled     = $self->retrieve_data('global_enabled');
     my $global_fine_branch = $self->retrieve_data('global_fine_branch');
-    warn "debug 1";
+
     if ( $global_enabled == '1' ) {
         if ( $global_fine_branch eq 'patron' ) {
             $branch_query = "AND borrowers.branchcode ";
@@ -249,7 +240,7 @@ sub cronjob_nightly {
             my $item_join =
                 " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber $branch_query = AND items.homebranch ";
         }
-        if ( $global_fine_branch eq 'item_checkout' ) {
+        if ( $global_fine_branch eq 'accountline' ) {
             $branch_query = "AND accountlines.branchcode ";
         }
     } else {
@@ -257,9 +248,6 @@ sub cronjob_nightly {
     }
     $self->prune_old_logs();
 
-    # if (($sync->send_sync_report) = "1") {
-    #     warn "send sync";
-    # }
     my $todays_configs = $self->configs->today_enabled_configs;
     while ( my $config = $todays_configs->next ) {
         my $config_code           = "global";
@@ -423,7 +411,6 @@ sub cronjob_nightly {
 sub run_submissions_report {
     my ( $self, $params ) = @_;
     my $remove_minors = $params->{remove_minors};
-    warn "params " . Data::Dumper::Dumper($params);
     my $dbh = C4::Context->dbh;
     $dbh->{RaiseError} = 1;    # die if a query has problems
 
@@ -640,7 +627,6 @@ sub run_submissions_report {
             filename  => $filename,
             file_path => $file_path,
         };
-        warn Data::Dumper::Dumper($info);
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
@@ -665,7 +651,7 @@ sub run_submissions_report {
             my $smtp_id =$params->{smtp_server};
             my $smtp_server;
             if ( $smtp_id ) {
-                warn "in smtp_id";
+
                 $smtp_server = Koha::SMTP::Servers->find($smtp_id);
             } else {
             $smtp_server = Koha::SMTP::Servers->get_default;
@@ -742,7 +728,6 @@ sub run_update_report_and_clear_paid {
                  ORDER BY borrowers.surname ASC
          };
 
-        #warn $ums_update_query;
         log_debug("UMS UPDATE QUERY:\n$ums_update_query")
             if ( !$params->{send_sync_report} );
         $sth = $dbh->prepare($ums_update_query);
@@ -852,7 +837,7 @@ sub run_update_report_and_clear_paid {
 }
 
 sub clear_patron_from_collections {
-    warn "warn clear patron";
+
     my ( $self, $params, $borrowernumber ) = @_;
 
     log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
@@ -879,7 +864,7 @@ sub clear_patron_from_collections {
             Koha::Patron::Attribute->new( $a->unblessed )->store();
         }
     }
-    warn "warn clear patron end";
+
 }
 
 sub api_routes {
@@ -1013,7 +998,7 @@ sub upgrade {
     if ( $self->_version_compare( $database_version, "2.20.0" ) == -1 ) {
 
         my $configuration = $self->get_qualified_table_name('config');
-        warn "warn upgrade end";
+
         return 1;
     }
     $database_version = "3.00.0";
@@ -1029,14 +1014,14 @@ after ourselves!
 =cut
 
 sub uninstall() {
-    warn "warn uninstall";
+
     my ( $self, $args ) = @_;
 
     return 1;
 }
 
 sub _log_file {
-    warn "warn log-file";
+
     my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
     my $logdir = File::Spec->catdir( $home, 'gentle_nudge_logs' );
     mkdir $logdir unless -d $logdir;
@@ -1046,7 +1031,7 @@ sub _log_file {
 }
 
 sub prune_old_logs {
-    warn "warn prune_old_logs";
+
     my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
     my $logdir = File::Spec->catdir( $home, 'gentle_nudge_logs' );
     mkdir $logdir unless -d $logdir;
@@ -1063,7 +1048,7 @@ sub prune_old_logs {
 }
 
 sub _log {
-    warn "warn log";
+
     my ( $level, $msg ) = @_;
     my $ts   = strftime( "%Y-%m-%d %H:%M:%S", localtime );
     my $line = "[$ts] [$level] $msg\n";
@@ -1073,7 +1058,7 @@ sub _log {
         close $fh;
     }
     prune_old_logs();
-    warn "warn log end";
+
 }
 
 sub log_info  { _log( "INFO",  shift ) if $debug >= 1; }
