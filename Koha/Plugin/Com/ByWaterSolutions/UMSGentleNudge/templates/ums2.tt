@@ -584,7 +584,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
             });
 
             UMSConfigModal.addEventListener('show.bs.modal', function (event){
-                console.log('modellistener');
                 //Button that triggered the modal
                 var button = event.relatedTarget;
                 // Extract info from data-bs-* attributes
@@ -599,8 +598,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 var modalTypeSelector = modalTypeSelector + configtype;
                 var modalIDSelect = '.' + configtype + '_option';
                 var modalButton =  UMSConfigModal.querySelector('#modal_button');
-                console.log('button' + modalButton);
-                console.log('id:' + ums_id +' /mode:' + umsmode + '/modaltitle: ' + modalTitle + ' / modalTypeInput: ' + modalTypeInput + ' / modalTypeSelector: '  + modalTypeSelector  + ' / modalIDSelect: ' + modalIDSelect);
                 //Sets the title dynamicly: Mode (New/Edit) type(global, group, or library) configuration
                 modalTitle.textContent = umsmode + ' ' + configtype + ' configuration';
                 var modalSelector = UMSConfigModal.querySelector('.modal-select-type');
@@ -661,7 +658,6 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     success: function(config) {
                         let calendar = flatpickr('#fees_created_before_date_filter');
                         calendar.setDate(config.ignore_before);
-console.log(config.patron_categories.map(element => element.patron_category_id));
                         if (config.config_type == "library") {
                             document.getElementById("umsconfig_id_select").value = config.branch;
                         }
@@ -951,7 +947,6 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                         if (xhr.responseJSON && xhr.responseJSON.error) {
                             message += ': ' + xhr.responseJSON.error;
                         }
-                        //showMessage(message, 'danger');
                     }
                     });}
 
@@ -967,7 +962,6 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                     config_type = "library"
                 };
                 if (configtype === 'group') {
-                    console.log('group');
                     umsgroup = $('#umsconfig_id_select').val();
                     ums_select = document.getElementById('umsconfig_id_select');
                     ums_name = ums_select.options[ums_select.selectedIndex].text;
@@ -977,8 +971,6 @@ console.log(config.patron_categories.map(element => element.patron_category_id))
                 const debit_types_array = $('#umsconfig_debit_types').select2('data');
                 patron_categories = patron_categories_array.map(value => value.id);
                 debit_types = debit_types_array.map(value =>value.id);
-                //patron_categories = patron_categories.toString();
-                console.log (patron_categories);
                 var debit_type_select = document.getElementById('processing_debit');
                 var debit_type = debit_type_select.value;
                 var exemption_select = document.getElementById('exemption_flag');

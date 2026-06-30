@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-06-29
+
+### Fixed
+- Defaults now save correctly on install
+- Updated branch selector to accruately reflect accountlines is what it chcks
+- Remove dated warns
+- Remove dated console logs
+
+## [0.8.0] - 2026-06-29
+
+### Fixed
+- Added SFTP server capabilities
+- Cleaned up SMTP server section
+
 ## [0.7.2] - 2026-06-16
 
 ### Fixed
