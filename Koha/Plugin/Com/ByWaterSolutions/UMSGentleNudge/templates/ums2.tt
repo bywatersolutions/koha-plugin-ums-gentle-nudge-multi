@@ -667,8 +667,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         if (config.config_type == "global") {
                             document.getElementById("umsconfig_id_select").value = 'global';
                         }
-                        if (config.sftp) {
-                            document.getElementById("sftp_selector_select").value = config.sftp;
+                        if (config.sftp_server) {
+                            document.getElementById("sftp_selector_select").value = config.sftp_server;
                         }
 
                         document.getElementById("umsconfig_id_select").setAttribute("disabled","disabled");
@@ -1008,7 +1008,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     remove_restriction:$('#remove_restriction').val(),
                     require_lost: $('#require_lost_fee').val(),
                     restriction: $('#add_restriction').val(),
-                    sftp: sftp,
+                    sftp_server: sftp,
 
                     threshold: $('#fees_threshold').val(),
                     unique_email: $('#unique_email').val()
