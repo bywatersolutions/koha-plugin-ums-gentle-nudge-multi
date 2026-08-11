@@ -1021,10 +1021,16 @@ after ourselves!
 =cut
 
 sub uninstall() {
-
     my ( $self, $args ) = @_;
 
-    return 1;
+    my $pc_table = $self->get_qualified_table_name('config_pc');
+    return C4::Context->dbh->do("DROP TABLE IF EXISTS $pc_table");
+
+    my $dt_table = $self->get_qualified_table_name('config_dt');
+    return C4::Context->dbh->do("DROP TABLE IF EXISTS $dt_table");
+
+    my $config_table = $self->get_qualified_table_name('config');
+    return C4::Context->dbh->do("DROP TABLE IF EXISTS $config_table");
 }
 
 sub _log_file {
