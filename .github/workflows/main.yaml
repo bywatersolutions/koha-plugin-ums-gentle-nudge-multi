@@ -70,7 +70,7 @@ jobs:
       run: |
         cd ../koha-testing-docker
         export KTD_HOME=$(pwd)
-        ktd --name umstest --wait-ready 120
+        ktd --name umstest --wait-ready 240
 
     - name: Install plugins in KTD
       run: |
