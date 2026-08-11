@@ -238,7 +238,7 @@
                                             ],
                                             "description": "What debit type should be used"
                                         },
-                                        "sftp": {
+                                        "sftp_server": {
                                             "type": [
                                                 "string",
                                                 "null"
@@ -544,7 +544,7 @@
                     ],
                     "description": "What debit type should be used"
                 },
-                "sftp": {
+                "sftp_server": {
                     "type": [
                         "string",
                         "null"
