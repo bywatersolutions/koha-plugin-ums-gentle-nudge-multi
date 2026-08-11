@@ -407,7 +407,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                 <legend>SFTP Information</legend>
                               </div><!-- /row-->
                             <div class="row">
-                                <span class="help-block">If SFTP information is set, plugin will transfer files to the given SMTP server</span>
+                                <span class="help-block">If SFTP information is set, plugin will transfer files to the given SFTP server</span>
                               </div><!-- /row-->
                             <div class="row">
                                 <div class="col-md-6">
