@@ -953,10 +953,11 @@ sub install() {
                     ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
        " );
-    }
+    
     $dbh->do(
         "INSERT IGNORE INTO $configuration (config_name, config_type, day_of_week, threshold, config_debit_type, clear_below, require_lost, remove_minors, fees_newer, fees_older, remove_restriction, restriction, collections_flag, exemptions_flag) VALUES ('Global', 'global', 0, '10', 'MANUAL', 0, 0, 0, '90', '60', 0, 0, 'sort1', 'sort2')"
     );    #Create default configuration
+    }
 
 $self->store_data(
                     {
@@ -1022,15 +1023,12 @@ after ourselves!
 
 sub uninstall() {
     my ( $self, $args ) = @_;
-
-    my $pc_table = $self->get_qualified_table_name('config_pc');
-    return C4::Context->dbh->do("DROP TABLE IF EXISTS $pc_table");
-
-    my $dt_table = $self->get_qualified_table_name('config_dt');
-    return C4::Context->dbh->do("DROP TABLE IF EXISTS $dt_table");
-
+warn "in uninstall";
     my $config_table = $self->get_qualified_table_name('config');
-    return C4::Context->dbh->do("DROP TABLE IF EXISTS $config_table");
+    my $dt_table = $self->get_qualified_table_name('config_dt');
+    my $pc_table = $self->get_qualified_table_name('config_pc');
+    return C4::Context->dbh->do("DROP TABLE IF EXISTS $pc_table, $dt_table, $config_table");
+
 }
 
 sub _log_file {
