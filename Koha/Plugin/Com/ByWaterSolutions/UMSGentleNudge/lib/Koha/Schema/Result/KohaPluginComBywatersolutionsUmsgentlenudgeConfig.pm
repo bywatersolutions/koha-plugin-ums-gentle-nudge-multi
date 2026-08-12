@@ -202,6 +202,22 @@ Options are global (can only have 1 global), branch, or group
 
 Does patron require a lost fee to go to collections
 
+=head2 sftp_server
+
+  data_type: 'integer'
+  is_foreign_key: 1
+  is_nullable: 0
+
+Optional sftp_server ID
+
+=head2 smtp_server
+
+  data_type: 'integer'
+  is_foreign_key: 1
+  is_nullable: 0
+
+Optional smtp_server ID
+
 =cut
 
 __PACKAGE__->add_columns(
@@ -251,6 +267,10 @@ __PACKAGE__->add_columns(
   { data_type => "varchar", is_nullable => 0, size => 191 },
   "require_lost",
   { data_type => "tinyint", is_nullable => 0 },
+  "smtp_server",
+  { data_type => "integer", is_foreign_key => 1, is_nullable => 1 },
+  "sftp_server",
+  { data_type => "integer", is_foreign_key => 1, is_nullable => 1 },
 );
 
 =head1 PRIMARY KEY
@@ -307,7 +327,45 @@ __PACKAGE__->belongs_to(
   },
 );
 
+=head2 sftp_server
 
+Type: belongs_to
+
+Related object: L<Koha::Schema::Result::FileTransport>
+
+=cut
+
+__PACKAGE__->belongs_to(
+  "sftp_server",
+  "Koha::Schema::Result::FileTransport",
+  { id => "sftp_server" },
+  {
+    is_deferrable => 1,
+    join_type     => "LEFT",
+    on_delete     => "CASCADE",
+    on_update     => "CASCADE",
+  },
+);
+
+=head2 smtp_server
+
+Type: belongs_to
+
+Related object: L<Koha::Schema::Result::SmtpServer>
+
+=cut
+
+__PACKAGE__->belongs_to(
+  "smtp_server",
+  "Koha::Schema::Result::smtpServer",
+  { id => "smtp_server" },
+  {
+    is_deferrable => 1,
+    join_type     => "LEFT",
+    on_delete     => "CASCADE",
+    on_update     => "CASCADE",
+  },
+);
 # Created by DBIx::Class::Schema::Loader v0.07051 @ 2026-05-22 16:19:37
 # DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:PapyRD7Ilsj+01QAbF7IAg
 
