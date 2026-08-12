@@ -357,7 +357,7 @@ Related object: L<Koha::Schema::Result::SmtpServer>
 
 __PACKAGE__->belongs_to(
   "smtp_server",
-  "Koha::Schema::Result::smtpServer",
+  "Koha::Schema::Result::SmtpServer",
   { id => "smtp_server" },
   {
     is_deferrable => 1,
