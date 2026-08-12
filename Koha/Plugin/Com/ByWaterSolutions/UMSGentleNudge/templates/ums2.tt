@@ -658,6 +658,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     success: function(config) {
                         let calendar = flatpickr('#fees_created_before_date_filter');
                         calendar.setDate(config.ignore_before);
+                        console.log (config);
                         if (config.config_type == "library") {
                             document.getElementById("umsconfig_id_select").value = config.branch;
                         }
@@ -1013,6 +1014,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     threshold: $('#fees_threshold').val(),
                     unique_email: $('#unique_email').val()
                 };
+                console.log (configData);
                 method = '';
                 let url = '/api/v1/contrib/ums/configs';
                 if (umsmode == "New") {
