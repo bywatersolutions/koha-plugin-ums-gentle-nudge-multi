@@ -177,8 +177,10 @@ sub configure {
         } elsif ( $action eq 'sync-report' ) {
             my $sync_id = $cgi->param('config_id');
             my $sync = { sync_id => $sync_id };
+            my $config = $self->config($sync_id);
+            my $params = $self->build_params($sync, $config);
             $sync->{send_sync_report} = "1";
-            $self->cronjob_nightly($sync);
+            $self->run_update_report_and_clear_paid($sync, $params);
         }
     }
 
@@ -249,6 +251,7 @@ sub cronjob_nightly {
     $self->prune_old_logs();
 
     my $todays_configs = $self->configs->today_enabled_configs;
+ 
     while ( my $config = $todays_configs->next ) {
         my $config_code           = "global";
         my $config_type           = "global";
@@ -287,7 +290,13 @@ sub cronjob_nightly {
             $config_code = $config->branch;
             $config_type = "library";
         }
-
+        my $params = $self->build_params($sync, $config);
+        $params->{umsconfig_type}       = $config_type;
+        $params->{collection_flag_type} = $collections_flag_type;
+        $params->{exemptions_flag_type} = $exemptions_flag_type;
+        $params->{file_id}              = $config_code;
+        $params->{config_code}          = $config_code;
+        $params->{config_branch_helper} = $config_branch_helper;
         # Clear up archives older than 30 days
         if ($archive_dir) {
             if ( -d $archive_dir ) {
@@ -351,56 +360,9 @@ sub cronjob_nightly {
                     WHERE koha_plugin_com_bywatersolutions_umsgentlenudge_config.config_group IS NOT NULL)
                 ))"
         }
-        my $params = { send_sync_report => $sync->{send_sync_report} };
-        $params->{require_lost_fee}     = $config->require_lost;
-        $params->{fees_threshold}       = $config->threshold;
-        $params->{exemptions_flag}      = $config->exemptions_flag;
-        $params->{processing_fee}       = $config->processing_fee || 0;
-        $params->{collections_flag}     = $config->collections_flag;
-        $params->{fees_newer}           = $config->fees_newer;
-        $params->{fees_older}           = $config->fees_older;
-        $params->{clear_below}          = $config->clear_below;
-        $params->{restriction}          = $config->restriction;
-        $params->{remove_restriction}   = $config->remove_restriction;
-        $params->{remove_minors}        = $config->remove_minors;
-        $params->{clear_threshold}      = $config->clear_threshold;
-        $params->{ignore_before}        = $config->ignore_before;
-        $params->{unique_email}         = $config->unique_email;
-        $params->{additional_email}     = $config->additional_email;
-        $params->{config_name}          = $config->config_name;
-        $params->{umsconfig_type}       = $config_type;
-        $params->{collection_flag_type} = $collections_flag_type;
-        $params->{exemptions_flag_type} = $exemptions_flag_type;
-        $params->{file_id}              = $config_code;
-        $params->{config_code}          = $config_code;
-        $params->{config_branch_helper} = $config_branch_helper;
-        $params->{sftp_server_id}       = $config->sftp_server;
-        $params->{smtp_server}          = $config->smtp_server;
-        my $today = dt_from_string();
-        $params->{date} = $today->ymd();
 
-        my @patron_cat_codes = map { $_->categorycode } $config->patron_categories->as_list;
-        $params->{categorycodes} = \@patron_cat_codes;
 
-        my @debit_codes = map { $_->code } $config->debit_types->as_list;
-        $params->{debit_type_codes} = \@debit_codes;
-
-        $params->{config_debit_type} = $config->config_debit_type;
-
-        #fees_newer should be the large of the two numbers
-        #  ( $params->{fees_newer}, $params->{fees_older} ) =
-        #  ( $params->{fees_older}, $params->{fees_newer} )
-        #      if $params->{fees_newer} < $params->{fees_older}; {
-        # #        # warn?
-        #      }
-
-        #  ### Process new submissions
-        #  if ( !$params->{send_sync_report} ) {
         $self->run_submissions_report($params);
-
-        #  } elsif ( !$params->{send_sync_report} ) {
-        #  log_info("NOT THE DOW TO RUN SUBMISSIONS");
-        #  }
 
         #     ### Process UMS Update Report
         $self->run_update_report_and_clear_paid($params);
@@ -808,7 +770,7 @@ sub run_update_report_and_clear_paid {
                 $info->{email_address} = $email_address;
                 $info->{email_error}   = $_;
                 logaction(
-                    'GENTLENUDGE',        uc($type) . "_ERROR", undef,
+                    'GentleNudge',        uc($type) . "_ERROR", undef,
                     $json->encode($info), 'cron'
                 );
 
@@ -817,7 +779,7 @@ sub run_update_report_and_clear_paid {
         }
 
         logaction(
-            'GENTLENUDGE',        uc($type), undef,
+            'GentleNudge',        uc($type), undef,
             $json->encode($info), 'cron'
         );
 
@@ -829,7 +791,7 @@ sub run_update_report_and_clear_paid {
         }
 
         logaction(
-            'GENTLENUDGE',        uc($type) . "_ERROR", undef,
+            'GentleNudge',        uc($type) . "_ERROR", undef,
             $json->encode($info), 'cron'
         );
         die "error in run_update_report_and_clear_paid: $_";
@@ -894,6 +856,20 @@ sub configs {
     my ($self) = @_;
     require UMS::GentleNudge::Configs;
     return UMS::GentleNudge::Configs->new;
+}
+
+=head3 config
+
+    my $config = $plugin->config;
+
+Returns a single I<UMS::GentleNudge::Config> object.
+
+=cut
+
+sub config {
+    my ($self, $sync_id) = @_;
+    require UMS::GentleNudge::Configs;
+    return UMS::GentleNudge::Configs->find($sync_id);
 }
 
 =head3 install
@@ -990,6 +966,50 @@ $self->store_data(
 
     my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
     return 1;
+}
+
+=head3 build_params
+
+This subroutine allows reusing the code for building the params for each way to run the report.
+
+=cut
+
+sub build_params {
+ my ($self, $sync, $config) = @_;
+my $params;
+        $params->{send_sync_report}    = $sync->send_sync_report;
+        $params->{sync_id}              = $sync->sync_id;
+        $params->{require_lost_fee}     = $config->require_lost;
+        $params->{fees_threshold}       = $config->threshold;
+        $params->{exemptions_flag}      = $config->exemptions_flag;
+        $params->{processing_fee}       = $config->processing_fee || 0;
+        $params->{collections_flag}     = $config->collections_flag;
+        $params->{fees_newer}           = $config->fees_newer;
+        $params->{fees_older}           = $config->fees_older;
+        $params->{clear_below}          = $config->clear_below;
+        $params->{restriction}          = $config->restriction;
+        $params->{remove_restriction}   = $config->remove_restriction;
+        $params->{remove_minors}        = $config->remove_minors;
+        $params->{clear_threshold}      = $config->clear_threshold;
+        $params->{ignore_before}        = $config->ignore_before;
+        $params->{unique_email}         = $config->unique_email;
+        $params->{additional_email}     = $config->additional_email;
+        $params->{config_name}          = $config->config_name;
+        $params->{sftp_server_id}       = $config->sftp_server;
+        $params->{smtp_server}          = $config->smtp_server;
+        my $today = dt_from_string();
+        $params->{date} = $today->ymd();
+
+        my @patron_cat_codes = map { $_->categorycode } $config->patron_categories->as_list;
+        $params->{categorycodes} = \@patron_cat_codes;
+
+        my @debit_codes = map { $_->code } $config->debit_types->as_list;
+        $params->{debit_type_codes} = \@debit_codes;
+
+        $params->{config_debit_type} = $config->config_debit_type;
+
+        return {$params};
+
 }
 
 =head3 upgrade
