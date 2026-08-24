@@ -227,7 +227,7 @@ sub static_routes {
 =cut
 
 sub cronjob_nightly {
-
+warn "nightly";
     my ( $self, $p, $sync ) = @_;
 
     my $branch_query;
@@ -372,6 +372,7 @@ sub cronjob_nightly {
 }    # /cronjob_nightly
 
 sub run_submissions_report {
+    warn "submissions";
     my ( $self, $params ) = @_;
     my $remove_minors = $params->{remove_minors};
     my $dbh = C4::Context->dbh;
@@ -649,11 +650,13 @@ sub run_submissions_report {
 }
 
 sub run_update_report_and_clear_paid {
-    my ( $self, $params ) = @_;
-
+    my ( $self, $sync, $params) = @_;
+    warn Data::Dumper::Dumper($sync);
     my $dbh = C4::Context->dbh;
     $dbh->{RaiseError} = 1;    # die if a query has problems
-
+    if ($sync->{send_sync_report} == "1") {
+        
+    }
     my $type = $params->{send_sync_report} ? 'sync' : 'updates';
     my $info = {};
     try {
@@ -682,15 +685,15 @@ sub run_update_report_and_clear_paid {
         $ums_update_query .= qq{
              AND ( attribute = '1' OR attribute = 'yes' )
          } if $params->{collection_flag_type} eq 'attribute';
-
+warn $params->{collection_flag_type};
         $ums_update_query .= qq{
              AND ( borrowers.$params->{collections_flag} = 'yes' OR  borrowers.$params->{collections_flag} = '1' )
          } if $params->{collection_flag_type} eq 'sort';
-
+warn $params->{collections_flag};
         $ums_update_query .= qq{
                 $params->{config_branch_helper} 
             };
-
+warn $params->{config_branch_helper};
         $ums_update_query .= q{
              GROUP BY borrowers.borrowernumber, borrowers.cardnumber
                  ORDER BY borrowers.surname ASC
@@ -698,6 +701,7 @@ sub run_update_report_and_clear_paid {
 
         log_debug("UMS UPDATE QUERY:\n$ums_update_query")
             if ( !$params->{send_sync_report} );
+        warn $ums_update_query;
         $sth = $dbh->prepare($ums_update_query);
         $sth->execute();
         my @ums_updates;

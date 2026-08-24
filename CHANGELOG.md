@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Change structure of sync subroutine
+
 ## [0.9.14] - 2026-08-24
 
 ### Fixed
