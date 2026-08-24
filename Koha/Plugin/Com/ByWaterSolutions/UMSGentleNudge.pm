@@ -418,6 +418,11 @@ sub run_submissions_report {
              } if $params->{collection_flag_type} eq 'attribute';
 
         $ums_submission_query .= qq{
+            LEFT JOIN borrower_attributes ba_ef ON accountlines.borrowernumber = ba_ef.borrowernumber
+            AND code = '$params->{exemptions_flag}'
+             } if $params->{exemptions_flag_type} eq 'attribute';
+
+        $ums_submission_query .= qq{
             LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
             LEFT JOIN (
                 SELECT borrowernumber, COUNT(*) AS lost_fees_count
@@ -453,7 +458,7 @@ sub run_submissions_report {
             } if $params->{collection_flag_type} eq 'attribute';
 
         $ums_submission_query .= q{
-                AND ( attribute = '0' OR attribute IS NULL )
+                AND ( ba_ef.attribute = '0' OR ba_ef.attribute IS NULL )
             } if $params->{exemptions_flag_type} eq 'attribute';
 
         $ums_submission_query .= q{
