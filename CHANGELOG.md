@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed build_params to properly return the params
+
 ## [0.9.13] - 2026-08-24
 
 ### Fixed 

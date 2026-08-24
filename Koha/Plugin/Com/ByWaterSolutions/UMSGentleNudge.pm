@@ -178,7 +178,7 @@ sub configure {
             my $sync_id = $cgi->param('config_id');
             my $sync = { sync_id => $sync_id };
             my $config = $self->config($sync_id);
-            my $params = $self->build_params($sync, $config);
+            my $params = $self->build_params($config);
             $sync->{send_sync_report} = "1";
             $self->run_update_report_and_clear_paid($sync, $params);
         }
@@ -290,7 +290,8 @@ sub cronjob_nightly {
             $config_code = $config->branch;
             $config_type = "library";
         }
-        my $params = $self->build_params($sync, $config);
+        my $params = $self->build_params($config);
+        warn Data::Dumper::Dumper($params);
         $params->{umsconfig_type}       = $config_type;
         $params->{collection_flag_type} = $collections_flag_type;
         $params->{exemptions_flag_type} = $exemptions_flag_type;
@@ -980,10 +981,9 @@ This subroutine allows reusing the code for building the params for each way to 
 =cut
 
 sub build_params {
- my ($self, $sync, $config) = @_;
-my $params;
-        $params->{send_sync_report}    = $sync->send_sync_report;
-        $params->{sync_id}              = $sync->sync_id;
+ my ($self, $config) = @_;
+ warn Data::Dumper::Dumper($config->unblessed);
+my $params = {};
         $params->{require_lost_fee}     = $config->require_lost;
         $params->{fees_threshold}       = $config->threshold;
         $params->{exemptions_flag}      = $config->exemptions_flag;
@@ -1012,8 +1012,8 @@ my $params;
         $params->{debit_type_codes} = \@debit_codes;
 
         $params->{config_debit_type} = $config->config_debit_type;
-
-        return {$params};
+         warn Data::Dumper::Dumper($params);
+        return $params;
 
 }
 
