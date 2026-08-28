@@ -7,6 +7,8 @@ use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::Libraries;
 use Koha::Library::Groups;
 
+use JSON;
+
 my $plugin = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new;
 
 =head1 NAME
@@ -22,6 +24,10 @@ my $plugin = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new;
 List all configs
 
 =cut
+
+our $json = JSON->new;
+$json->pretty(1);
+$json->convert_blessed(1);
 
 sub list {
     my $c = shift->openapi->valid_input or return;
@@ -105,10 +111,12 @@ sub add {
         my $config = $plugin->configs->object_class->new_from_api($body)->store;
         $config->set_debit_types($debit_type_codes);
         $config->set_patron_categories($patron_category_codes);
+        my $info= $json->encode($config);
+        logaction( 
+            'GentleNudge', 'ADD', $config->config_id , $config , undef,undef
+            );
 
         $c->res->headers->location( $c->req->url->to_string . '/' . $config->config_id );
-
-        #logaction( 'SYSTEMPREFERENCE', 'ADD', $config->config_id, $config );
 
         return $c->render(
             status  => 200,
@@ -159,11 +167,10 @@ sub update {
 
         $c->res->headers->location( $c->req->url->to_string );
 
-        # logaction(
-        #     'SYSTEMPREFERENCE', 'MODIFY', $c->param('config_id'),
-        #     $config,            undef,    $config_before
-        # );
-
+        my $info= $json->encode($config);
+        logaction( 
+            'GentleNudge', 'MODIFY', $c->param('config_id'), $config , undef, $config_before
+            );
         return $c->render(
             status  => 200,
             openapi => $c->objects->find( $plugin->configs, $c->param('config_id') ),
@@ -187,7 +194,10 @@ sub delete {
     return $c->render_resource_not_found("Config") unless $config;
 
     return try {
-        #logaction( 'SYSTEMPREFERENCE', 'DELETE', $config_id, $config );
+        
+        logaction( 
+            'GentleNudge', 'MODIFY', $config_id, undef , undef, $config
+            );
         $config->delete;
         return $c->render( status => 204, openapi => q{} );
     } catch {
