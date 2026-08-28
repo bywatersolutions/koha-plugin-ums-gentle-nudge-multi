@@ -243,6 +243,7 @@ sub cronjob_nightly {
     $self->prune_old_logs();
 
     my $todays_configs = $self->configs->today_enabled_configs;
+    my $not_todays_configs = $self->configs->not_today_enabled_configs;
 
     while ( my $config = $todays_configs->next ) {
 
@@ -289,12 +290,24 @@ sub cronjob_nightly {
             }
         }
 
-        $params->{config_branch_helper} = $config_branch_helper;
+
         $self->run_submissions_report($params);
 
         #     ### Process UMS Update Report
-        #$self->run_update_report_and_clear_paid($params);
-    }    #/foreach config
+    }    #/foreach today config
+
+    $sync->{send_sync_report} = "update";
+    while ( my $update_config = $not_todays_configs->next ) {
+        my $params                = $self->build_params( $config, $sync );
+        my $config_code           = $params->{config_code};
+        my $config_type           = $params->{umsconfig_type};
+        my $collections_flag_type = $params->{collection_flag_type};
+        my $config_branch_helper  = $params->{config_branch_helper};
+        my $config_branch_where   = $params->{config_branch_where};
+        
+        $self->run_update_report_and_clear_paid($params);
+
+    }
 
 }    # /cronjob_nightly
 
@@ -579,7 +592,7 @@ sub run_update_report_and_clear_paid {
     my $dbh = C4::Context->dbh;
     $dbh->{RaiseError} = 1;    # die if a query has problems
 
-    my $type = $params->{send_sync_report} ? 'sync' : 'updates';
+    my $type = $params->{send_sync_report} ? 'sync' : 'update';
     my $info = {};
     try {
         my $sth;
@@ -630,7 +643,8 @@ sub run_update_report_and_clear_paid {
 
         $archive_dir ||= C4::Context->temporary_directory;
 
-        my $filename  = "ums-update-submissions-$params->{date}-$params->{config_code}.csv";
+        my $filename ="ums-$type-submissions-$params->{date}-$params->{config_code}.csv";
+
         my $file_path = "$archive_dir/$filename";
 
         open( my $fh, '>:encoding(UTF-8)', $file_path ) or die "Cannot write to $file_path: $!";

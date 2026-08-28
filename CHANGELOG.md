@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added sub not_today_enabled_configs for the updates report
+- Used not_today_enabled_configs to simplify update process
 
 ## [0.9.16] - 2026-08-28
 
