@@ -102,4 +102,23 @@ sub today_enabled_configs {
     );
 }
 
+=head3 not_today_enabled_configs
+    my $configs = UMS::GentleNudge::Configs->not_today_enabled_configs;
+
+Returns the resultset of configs that are enabled and not scheduled for today
+
+=cut
+
+sub not_today_enabled_configs {
+    my ($self) = @_;
+
+    my $dow = dt_from_string->day_of_week;
+    return $self->search(
+        {
+            enabled     => 1,
+            day_of_week => { '!=' => $dow },
+        }
+    );
+}
+
 1;
