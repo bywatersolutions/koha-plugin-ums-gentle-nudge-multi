@@ -231,10 +231,9 @@ sub static_routes {
 =cut
 
 sub cronjob_nightly {
-    warn "nightly";
     my ( $self, $p, $sync ) = @_;
 
-    $sync->{send_sync_report} = "no";
+    $sync->{send_sync_report} = "new";
     my $global_enabled = $self->retrieve_data('global_enabled');
     $sync->{global_enabled} = $global_enabled;
     my $global_fine_branch = $self->retrieve_data('global_fine_branch');
@@ -242,7 +241,7 @@ sub cronjob_nightly {
 
     $self->prune_old_logs();
 
-    my $todays_configs = $self->configs->today_enabled_configs;
+    my $todays_configs     = $self->configs->today_enabled_configs;
     my $not_todays_configs = $self->configs->not_today_enabled_configs;
 
     while ( my $config = $todays_configs->next ) {
@@ -290,21 +289,20 @@ sub cronjob_nightly {
             }
         }
 
-
         $self->run_submissions_report($params);
 
         #     ### Process UMS Update Report
     }    #/foreach today config
 
-    $sync->{send_sync_report} = "update";
+    $sync->{send_sync_report} = "updates";
     while ( my $update_config = $not_todays_configs->next ) {
-        my $params                = $self->build_params( $config, $sync );
+        my $params                = $self->build_params( $update_config, $sync );
         my $config_code           = $params->{config_code};
         my $config_type           = $params->{umsconfig_type};
         my $collections_flag_type = $params->{collection_flag_type};
         my $config_branch_helper  = $params->{config_branch_helper};
         my $config_branch_where   = $params->{config_branch_where};
-        
+
         $self->run_update_report_and_clear_paid($params);
 
     }
@@ -312,7 +310,6 @@ sub cronjob_nightly {
 }    # /cronjob_nightly
 
 sub run_submissions_report {
-    warn "submissions";
     my ( $self, $params ) = @_;
     my $remove_minors = $params->{remove_minors};
     my $dbh           = C4::Context->dbh;
@@ -568,6 +565,10 @@ sub run_submissions_report {
             try {
                 $email->send_or_die unless $no_email;
             } catch {
+                logaction(
+                    'GentleNudge',        "NEW SUBMISSION _ERROR", undef,
+                    $json->encode($info), 'cron'
+                );
                 $info->{email_failed}  = 'true';
                 $info->{email_address} = $email_address;
                 $info->{email_error}   = $_;
@@ -575,6 +576,11 @@ sub run_submissions_report {
                 die "Mail not sent: $_";
             };
         }
+
+        logaction(
+            'GentleNudge',        "NEW", undef,
+            $json->encode($info), 'cron'
+        );
 
     } catch {
         if ( $_->isa('Koha::Exception') ) {
@@ -592,7 +598,7 @@ sub run_update_report_and_clear_paid {
     my $dbh = C4::Context->dbh;
     $dbh->{RaiseError} = 1;    # die if a query has problems
 
-    my $type = $params->{send_sync_report} ? 'sync' : 'update';
+    my $type = $params->{send_sync_report};
     my $info = {};
     try {
         my $sth;
@@ -643,7 +649,7 @@ sub run_update_report_and_clear_paid {
 
         $archive_dir ||= C4::Context->temporary_directory;
 
-        my $filename ="ums-$type-submissions-$params->{date}-$params->{config_code}.csv";
+        my $filename = "ums-$type-$params->{date}-$params->{config_code}.csv";
 
         my $file_path = "$archive_dir/$filename";
 
@@ -652,12 +658,11 @@ sub run_update_report_and_clear_paid {
 
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
-            warn "QUERY RESULT: " . Data::Dumper::Dumper($r);
+
             my @row = @{$r}{@$columns};
             $csv->print( $fh, \@row );
             push( @ums_updates, $r );
-            warn "ums_updates";
-            warn Data::Dumper::Dumper(@ums_updates);
+
             ## Email the results
 
             $info = {
@@ -666,8 +671,6 @@ sub run_update_report_and_clear_paid {
                 filename  => $filename,
                 file_path => $file_path,
             };
-            warn "info ";
-            warn Data::Dumper::Dumper($info);
 
             my $due = $r->{Due} || 0;
             $due =~ s/,//;
@@ -948,6 +951,12 @@ sub install() {
     " );
 
     my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
+    my $info = $self->retrieve_data('__INSTALLED_VERSION__');
+
+    logaction(
+        'GentleNudge', "INSTALL" , undef,
+        $json->encode($info), 'cron'
+    );
     return 1;
 }
 
@@ -994,6 +1003,7 @@ sub build_params {
     $params->{config_name}        = $config->config_name;
     $params->{sftp_server_id}     = $config->sftp_server;
     $params->{smtp_server}        = $config->smtp_server;
+    $params->{send_sync_report}   = $sync->{send_sync_report};
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
 
@@ -1102,6 +1112,10 @@ sub upgrade {
     }
     $database_version = "3.00.0";
     $self->store_data( { '__INSTALLED_VERSION__' => $database_version } );
+    logaction(
+        'GentleNudge',        "UPGRADED", undef,
+        $json->encode($database_version), 'cron'
+    );
 }
 
 =head3 uninstall
@@ -1114,12 +1128,15 @@ after ourselves!
 
 sub uninstall() {
     my ( $self, $args ) = @_;
-    warn "in uninstall";
     my $config_table = $self->get_qualified_table_name('config');
     my $dt_table     = $self->get_qualified_table_name('config_dt');
     my $pc_table     = $self->get_qualified_table_name('config_pc');
     return C4::Context->dbh->do("DROP TABLE IF EXISTS $pc_table, $dt_table, $config_table");
-
+    my $info = "Gentle nudge plugin uninstalled and tabled removed";
+    logaction(
+        'GentleNudge',        "UNINSTALLED", undef,
+        $json->encode($info), 'cron'
+    );
 }
 
 sub _log_file {

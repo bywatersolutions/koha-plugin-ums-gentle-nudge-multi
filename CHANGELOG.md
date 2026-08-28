@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Updated DEVELOPMENT.md to reflect correct file structure
+- Fix file naming based on action
+- Removed warns
 
 ### Added
 - Added sub not_today_enabled_configs for the updates report
 - Used not_today_enabled_configs to simplify update process
+- [#16] Add/update logging for report creation
+
 
 ## [0.9.16] - 2026-08-28
 

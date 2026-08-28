@@ -6,7 +6,7 @@ use Koha::Database;
 use Koha::Library::Group;
 use Koha::Libraries;
 use UMS::GentleNudge::Config;
-use base qw(Koha::Objects);
+use base            qw(Koha::Objects);
 use Koha::DateUtils qw(dt_from_string);
 
 =head1 NAME
@@ -79,7 +79,6 @@ sub check_for_existing_branch {
     }
     return { 'duplicate_found' => 0 };
 }
-
 
 =head3 today_enabled_configs
 
