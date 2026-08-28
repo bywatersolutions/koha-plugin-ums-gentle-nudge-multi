@@ -86,7 +86,7 @@ subtest 'a_method() tests' => sub {
 
 1. **Format code with Koha tidy.pl**:
    ```bash
-   ktd --name ums --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi && /kohadevbox/koha/misc/devel/tidy.pl [modified_files...]"
+   ktd --name ums --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge && /kohadevbox/koha/misc/devel/tidy.pl [modified_files...]"
    ```
 
 2. **Remove all .bak files**:
@@ -96,7 +96,7 @@ subtest 'a_method() tests' => sub {
 
 3. **Run tests to ensure formatting didn't break anything**:
    ```bash
-   ktd --name innreach --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi && export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi:. && prove -lr t/"
+   ktd --name innreach --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge && export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/koha-plugin-ums-gentle-nudge:. && prove -lr t/"
    ```
 
 4. **Commit with clean, formatted code**:
@@ -112,13 +112,13 @@ subtest 'a_method() tests' => sub {
 # ... edit files ...
 
 # 2. Format with Koha tidy.pl
-ktd --name ums --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi && /kohadevbox/koha/misc/devel/tidy.pl Koha/Plugin/Com/ByWaterSolutions/UMSGentleNudge.pm"
+ktd --name ums --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge && /kohadevbox/koha/misc/devel/tidy.pl Koha/Plugin/Com/ByWaterSolutions/UMSGentleNudge.pm"
 
 # 3. Clean up backup files
 find . -name "*.bak" -delete
 
 # 4. Verify tests still pass
-ktd --name ums --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi && export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi:. && prove -lr t/"
+ktd --name ums --shell --run "cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge && export PERL5LIB=/kohadevbox/koha:/kohadevbox/plugins/koha-plugin-ums-gentle-nudge:. && prove -lr t/"
 
 # 5. Commit
 git add .
@@ -183,8 +183,8 @@ The plugin includes comprehensive test coverage across multiple areas:
 ktd --name ums --shell
 
 # Inside KTD, set up environment and run tests
-cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi
-export PERL5LIB=$PERL5LIB:/kohadevbox/plugins/koha-plugin-ums-gentle-nudge-multi:.
+cd /kohadevbox/plugins/koha-plugin-ums-gentle-nudge
+export PERL5LIB=$PERL5LIB:/kohadevbox/plugins/koha-plugin-ums-gentle-nudge:.
 
 # Run all tests
 prove -v t/ t/db_dependent/
