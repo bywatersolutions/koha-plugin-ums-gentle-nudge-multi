@@ -11,6 +11,7 @@ use C4::Auth;
 use C4::Context;
 use C4::Installer qw(TableExists);
 use C4::Log       qw(logaction);
+use C4::Output  qw( output_html_with_http_headers );
 use C4::Templates;
 use Koha::Account::DebitTypes;
 require UMS::GentleNudge::CSV;
@@ -1190,6 +1191,208 @@ sub _log {
         close $fh;
     }
     prune_old_logs();
+
+}
+
+sub tool {
+
+my ($self, $args ) = @_;
+my $cgi = $self->{'cgi'};
+
+my $template = $self->get_template({ file => 'templates/ums_reports.tt' });
+
+    $self->output_html( $template->output() );
+
+    my $do_it       = $cgi->param('do_it');
+    my @modules     = $cgi->multi_param("modules");
+    my $user        = $cgi->param("user") // '';
+    my @actions     = $cgi->multi_param("actions");
+    my @interfaces  = $cgi->multi_param("interfaces");
+    my $object      = $cgi->param("object");
+    my $object_type = $cgi->param("object_type") // '';
+    my $info        = $cgi->param("info");
+    my $datefrom    = $cgi->param("from");
+    my $dateto      = $cgi->param("to");
+    my $basename    = $cgi->param("basename");
+    my $output      = $cgi->param("output") || "screen";
+    my $src         = $cgi->param("src")    || ""; 
+    if ($do_it) {
+    my ( $template ) = 
+    {
+        template_name => "templates/umsreports.tt",
+        query         => $cgi,
+        type          => "intranet",
+    };
+    if ( $output eq "screen" ) {
+
+        # Cataloguing modification log opens with modules=CATALOGUING and
+        # object_type=biblio: surface item-level changes alongside the
+        # biblio ones by collecting the biblio's itemnumbers and asking
+        # the JS to filter on either object set. Mirrors the CSV export
+        # branch below. The biblio object is also exposed so that the
+        # biblio-view-menu sidebar can render its links.
+        my $biblio;
+        my @biblio_itemnumbers;
+        if ( @modules == 1 && $object_type eq 'biblio' && $object ) {
+            $biblio             = Koha::Biblios->find($object);
+            @biblio_itemnumbers = $biblio->items->get_column('itemnumber') if $biblio;
+        }
+
+        # Screen output: pass search params to template, DataTable loads via REST API
+        $template->param(
+            logview            => 1,
+            do_it              => 1,
+            datefrom           => $datefrom,
+            dateto             => $dateto,
+            user               => $user,
+            info               => $info,
+            src                => $src,
+            modules            => \@modules,
+            actions            => \@actions,
+            interfaces         => \@interfaces,
+            object_type        => $object_type,
+            biblio             => $biblio,
+            biblio_itemnumbers => \@biblio_itemnumbers,
+        );
+
+        # Used modules
+        foreach my $module (@modules) {
+            $template->param( $module => 1 );
+        }
+        output_html_with_http_headers $cgi, $template->output;
+    } else {
+
+        # CSV export: fetch and enrich data server-side
+        my $dtf = Koha::Database->new->schema->storage->datetime_parser;
+        my %search_params;
+
+        if ( $datefrom and $dateto ) {
+            my $dateto_endday = dt_from_string($dateto);
+            $dateto_endday->set(    # We set last second of day to see all log from that day
+                hour   => 23,
+                minute => 59,
+                second => 59
+            );
+            $search_params{'timestamp'} = {
+                -between => [
+                    $dtf->format_datetime( dt_from_string($datefrom) ),
+                    $dtf->format_datetime($dateto_endday),
+                ]
+            };
+        } elsif ($datefrom) {
+            $search_params{'timestamp'} = { '>=' => $dtf->format_datetime( dt_from_string($datefrom) ) };
+        } elsif ($dateto) {
+            my $dateto_endday = dt_from_string($dateto);
+            $dateto_endday->set(    # We set last second of day to see all log from that day
+                hour   => 23,
+                minute => 59,
+                second => 59
+            );
+            $search_params{'timestamp'} = { '<=' => $dtf->format_datetime($dateto_endday) };
+        }
+
+        # Circulation uses RENEWAL, but Patrons uses RENEW, this helps to find both
+        if ( grep { $_ eq 'RENEW' } @actions ) {
+            push @actions, 'RENEWAL';
+        }
+
+        $search_params{user}      = $user                    if $user;
+        $search_params{module}    = { -in => [@modules] }    if ( defined $modules[0] and $modules[0] ne '' );
+        $search_params{action}    = { -in => [@actions] }    if ( defined $actions[0] && $actions[0] ne '' );
+        $search_params{interface} = { -in => [@interfaces] } if ( defined $interfaces[0] && $interfaces[0] ne '' );
+
+        if ( @modules == 1 && $object_type eq 'biblio' ) {
+
+            # Handle 'Modification log' from cataloguing
+            my $biblio      = Koha::Biblios->find($object);
+            my @itemnumbers = $biblio->items->get_column('itemnumber');
+            $search_params{'-or'} = [
+                { -and => { object => $object,       info => { -like => 'biblio%' } } },
+                { -and => { object => \@itemnumbers, info => { -like => 'item%' } } },
+            ];
+        } else {
+            $search_params{info}   = { -like => '%' . $info . '%' } if $info;
+            $search_params{object} = $object                        if $object;
+        }
+
+        my @logs = Koha::ActionLogs->search( \%search_params )->as_list;
+
+        my @data;
+        foreach my $log (@logs) {
+            my $result = $log->unblessed;
+
+            # Init additional columns for CSV export
+            $result->{'biblionumber'}     = q{};
+            $result->{'biblioitemnumber'} = q{};
+            $result->{'barcode'}          = q{};
+
+            if ( defined $log->info && substr( $log->info, 0, 4 ) eq 'item' ) {
+
+                # get item information so we can create a working link
+                my $itemnumber = $log->object;
+                my $item       = Koha::Items->find($itemnumber);
+                if ($item) {
+                    $result->{'biblionumber'}     = $item->biblionumber;
+                    $result->{'biblioitemnumber'} = $item->biblionumber;
+                    $result->{'barcode'}          = $item->barcode;
+                }
+            }
+
+            if ( $log->module eq "CIRCULATION" || $log->module eq "HOLDS" ) {
+                my $info = $log->info;
+                my $decoded;
+                my $is_json = eval {
+                    $decoded = decode_json($info);
+                    1;
+                };
+
+                if ( $is_json && ref($decoded) ) {
+                    if ( $decoded->{itemnumber} ) {
+                        my $item = Koha::Items->find( $decoded->{itemnumber} );
+                        if ($item) {
+                            $result->{'biblionumber'}     = $item->biblionumber;
+                            $result->{'biblioitemnumber'} = $item->biblionumber;
+                            $result->{'barcode'}          = $item->barcode;
+                        }
+                    }
+                }
+            }
+
+            push @data, $result;
+        }
+
+        # Printing to a csv file
+        my $content = q{};
+        if (@data) {
+            my $delimiter = C4::Context->csv_delimiter;
+            my $csv = Text::CSV::Encoded->new( { encoding_out => 'utf8', sep_char => $delimiter, formula => 'empty' } );
+            $csv or die "Text::CSV::Encoded->new FAILED: " . Text::CSV::Encoded->error_diag();
+
+            # First line with heading
+            # Exporting bd id seems useless
+            my @headings = grep { $_ ne 'action_id' } sort keys %{ $data[0] };
+            if ( $csv->combine(@headings) ) {
+                $content .= $csv->string() . "\n";
+            }
+
+            # Lines of logs
+            foreach my $line (@data) {
+                my @cells = map { $line->{$_} } @headings;
+                if ( $csv->combine(@cells) ) {
+                    $content .= $csv->string() . "\n";
+                }
+            }
+        }
+
+        # Output
+        print $cgi->header(
+            -type       => 'text/csv',
+            -attachment => $basename . '.csv',
+        );
+        print $content;
+    }
+    exit;
+} 
 
 }
 

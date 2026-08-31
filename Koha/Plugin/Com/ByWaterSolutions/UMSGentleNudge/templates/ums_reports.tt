@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+[% USE Asset %]
+[% USE Branches %]
+[% USE Categories %]
+[% USE Dumper %]
+[% USE ExtendedAttributeTypes %]
+[% USE Koha %]
+[% USE To %]
+[% PROCESS 'i18n.inc' %]
+[% USE raw %]
+
+[% FILTER collapse %]
+    <style nonce="[% Koha.CSPNonce | $raw %]">
+        fieldset.rows label.viewlog {
+            float: none;
+            font-weight: normal;
+            margin: 0;
+            min-width: 9em;
+            padding: 0.5em;
+            text-align: left;
+            white-space: nowrap;
+            width: auto;
+        }
+        .log_modules {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .compare_info {
+            background-color: #e6f0f2;
+            margin: 0.5em -0.5em -0.5em -0.5em;
+            padding: 0.5em;
+            text-align: right;
+        }
+        .modal-dialog {
+            width: 90%;
+        }
+        /* jsdiff styles */
+        ins {
+            background-color: #e6ffe6;
+        }
+        del {
+            background-color: #ffe6e6;
+        }
+        #col1 ins,
+        #col2 del {
+            display: none;
+        }
+        pre {
+            overflow: scroll;
+            padding: 10px;
+        }
+        /* Struct::Diff renderer */
+        table.struct-diff {
+            border-collapse: collapse;
+            font-size: 0.85em;
+            width: 100%;
+        }
+        table.struct-diff th,
+        table.struct-diff td {
+            border: 1px solid #ccc;
+            padding: 2px 6px;
+            vertical-align: top;
+        }
+        table.struct-diff th {
+            background-color: #f5f5f5;
+            white-space: nowrap;
+        }
+        table.struct-diff td.diff-key {
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        table.struct-diff del,
+        table.struct-diff ins {
+            font-family: monospace;
+            text-decoration: none;
+            padding: 1px 3px;
+            display: inline-block;
+        }
+        table.struct-diff ul.diff-obj {
+            list-style: none;
+            margin: 0;
+            padding: 0 0 0 0.8em;
+        }
+        table.struct-diff ul.diff-obj li {
+            white-space: nowrap;
+        }
+        /* Catalog log info column (biblio JSON payload) */
+        div.loginfo-struct {
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+        div.loginfo-struct ul.diff-obj {
+            list-style: none;
+            margin: 0;
+            padding: 0 0 0 0.8em;
+        }
+    </style>
+[% END %]
+
+[% WRAPPER "wrapper-staff-tool-plugin.inc" method="tool" plugin_title="UMS Collections: Action Logs" %]
+    <body>
+        <p> Test </p>
+        [% PROCESS 'action-logs.inc' %]
+         <h1>Log viewer</h1>
+    <form method="get" action="/cgi-bin/koha/tools/viewlog.pl">
+        [% IF ( do_it ) %]
+            <input type="hidden" name="do_it" value="[% do_it | html %]" />
+        [% END %]
+        <input type="hidden" name="src" value="[% src | html %]" />
+        <fieldset class="rows">
+            <ol>
+                <li>
+                    <label for="user">Librarian:</label>
+                    <input type="text" name="user" id="user" value="[% user | html %]" />
+                </li>
+                [% UNLESS src == "circ" %]
+                    <li>
+                        <label>Modules:</label>
+                        <div class="log_modules">
+                            [% IF modules.size == 0 %]
+                                <label for="moduleALL" class="viewlog"><input type="checkbox" id="moduleALL" name="modules" value="" checked="checked" /> All</label>
+                            [% ELSE %]
+                                <label for="moduleALL" class="viewlog"><input type="checkbox" id="moduleALL" name="modules" value="" /> All</label>
+                            [% END %]
+                            [% FOREACH modx IN [ 'GentleNudge' ] %]
+                                [% IF modules.grep(modx).size %]
+                                    <label for="module[% modx | html %]" class="viewlog"
+                                        ><input type="checkbox" id="module[% modx | html %]" name="modules" value="[% modx | html %]" checked="checked" /> [% PROCESS translate_log_module module=modx %]</label
+                                    >
+                                [% ELSE %]
+                                    <label for="module[% modx | html %]" class="viewlog"><input type="checkbox" id="module[% modx | html %]" name="modules" value="[% modx | html %]" /> [% PROCESS translate_log_module module=modx %]</label>
+                                [% END %]
+                            [% END %]
+                        </div>
+                    </li>
+                [% ELSE %]
+                    <input type="hidden" name="modules" value="MEMBERS" />
+                    <input type="hidden" name="modules" value="CIRCULATION" />
+                [% END %]
+                <li>
+                    <label>Actions:</label>
+                    <div class="log_modules">
+                        [% IF actions.length == 0 %]
+                            <label for="actionALL" class="viewlog"><input type="checkbox" id="actionALL" name="actions" value="" checked="checked" /> All</label>
+                        [% ELSE %]
+                            <label for="actionALL" class="viewlog"><input type="checkbox" id="actionALL" name="actions" value="" /> All</label>
+                        [% END %]
+
+                        [% FOREACH actx IN [ 'ADD' 'DELETE' 'MODIFY' ] %]
+                            [% IF actions.grep(actx).size %]
+                                <label for="action[% actx| replace('\s+', '_') | html %]" class="viewlog"
+                                    ><input type="checkbox" id="action[% actx | replace('\s+', '_') | html %]" name="actions" value="[% actx | html %]" checked="checked" /> [% PROCESS translate_log_action action=actx %]</label
+                                >
+                            [% ELSE %]
+                                <label for="action[% actx| replace('\s+', '_') | html %]" class="viewlog"
+                                    ><input type="checkbox" id="action[% actx | replace('\s+', '_') | html %]" name="actions" value="[% actx | html %]" /> [% PROCESS translate_log_action action=actx %]</label
+                                >
+                            [% END %]
+                        [% END %]
+                    </div>
+                </li>
+                <li>
+                    [% IF src == 'circ' %]
+                        <label for="object">Borrowernumber: </label>
+                        <input type="text" id="object" name="object" value="[% object | html %]" readonly="readonly" title="This field cannot be modified from the circulation module." />
+                    [% ELSE %]
+                        <label for="object">Object: </label>
+                        <input type="text" id="object" name="object" value="[% object | html %]" />
+                    [% END %]
+                </li>
+                <li>
+                    <label for="info">Info:</label>
+                    <input type="text" id="info" name="info" value="[% info | html %]" />
+                </li>
+                <li>
+                    <label>Interface:</label>
+                    [% IF interfaces.size == 0 %]
+                        <label for="interfaceALL" class="viewlog"><input type="checkbox" id="interfaceALL" name="interfaces" value="" checked="checked" /> All</label>
+                    [% ELSE %]
+                        <label for="interfaceALL" class="viewlog"><input type="checkbox" id="interfaceALL" name="interfaces" value="" /> All</label>
+                    [% END %]
+
+                    [% FOREACH interf IN [ 'INTRANET' 'OPAC' 'SIP' 'COMMANDLINE' 'API' 'CRON' ] %]
+                        [% IF interfaces.grep(interf).size %]
+                            <label for="interface[% interf | html %]" class="viewlog"
+                                ><input type="checkbox" id="interface[% interf | html %]" name="interfaces" value="[% interf | html %]" checked="checked" /> [% PROCESS translate_log_interface log_interface=interf %]</label
+                            >
+                        [% ELSE %]
+                            <label for="interface[% interf | html %]" class="viewlog"
+                                ><input type="checkbox" id="interface[% interf | html %]" name="interfaces" value="[% interf | html %]" /> [% PROCESS translate_log_interface log_interface=interf %]</label
+                            >
+                        [% END %]
+                    [% END %]
+                </li>
+                <li>
+                    <label for="from"> Display from: </label> <input type="text" size="10" id="from" name="from" value="[% datefrom | html %]" class="flatpickr" data-date_to="to" />
+                    <div class="hint">[% INCLUDE 'date-format.inc' %]</div>
+                </li>
+                <li>
+                    <label for="to">Display to: </label> <input size="10" id="to" name="to" type="text" value="[% dateto | html %]" class="flatpickr" />
+                    <div class="hint">[% INCLUDE 'date-format.inc' %]</div>
+                </li>
+            </ol>
+        </fieldset>
+        <fieldset class="rows">
+            <legend>Output</legend>
+            <ol>
+                <li> <label for="screen">To screen in the browser:</label> <input id="screen" type="radio" checked="checked" name="output" value="screen" /> </li>
+                <li>
+                    <label for="file">To a file:</label>
+                    <input id="file" type="radio" name="output" value="file" />
+                    <label class="inline" for="basename">Named:</label>
+                    <input type="text" name="basename" id="basename" value="Export" />
+                    <!--
+                    <label for="MIME" class="inline">Into an application:</label>
+                    [% CGIextChoice | html %]
+                    [% CGIsepChoice | html %]
+                    -->
+                    <input type="hidden" name="report_name" value="[% report_name | html %]" />
+                </li>
+            </ol>
+        </fieldset>
+        <fieldset class="action">
+            <input type="submit" class="btn btn-primary" value="Submit" />
+            <input type="hidden" name="do_it" value="1" />
+        </fieldset>
+    </form>
+    [% IF ( do_it ) %]
+        <h3>Log entries</h3>
+        <div id="toolbar" class="btn-toolbar sticky">
+            <a href="#" id="select_none" class="btn btn-link disabled"><i class="fa fa-times"></i> Check none</a>
+            <button class="btn btn-link disabled compare_link"><i class="fa fa-columns"></i> Compare selected</button>
+        </div>
+        <div class="page-section">
+            <table id="logst">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Librarian</th>
+                        <th>Module</th>
+                        <th>Action</th>
+                        <th>Object</th>
+                        <th>Info</th>
+                        <th>Interface</th>
+                        <th>Diff</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+      </body>
+    [% END %]
+  [% END %]<!--wrapper-->
