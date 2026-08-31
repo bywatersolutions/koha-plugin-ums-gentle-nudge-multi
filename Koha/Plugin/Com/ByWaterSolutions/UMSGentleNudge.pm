@@ -25,6 +25,7 @@ use Koha::Plugins;
 use Koha::Schema;
 use Koha::SMTP::Servers;
 
+use Clone qw (clone);
 use File::Path qw( make_path );
 use JSON;
 use Module::Metadata;
@@ -729,7 +730,6 @@ sub run_update_report_and_clear_paid {
                 disposition  => 'attachment',
             );
             my $smtp_id = $params->{smtp_server};
-            $email->transport( $params->{smtp_server}->transport );
 
             my $smtp_server;
             if ($smtp_id) {
@@ -1001,8 +1001,8 @@ sub build_params {
     $params->{unique_email}       = $config->unique_email;
     $params->{additional_email}   = $config->additional_email;
     $params->{config_name}        = $config->config_name;
-    $params->{sftp_server_id}     = $config->sftp_server;
-    $params->{smtp_server}        = $config->smtp_server;
+    $params->{sftp_server_id}     = $config->sftp_server || undef;
+    $params->{smtp_server}        = $config->smtp_server || undef;
     $params->{send_sync_report}   = $sync->{send_sync_report};
     my $today = dt_from_string();
     $params->{date} = $today->ymd();
