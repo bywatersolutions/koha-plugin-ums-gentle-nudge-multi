@@ -177,15 +177,29 @@ sub configure {
         } elsif ( $action eq 'sync-report' ) {
             my $sync_id = $cgi->param('config_id');
             my $sync    = { sync_id => $sync_id };
-            my $config  = $self->config($sync_id);
-
             $sync->{send_sync_report} = "sync";
             my $global_enabled = $self->retrieve_data('global_enabled');
             $sync->{global_enabled} = $global_enabled;
             my $global_fine_branch = $self->retrieve_data('global_fine_branch');
             $sync->{global_fine_branch} = $global_fine_branch;
-            my $params = $self->build_params( $config, $sync );
-            $self->run_update_report_and_clear_paid($params);
+            # Checking for sync_all vs single sync
+            if ($sync_id eq 'sync-all' ) {
+                my $todays_configs     = $self->configs->today_enabled_configs;
+                my $not_todays_configs = $self->configs->not_today_enabled_configs;
+                #run sync for all of today's
+                while ( my $config = $todays_configs->next ) {
+                    my $params                = $self->build_params( $config, $sync );
+                    $self->run_update_report_and_clear_paid($params);
+                } 
+                while ( my $update_config = $not_todays_configs->next ) {
+                    my $params                = $self->build_params( $update_config, $sync );
+                    $self->run_update_report_and_clear_paid($params);
+                }
+           } else {
+                my $config  = $self->config($sync_id);
+                my $params = $self->build_params( $config, $sync );
+                $self->run_update_report_and_clear_paid($params);
+            }
         }
     }
 
