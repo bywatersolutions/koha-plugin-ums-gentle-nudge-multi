@@ -729,12 +729,11 @@ sub run_update_report_and_clear_paid {
                 name         => $filename,
                 disposition  => 'attachment',
             );
-            my $smtp_id = $params->{smtp_server};
-
             my $smtp_server;
-            if ($smtp_id) {
 
-                $smtp_server = Koha::SMTP::Servers->find($smtp_id);
+            if ( $params->{smtp_server} ) {
+            my $smtp_id = $params->{smtp_server};
+            $smtp_server = Koha::SMTP::Servers->find($smtp_id);
             } else {
                 $smtp_server = Koha::SMTP::Servers->get_default;
             }
