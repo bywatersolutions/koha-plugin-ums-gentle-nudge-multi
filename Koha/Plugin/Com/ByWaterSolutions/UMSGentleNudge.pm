@@ -547,6 +547,7 @@ sub run_submissions_report {
             filename  => $filename,
             file_path => $file_path,
         };
+        warn Data::Dumper::Dumper($info);
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
@@ -559,6 +560,7 @@ sub run_submissions_report {
                 from    => $email_from,
                 subject => "UMS New Submissions for $params->{config_name}",
             };
+            warn $p;
             my $email = Koha::Email->new($p);
 
             $email->attach(
@@ -568,6 +570,7 @@ sub run_submissions_report {
                 name         => "ums-new-submissions-$params->{date}-$params->{config_code}.csv",
                 disposition  => 'attachment',
             );
+            warn $email;
             my $smtp_id = $params->{smtp_server};
             my $smtp_server;
             if ($smtp_id) {

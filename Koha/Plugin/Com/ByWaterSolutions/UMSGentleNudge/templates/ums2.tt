@@ -147,13 +147,13 @@
           </div><!-- /page-section -->
       </div>
  <!-- New Config modal -->
-    <div class="modal fade modal-lg" id="UMSConfigModal" aria-labelledby="UMSConfigLabel" aria-hidden="true">
+    <div class="modal fade modal-lg" id="UMSConfigModal" aria-labelledby="UMSConfigLabel" role="dialog" aria-hidden="true">
         <form  id="config_form" method="post" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
             <input type="hidden" name="method" value="[% METHOD %]"/>
             <input type="hidden" name="action" id="modal_button" value="add"/>
             <input type="hidden" class="modal-type" name="type"/>
-            <div class="modal-dialog">
+            <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h4 class="modal-title" id="UMSConfigLabel"></h4>
@@ -514,14 +514,14 @@ If using another category, the authorized values should be 0 and 1, but the desc
         </form><!-- /#deleteForm -->
       </div><!-- /#UMSDeleteModal --> 
     <!-- Sync Configuration Modal -->
-    <div class="modal fade modal-lg" id="UMSSyncModal" aria-labelledby="UMSSyncLabel" aria-hidden="true">
+    <div class="modal fade modal-lg" role="dialog" id="UMSSyncModal" aria-labelledby="UMSSyncLabel" aria-hidden="true">
         <form  id="SyncForm" method="sync" class="form">
             <input type="hidden" name="class" value="[% CLASS %]"/>
             <input type="hidden" name="method" value="[% METHOD %]"/>
             <input type="hidden" name="action" id="modal_button" value="sync_report"/>
             <input type="hidden" name="config_id" id="sync_modal_id"/>
             <input type="hidden" class="modal-type" name="type"/>
-            <div class="modal-dialog">
+            <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h4 class="modal-title" id="sync-modal-label">Sync Configuration</h4>
