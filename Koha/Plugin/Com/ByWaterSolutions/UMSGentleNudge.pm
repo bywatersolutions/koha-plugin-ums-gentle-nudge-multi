@@ -49,7 +49,7 @@ our $metadata = {
     name            => 'Unique Management Services - Gentle Nudge Multi-Configuration',
     author          => 'Lisette Scheer, ByWater Solutions',
     date_authored   => '2026-04-23',
-    date_updated    => "2026-08-28",
+    date_updated    => "1970-01-01",
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
@@ -699,7 +699,7 @@ sub run_update_report_and_clear_paid {
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
 
-            my @row = @{$r};
+            my @row = @{$r}{@$columns};
             $csv->print( $fh, \@row );
              push( @ums_updates, $r );
 

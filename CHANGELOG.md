@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed incorrectly formatted headers in csv for sync
+
 ## [0.9.22] - 2026-09-08
 
 ### Fixed
