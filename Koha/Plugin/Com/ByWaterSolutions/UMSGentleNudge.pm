@@ -261,8 +261,9 @@ sub cronjob_nightly {
     my $not_todays_configs = $self->configs->not_today_enabled_configs;
 
     while ( my $config = $todays_configs->next ) {
-
+        warn Data::Dumper::Dumper($config->unblessed);
         my $params                = $self->build_params( $config, $sync );
+        warn Data::Dumper::Dumper($params);
         my $config_code           = $params->{config_code};
         my $config_type           = $params->{umsconfig_type};
         my $collections_flag_type = $params->{collection_flag_type};
@@ -579,7 +580,8 @@ sub run_submissions_report {
             } else {
                 $smtp_server = Koha::SMTP::Servers->get_default;
             }
-            $email->transport( $smtp_server->transport );
+            my $transport = $smtp_server->transport;
+            $email->transport($transport);
 
             try {
                 $email->send_or_die unless $no_email;
@@ -986,7 +988,6 @@ This subroutine allows reusing the code for building the params for each way to 
 sub build_params {
     my ( $self, $config, $sync ) = @_;
     my $branch_query;
-
     if ( $sync->{global_enabled} == '1' ) {
         if ( $sync->{global_fine_branch} eq 'patron' ) {
             $branch_query = "AND borrowers.branchcode ";
@@ -1001,6 +1002,7 @@ sub build_params {
     } else {
         return 0;
     }
+    warn $branch_query;
     my $params = {};
     $params->{require_lost_fee}   = $config->require_lost;
     $params->{fees_threshold}     = $config->threshold;
@@ -1029,7 +1031,8 @@ sub build_params {
 
     my @debit_codes = map { $_->code } $config->debit_types->as_list;
     $params->{debit_type_codes} = \@debit_codes;
-
+warn "params:";
+warn $params;
     $params->{config_debit_type} = $config->config_debit_type;
     my $config_code           = "global";
     my $config_type           = "global";
@@ -1037,7 +1040,8 @@ sub build_params {
     my $collections_flag_type = 'attribute';
     my $exemptions_flag       = $config->exemptions_flag || undef;
     my $exemptions_flag_type  = 'attribute';
-
+warn "config code:";
+warn $config_code;
     if ($collections_flag) {
         if ( $collections_flag eq 'sort1' ) {
             $collections_flag_type = 'sort';
