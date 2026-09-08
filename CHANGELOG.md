@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed issue with sending incomplete file instead of the csv with patron information
+
 ## [0.9.21] - 2026-08-31
 
 ## [0.9.20] - 2026-08-31

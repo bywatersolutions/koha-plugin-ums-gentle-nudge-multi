@@ -328,6 +328,7 @@ sub run_submissions_report {
 
     my ( $self, $params ) = @_;
     my $remove_minors = $params->{remove_minors};
+    my $type = 'new';
     my $dbh           = C4::Context->dbh;
     $dbh->{RaiseError} = 1;    # die if a query has problems
     my $info = {};
@@ -442,7 +443,7 @@ sub run_submissions_report {
             };
 
         log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
-
+warn $ums_submission_query;
 ### Update new submissions patrons, add fee, mark as being in collections
         $sth = $dbh->prepare($ums_submission_query);
         $sth->execute();
@@ -521,9 +522,9 @@ sub run_submissions_report {
                     type        => $params->{config_debit_type},
                 }
             ) if $processing_fee && $processing_fee > 0;
-            my @row = @{$r}{@$columns};
+            my @row = @{$r};
             $csv->print( $fh, \@row );
-            push( @ums_new_submissions, $r );
+            ##push( @ums_new_submissions, $r );
 
         }
         close $fh;
@@ -547,7 +548,7 @@ sub run_submissions_report {
             filename  => $filename,
             file_path => $file_path,
         };
-        warn Data::Dumper::Dumper($info);
+
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
@@ -561,18 +562,35 @@ sub run_submissions_report {
                 subject => "UMS New Submissions for $params->{config_name}",
                 text_body => " ",
             };
-            warn $p;
-            my $email = Koha::Email->new($p);
+
+        open my $csv_in, '<:raw', $file_path or die "Cannot read $file_path: $!";
+        my $csv_content = do { local $/; <$csv_in> };
+        close $csv_in;
+
+        foreach my $email_address ( $email_to, $email_cc ) {
+            next unless $email_address;
+            log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
+            my $email = Koha::Email->create(
+                {                 
+                    to      => $email_address,
+                    from    => $email_from,
+                    subject => sprintf(
+                        "UMS %s for %s",
+                        ucfirst($type), $params->{config_name}
+                    ),
+                    text_body => 'textbody',
+                }
+            );
 
             $email->attach(
-                Encode::encode_utf8($csv),
+                $csv_content,
                 content_type => "text/csv",
-                filename     => "ums-new-submissions-$params->{date}-$params->{config_code}.csv",
-                name         => "ums-new-submissions-$params->{date}-$params->{config_code}.csv",
+                filename     => $filename,
+                name         => $filename,
                 disposition  => 'attachment',
             );
-            warn "email";
-            warn Data::Dumper::Dumper($email);
+
+
             my $smtp_id = $params->{smtp_server};
             my $smtp_server;
             if ($smtp_id) {
@@ -614,7 +632,7 @@ sub run_submissions_report {
         die "error in  run_submissions_report: " . $info->{error};
     };
 }
-
+}
 sub run_update_report_and_clear_paid {
     my ( $self, $params ) = @_;
     my $dbh = C4::Context->dbh;
@@ -681,9 +699,9 @@ sub run_update_report_and_clear_paid {
         my @ums_updates;
         while ( my $r = $sth->fetchrow_hashref ) {
 
-            my @row = @{$r}{@$columns};
+            my @row = @{$r};
             $csv->print( $fh, \@row );
-            push( @ums_updates, $r );
+             push( @ums_updates, $r );
 
             ## Email the results
 
@@ -729,6 +747,11 @@ sub run_update_report_and_clear_paid {
             filename  => $filename,
             file_path => $file_path,
         };
+
+        open my $csv_in, '<:raw', $file_path or die "Cannot read $file_path: $!";
+        my $csv_content = do { local $/; <$csv_in> };
+        close $csv_in;
+
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
@@ -746,7 +769,7 @@ sub run_update_report_and_clear_paid {
             );
 
             $email->attach(
-                Encode::encode_utf8($csv),
+                $csv_content,
                 content_type => "text/csv",
                 filename     => $filename,
                 name         => $filename,
@@ -1099,6 +1122,7 @@ sub build_params {
     $params->{config_code}          = $config_code;
     $params->{config_branch_where}  = $config_branch_where;
     $params->{config_branch_helper} = $config_branch_helper;
+    $params->{config_type}          = $config_type;
     return $params;
 
 }
