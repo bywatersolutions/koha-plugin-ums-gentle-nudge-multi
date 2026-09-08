@@ -261,9 +261,7 @@ sub cronjob_nightly {
     my $not_todays_configs = $self->configs->not_today_enabled_configs;
 
     while ( my $config = $todays_configs->next ) {
-        warn Data::Dumper::Dumper($config->unblessed);
         my $params                = $self->build_params( $config, $sync );
-        warn Data::Dumper::Dumper($params);
         my $config_code           = $params->{config_code};
         my $config_type           = $params->{umsconfig_type};
         my $collections_flag_type = $params->{collection_flag_type};
@@ -327,6 +325,7 @@ sub cronjob_nightly {
 }    # /cronjob_nightly
 
 sub run_submissions_report {
+
     my ( $self, $params ) = @_;
     my $remove_minors = $params->{remove_minors};
     my $dbh           = C4::Context->dbh;
@@ -560,6 +559,7 @@ sub run_submissions_report {
                 to      => $email_address,
                 from    => $email_from,
                 subject => "UMS New Submissions for $params->{config_name}",
+                text_body => " ",
             };
             warn $p;
             my $email = Koha::Email->new($p);
@@ -571,7 +571,8 @@ sub run_submissions_report {
                 name         => "ums-new-submissions-$params->{date}-$params->{config_code}.csv",
                 disposition  => 'attachment',
             );
-            warn $email;
+            warn "email";
+            warn Data::Dumper::Dumper($email);
             my $smtp_id = $params->{smtp_server};
             my $smtp_server;
             if ($smtp_id) {
@@ -732,15 +733,17 @@ sub run_update_report_and_clear_paid {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
 
-            my $p = {
-                to      => $email_address,
-                from    => $email_from,
-                subject => sprintf(
-                    "UMS %s for %s",
-                    ucfirst($type), $params->{config_name}
-                ),
-            };
-            my $email = Koha::Email->new($p);
+            my $email = Koha::Email->create(
+                {                 
+                    to      => $email_address,
+                    from    => $email_from,
+                    subject => sprintf(
+                        "UMS %s for %s",
+                        ucfirst($type), $params->{config_name}
+                    ),
+                    text_body => 'textbody',
+                }
+            );
 
             $email->attach(
                 Encode::encode_utf8($csv),
@@ -762,18 +765,7 @@ sub run_update_report_and_clear_paid {
             try {
                 $email->send_or_die unless $no_email;
             } catch {
-                $info->{email_failed}  = 'true';
-                $info->{email_address} = $email_address;
-                $info->{email_error}   = $_;
 
-                die "Mail not sent: $_";
-            };
-            try {
-                $email->send_or_die unless $no_email;
-            } catch {
-                $info->{email_failed}  = 'true';
-                $info->{email_address} = $email_address;
-                $info->{email_error}   = $_;
                 logaction(
                     'GentleNudge',        uc($type) . "_ERROR", undef,
                     $json->encode($info), 'cron'
@@ -1002,7 +994,7 @@ sub build_params {
     } else {
         return 0;
     }
-    warn $branch_query;
+
     my $params = {};
     $params->{require_lost_fee}   = $config->require_lost;
     $params->{fees_threshold}     = $config->threshold;
@@ -1031,8 +1023,6 @@ sub build_params {
 
     my @debit_codes = map { $_->code } $config->debit_types->as_list;
     $params->{debit_type_codes} = \@debit_codes;
-warn "params:";
-warn $params;
     $params->{config_debit_type} = $config->config_debit_type;
     my $config_code           = "global";
     my $config_type           = "global";
@@ -1040,8 +1030,7 @@ warn $params;
     my $collections_flag_type = 'attribute';
     my $exemptions_flag       = $config->exemptions_flag || undef;
     my $exemptions_flag_type  = 'attribute';
-warn "config code:";
-warn $config_code;
+
     if ($collections_flag) {
         if ( $collections_flag eq 'sort1' ) {
             $collections_flag_type = 'sort';
