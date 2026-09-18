@@ -443,7 +443,7 @@ sub run_submissions_report {
             };
 
         log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
-warn $ums_submission_query;
+
 ### Update new submissions patrons, add fee, mark as being in collections
         $sth = $dbh->prepare($ums_submission_query);
         $sth->execute();
@@ -463,7 +463,6 @@ warn $ums_submission_query;
         ];
 
         my $csv = UMS::GentleNudge::CSV->new;
-
         $archive_dir ||= C4::Context->temporary_directory;
 
         my $filename  = "ums-new-submissions-$params->{date}-$params->{config_code}.csv";
@@ -490,7 +489,7 @@ warn $ums_submission_query;
             }
 
             if ( $params->{collection_flag_type} eq 'sort' ) {
-                $patron->update( { $params->{collections_flag} => 'yes' } );
+                $patron->update( { $params->{collections_flag} => '1' } );
             }
             if ( $params->{collection_flag_type} eq 'attribute' ) {
                 my $a = Koha::Patron::Attributes->find(
@@ -522,7 +521,7 @@ warn $ums_submission_query;
                     type        => $params->{config_debit_type},
                 }
             ) if $processing_fee && $processing_fee > 0;
-            my @row = @{$r};
+            my @row = @{$r}{@$columns};
             $csv->print( $fh, \@row );
             ##push( @ums_new_submissions, $r );
 
@@ -767,7 +766,6 @@ sub run_update_report_and_clear_paid {
                     text_body => 'textbody',
                 }
             );
-
             $email->attach(
                 $csv_content,
                 content_type => "text/csv",
