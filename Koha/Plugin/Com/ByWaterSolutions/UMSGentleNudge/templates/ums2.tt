@@ -109,8 +109,8 @@
                                    <div> <button data-bs-toggle="modal" data-bs-target="#UMSSyncModal" data-bs-mode="Sync" id="syncall" data-sync-id="sync-all" class="btn btn-primary sync-config" data-sync-name="all enabled configurations"><i class="fa fa-rotate"></i> Sync all enabled</button> <p><br/></p></div>
                                 </div> <!-- /message -->
                                 <form  id="global_form" method="post" class="form">
-            <input type="hidden" name="class" value="[% CLASS %]"/>
-            <input type="hidden" name="method" value="[% METHOD %]"/>
+            <input type="hidden" name="class" value="[% CLASS | html %]"/>
+            <input type="hidden" name="method" value="[% METHOD | html %]"/>
             <input type="hidden" name="step"   value="plugin_settings"/>
             <input type="hidden" name="save"   value="1"/>
             <input type="hidden" name="op"     value="cud-save"/>
@@ -149,8 +149,8 @@
  <!-- New Config modal -->
     <div class="modal fade modal-lg" id="UMSConfigModal" aria-labelledby="UMSConfigLabel" role="dialog" aria-hidden="true">
         <form  id="config_form" method="post" class="form">
-            <input type="hidden" name="class" value="[% CLASS %]"/>
-            <input type="hidden" name="method" value="[% METHOD %]"/>
+            <input type="hidden" name="class" value="[% CLASS | html %]"/>
+            <input type="hidden" name="method" value="[% METHOD | html %]"/>
             <input type="hidden" name="action" id="modal_button" value="add"/>
             <input type="hidden" class="modal-type" name="type"/>
             <div class="modal-dialog" role="document">
@@ -168,10 +168,10 @@
                                         <option class="modal-select-type" value="">Select a</option>
                                             <option class="global_option" value="global" hidden="" >Global</option>
                                         [% FOREACH l IN Branches.all() %]
-                                            <option class="library_option" value="[% l.branchcode %]" hidden="" >[% l.branchname | html %]</option>
+                                            <option class="library_option" value="[% l.branchcode | html %]" hidden="" >[% l.branchname | html %]</option>
                                         [% END %]
                                             [% FOREACH g IN groups %]
-                                                <option class="group_option" value="[% g.id %]" hidden="" >[% g.title %]</option>
+                                                <option class="group_option" value="[% g.id | html %]" hidden="" >[% g.title | html %]</option>
                                             [% END %] 
                                         </select>
                                   </div> <!-- /config_id_selector -->
@@ -209,7 +209,7 @@
                                     <label for="umsconfig_categories">Patron categories <i id="info_added" data-bs-toggle="tooltip" title="Leave blank for all categories. multiple values can be selected with ctrl+click or shift+click." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select data-placeholder="Select patron categories to limit to" name="umsconfig_categories" id="umsconfig_categories" class="select2">
                                         [% FOREACH category IN Categories.all() %]
-                                            <option value="[% category.categorycode %]">[% category.description %]</option>
+                                            <option value="[% category.categorycode | html %]">[% category.description | html %]</option>
                                         [% END %]
                                       </select>
                                     <br />
@@ -217,10 +217,10 @@
                                 </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="umsconfig_debit_types">Debit types <i id="info_added" data-bs-toggle="tooltip" title="Leave blank for all debit types. Only selected types will be used to calculate collections elegibility." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <label for="umsconfig_debit_types">Debit types <i id="info_added" data-bs-toggle="tooltip" title="Leave blank for all debit types. Only selected types will be used to calculate collections eligibility." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select data-placeholder="Select debit types to limit to" name="umsconfig_debit_types" id="umsconfig_debit_types" class="select2">
                                         [% FOREACH debit_type IN debit_types %]
-                                            <option value="[% debit_type.code %]">[% debit_type.description | html %]</option>
+                                            <option value="[% debit_type.code | html %]">[% debit_type.description | html %]</option>
                                         [% END %]
                                       </select>
                                     <br />
@@ -282,7 +282,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                         <option value="sort1"> sort1</option>
                                         <option value="sort2">sort2</option>
                                         [% FOREACH a IN ExtendedAttributeTypes.all %]
-                                            <option value="[% a.code %]">[% a.description | html %]</option>
+                                            <option value="[% a.code | html %]">[% a.description | html %]</option>
                                         [% END %]
                                       </select>
                                   </div><!-- /form-group mb-3 -->
@@ -298,7 +298,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                         <option value="sort1">sort1</option>
                                         <option value="sort2">sort2</option>
                                         [% FOREACH a IN ExtendedAttributeTypes.all %]
-                                            <option value="[% a.code %]">[% a.description | html %]</option>
+                                            <option value="[% a.code | html %]">[% a.description | html %]</option>
                                         [% END %]
                                       </select>
                                   </div><!-- /form-group mb-3 -->
@@ -341,7 +341,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                     <label for="clear_threshold">Clear collections flag threshold <i id="info_added" data-bs-toggle="tooltip" title="Used when clearing at or below the threshold is enabled: the patron will be cleared from collections if their balance does not exceed this threshold." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <div class="input-group">
                                         <div class="input-group-addon">$ </div>
-                                        <input type="text" name="clear_threshold" id="clear_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
+                                        <input type="text" name="clear_threshold" id="clear_threshold" class="form-control" value="[% ( auto_clear_paid_threshold || 0 ) | html %]">
                                       </div><!-- /input group-->
                                   </div><!-- /form-group mb-3 -->
                               </div><!-- /col-md-6 -->
@@ -394,7 +394,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label for="cc_email">Additional email address <i id="info_added" data-bs-toggle="tooltip" title="If you would like to send the report to another email address as well, enter it here." data-bs-placement="right" class="fa fa-info-circle"></i></label>
-                                    <input type="text" name="cc_email" id="cc_email" class="form-control" value="[% cc_email %]">
+                                    <input type="text" name="cc_email" id="cc_email" class="form-control" value="[% cc_email | html %]">
                                   </div><!-- /form-group mb-3 -->
                               </div><!-- /col-md-6 -->
                           </div><!-- /row -->
@@ -418,7 +418,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                             <select name="sftp_selector" id="sftp_selector_select" class="form-control">
                                             <option class="modal-select-type" value="">Select a server</option>
                                                 [% FOREACH server IN sftp_servers %]
-                                                    <option value="[% server.id %]">[% server.name | html %]</option>
+                                                    <option value="[% server.id | html %]">[% server.name | html %]</option>
                                                 [% END %]
                                             </select><!-- /sftp_selector-->
                                           </div> <!-- /sftp_selector-->
@@ -448,7 +448,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                             <select name="smtp_selector" id="smtp_selector_select" class="form-control">
                                             <option class="modal-select-type" value="">Select a server</option>
                                                 [% FOREACH server IN servers %]
-                                                    <option value="[% server.id %]">[% server.name | html %]</option>
+                                                    <option value="[% server.id | html %]">[% server.name | html %]</option>
                                                 [% END %]
                                             </select><!-- /smtp_selector-->
                                           </div> <!-- /smtp_selector-->
@@ -480,8 +480,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
 <!-- Delete Configuration Modal -->
     <div class="modal fade modal-lg" id="UMSDeleteModal" aria-labelledby="UMSDeleteLabel" aria-hidden="true">
         <form  id="deleteForm" method="delete" class="form">
-            <input type="hidden" name="class" value="[% CLASS %]"/>
-            <input type="hidden" name="method" value="[% METHOD %]"/>
+            <input type="hidden" name="class" value="[% CLASS | html %]"/>
+            <input type="hidden" name="method" value="[% METHOD | html %]"/>
             <input type="hidden" name="action" id="modal_button" value="delete"/>
             <input type="hidden" class="modal-type" name="type"/>
             <div class="modal-dialog">
@@ -516,8 +516,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
     <!-- Sync Configuration Modal -->
     <div class="modal fade modal-lg" role="dialog" id="UMSSyncModal" aria-labelledby="UMSSyncLabel" aria-hidden="true">
         <form  id="SyncForm" method="sync" class="form">
-            <input type="hidden" name="class" value="[% CLASS %]"/>
-            <input type="hidden" name="method" value="[% METHOD %]"/>
+            <input type="hidden" name="class" value="[% CLASS | html %]"/>
+            <input type="hidden" name="method" value="[% METHOD | html %]"/>
             <input type="hidden" name="action" id="modal_button" value="sync_report"/>
             <input type="hidden" name="config_id" id="sync_modal_id"/>
             <input type="hidden" class="modal-type" name="type"/>
@@ -605,7 +605,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 var modalTypeSelector = modalTypeSelector + configtype;
                 var modalIDSelect = '.' + configtype + '_option';
                 var modalButton =  UMSConfigModal.querySelector('#modal_button');
-                //Sets the title dynamicly: Mode (New/Edit) type(global, group, or library) configuration
+                //Sets the title dynamically: Mode (New/Edit) type(global, group, or library) configuration
                 modalTitle.textContent = umsmode + ' ' + configtype + ' configuration';
                 var modalSelector = UMSConfigModal.querySelector('.modal-select-type');
                 modalSelector.textContent = 'Select a ' + configtype;

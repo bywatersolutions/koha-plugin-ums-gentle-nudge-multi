@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- Values on the configuration page (library, group, category, debit type, attribute and server names and codes, email addresses) are now HTML-escaped
 - Balances of 1,000,000 or more were compared against the clear threshold incorrectly
 - Exemptions stored in sort1/sort2 were ignored, so exempt patrons were sent to collections
 - New submissions query failed with "Column 'attribute' in WHERE is ambiguous" when both the collections and exemption flags were patron attributes
