@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- Total_Plus_Fee in the new submissions report did not include the processing fee; the fee was passed to FORMAT() as the number of decimal places
 - SFTP upload never ran because the reports looked up the wrong parameter, and a failed upload was ignored
 - "Item home branch" fine branch setting produced invalid SQL, so reports failed for library and group configurations
 - Archived report CSVs older than 30 days were never deleted because the clean up looked for the wrong file names; update-only configurations' archives are now cleaned up too

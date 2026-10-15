@@ -375,6 +375,9 @@ sub run_submissions_report {
     $dbh->{RaiseError} = 1;    # die if a query has problems
     my $info = {};
     my @errors;    # Delivery failures that did not stop the report reaching UMS
+
+    # Forced to a number as it is interpolated into the query
+    my $processing_fee = sprintf( '%.2f', $params->{processing_fee} || 0 );
     try {
         my $sth;
 
@@ -432,7 +435,7 @@ sub run_submissions_report {
             LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
             LEFT JOIN ( SELECT
                 REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
-                REPLACE( FORMAT( SUM(accountlines.amountoutstanding), '$params->{processing_fee}' , 2), ',', '' ) AS DuePlus,
+                REPLACE( FORMAT( SUM( accountlines.amountoutstanding ) + $processing_fee, 2), ',', '' ) AS DuePlus,
                 borrowernumber
             FROM accountlines
             GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
@@ -567,7 +570,6 @@ sub run_submissions_report {
                         }
                     }
 
-                    my $processing_fee = $params->{processing_fee};
                     $patron->account->add_debit(
                         {
                             amount      => $params->{processing_fee},

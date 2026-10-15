@@ -28,6 +28,7 @@ use Test::MockObject;
 use t::lib::TestBuilder;
 
 use File::Temp qw( tempdir );
+use Text::CSV_XS;
 
 use Koha::Database;
 use Koha::DateUtils qw( dt_from_string );
@@ -482,7 +483,7 @@ subtest 'run_submissions_report() tests' => sub {
 
     subtest 'Report delivered: patron is sent to collections' => sub {
 
-        plan tests => 3;
+        plan tests => 6;
 
         $schema->storage->txn_begin;
 
@@ -491,6 +492,18 @@ subtest 'run_submissions_report() tests' => sub {
         lives_ok { $plugin->run_submissions_report($params) } 'Does not die';
         is_deeply( $sent_to_collections->($patron), [ 1, 1, 1 ], 'Patron flagged, restricted and charged' );
         is_deeply( \@delivered_to, [ 'ums@example.org', 'library@example.org' ], 'Sent to UMS and the library' );
+
+        my $report = Text::CSV_XS->new( { binary => 1 } );
+        open my $fh, '<:encoding(UTF-8)',
+            "$Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::archive_dir/"
+            . "ums-new-submissions-$params->{date}-$params->{config_code}.csv"
+            or die $!;
+        $report->column_names( $report->getline($fh) );
+        my $row = $report->getline_hr($fh);
+        close $fh;
+        is( $row->{borrowernumber}, $patron->borrowernumber, 'Report lists the patron' );
+        is( $row->{Total_Due},      '20.00',                 'Total_Due is the outstanding balance' );
+        is( $row->{Total_Plus_Fee}, '30.00',                 'Total_Plus_Fee adds the 10.00 processing fee' );
 
         $schema->storage->txn_rollback;
     };
