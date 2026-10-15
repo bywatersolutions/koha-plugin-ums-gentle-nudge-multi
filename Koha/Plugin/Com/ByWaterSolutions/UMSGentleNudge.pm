@@ -1063,8 +1063,11 @@ sub build_params {
             $branch_query = "AND borrowers.branchcode ";
         }
         if ( $sync->{global_fine_branch} eq 'item_home' ) {
-            my $item_join =
-                " LEFT JOIN items ON accountlines.itemnumber = items.itemnumber $branch_query = AND items.homebranch ";
+
+            # A subquery rather than a join, so the reports' queries do not
+            # need an items join; fines without an item never match.
+            $branch_query =
+                "AND ( SELECT items.homebranch FROM items WHERE items.itemnumber = accountlines.itemnumber ) ";
         }
         if ( $sync->{global_fine_branch} eq 'accountline' ) {
             $branch_query = "AND accountlines.branchcode ";

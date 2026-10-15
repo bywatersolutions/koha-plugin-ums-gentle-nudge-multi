@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 5;
+use Test::More tests => 6;
 use Test::Exception;
 use Test::MockModule;
 
@@ -292,4 +292,86 @@ subtest 'prune_archives() tests' => sub {
         $plugin->prune_archives('MAIN');
         ok( -d $dir, 'Directory created' );
     };
+};
+
+subtest 'build_params() tests' => sub {
+
+    plan tests => 3;
+
+    $schema->storage->txn_begin;
+
+    my $plugin = $class->new;
+
+    my $library_a = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $library_b = $builder->build_object( { class => 'Koha::Libraries' } );
+
+    my $config = $builder->build_object(
+        {
+            class => 'UMS::GentleNudge::Configs',
+            value => {
+                config_type       => 'library',
+                branch            => $library_a->branchcode,
+                config_group      => undef,
+                enabled           => 1,
+                config_debit_type => 'MANUAL',
+                require_lost      => 0,
+                sftp_server       => undef,
+                smtp_server       => undef,
+            }
+        }
+    );
+
+    my $patron_a = $builder->build_object( { class => 'Koha::Patrons', value => { branchcode => $library_a->branchcode } } );
+    my $patron_b = $builder->build_object( { class => 'Koha::Patrons', value => { branchcode => $library_b->branchcode } } );
+    my $item_a   = $builder->build_sample_item( { library => $library_a->branchcode } );
+    my $item_b   = $builder->build_sample_item( { library => $library_b->branchcode } );
+
+    my $build_fine = sub {
+        my ( $patron, $branchcode, $item ) = @_;
+        return $builder->build_object(
+            {
+                class => 'Koha::Account::Lines',
+                value => {
+                    borrowernumber    => $patron->borrowernumber,
+                    branchcode        => $branchcode,
+                    itemnumber        => $item ? $item->itemnumber : undef,
+                    debit_type_code   => 'OVERDUE',
+                    credit_type_code  => undef,
+                    amount            => 5,
+                    amountoutstanding => 5,
+                }
+            }
+        )->accountlines_id;
+    };
+
+    # Patron home | fine branch | item home
+    my $fine_1 = $build_fine->( $patron_a, $library_b->branchcode, $item_a );    # A | B | A
+    my $fine_2 = $build_fine->( $patron_a, $library_a->branchcode, $item_b );    # A | A | B
+    my $fine_3 = $build_fine->( $patron_b, $library_b->branchcode, undef );      # B | B | -
+
+    # Runs the branch filter the same way the reports do and returns the
+    # matching fines
+    my $matching_fines = sub {
+        my ($fine_branch) = @_;
+        my $params = $plugin->build_params( $config, { global_enabled => 1, global_fine_branch => $fine_branch } );
+        return [
+            sort { $a <=> $b } map { $_->[0] } @{
+                C4::Context->dbh->selectall_arrayref(
+                    qq{
+                    SELECT accountlines.accountlines_id
+                    FROM accountlines
+                    LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
+                    WHERE accountlines.accountlines_id IN ( $fine_1, $fine_2, $fine_3 )
+                    $params->{config_branch_helper}
+                }
+                )
+            }
+        ];
+    };
+
+    is_deeply( $matching_fines->('patron'),      [ $fine_1, $fine_2 ], 'patron: fines of patrons from the library' );
+    is_deeply( $matching_fines->('accountline'), [$fine_2],            'accountline: fines created at the library' );
+    is_deeply( $matching_fines->('item_home'),   [$fine_1],            'item_home: fines for items owned by the library' );
+
+    $schema->storage->txn_rollback;
 };
