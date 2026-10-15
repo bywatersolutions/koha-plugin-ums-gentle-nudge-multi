@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- Exemptions stored in sort1/sort2 were ignored, so exempt patrons were sent to collections
+- New submissions query failed with "Column 'attribute' in WHERE is ambiguous" when both the collections and exemption flags were patron attributes
+- "Require lost fee" setting had no effect; patrons are now only sent to collections when it is on if they have an outstanding lost fee
 - Total_Plus_Fee in the new submissions report did not include the processing fee; the fee was passed to FORMAT() as the number of decimal places
 - SFTP upload never ran because the reports looked up the wrong parameter, and a failed upload was ignored
 - "Item home branch" fine branch setting produced invalid SQL, so reports failed for library and group configurations

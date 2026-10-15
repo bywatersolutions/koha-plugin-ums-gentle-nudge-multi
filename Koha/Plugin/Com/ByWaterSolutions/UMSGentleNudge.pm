@@ -415,12 +415,12 @@ sub run_submissions_report {
 
         $ums_submission_query .= qq{
             LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-            AND code = '$params->{collections_flag}'
+            AND borrower_attributes.code = ${\ $dbh->quote( $params->{collections_flag} ) }
              } if $params->{collection_flag_type} eq 'attribute';
 
         $ums_submission_query .= qq{
             LEFT JOIN borrower_attributes ba_ef ON accountlines.borrowernumber = ba_ef.borrowernumber
-            AND code = '$params->{exemptions_flag}'
+            AND ba_ef.code = ${\ $dbh->quote( $params->{exemptions_flag} ) }
              } if $params->{exemptions_flag_type} eq 'attribute';
 
         $ums_submission_query .= qq{
@@ -458,13 +458,18 @@ sub run_submissions_report {
                 AND ( borrower_attributes.attribute = 'no' OR borrower_attributes.attribute IS NULL OR borrower_attributes.attribute = "" OR borrower_attributes.attribute = "0" )
             } if $params->{collection_flag_type} eq 'attribute';
 
+        # Leave out exempt patrons
         $ums_submission_query .= q{
                 AND ( ba_ef.attribute = '0' OR ba_ef.attribute IS NULL )
             } if $params->{exemptions_flag_type} eq 'attribute';
 
+        $ums_submission_query .= qq{
+                AND ( borrowers.$params->{exemptions_flag} = 'no' OR borrowers.$params->{exemptions_flag} IS NULL OR borrowers.$params->{exemptions_flag} = "" OR borrowers.$params->{exemptions_flag} = "0")
+            } if $params->{exemptions_flag} && $params->{exemptions_flag_type} eq 'sort';
+
         $ums_submission_query .= q{
-                AND ( attribute = '0' OR attribute IS NULL )
-            } if $params->{exemptions_flag_type} eq 'attribute';
+                AND lost_fees_count.lost_fees_count > 0
+            } if $params->{require_lost_fee};
 
         if ( @{ $params->{categorycodes} } ) {
             my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );

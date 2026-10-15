@@ -382,7 +382,7 @@ subtest 'build_params() tests' => sub {
 
 subtest 'run_submissions_report() tests' => sub {
 
-    plan tests => 5;
+    plan tests => 8;
 
     my $plugin = $class->new;
 
@@ -444,7 +444,7 @@ subtest 'run_submissions_report() tests' => sub {
         );
 
         my $patron = $builder->build_object(
-            { class => 'Koha::Patrons', value => { branchcode => $library->branchcode, sort1 => undef } } );
+            { class => 'Koha::Patrons', value => { branchcode => $library->branchcode, sort1 => undef, sort2 => undef } } );
         $builder->build_object(
             {
                 class => 'Koha::Account::Lines',
@@ -556,6 +556,101 @@ subtest 'run_submissions_report() tests' => sub {
         throws_ok { $plugin->run_submissions_report($params) } qr/Email to library\@example.org failed: smtp down/,
             'Dies reporting the failed library copy';
         is_deeply( $sent_to_collections->($patron), [ 1, 1, 1 ], 'Patron flagged, restricted and charged' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Exemption flag in a sort field is respected' => sub {
+
+        plan tests => 2;
+
+        $schema->storage->txn_begin;
+
+        my ( $params, $patron ) = $setup->();
+        $patron->set( { sort2 => '1' } )->store;
+
+        lives_ok { $plugin->run_submissions_report($params) } 'Does not die';
+        is_deeply( $sent_to_collections->($patron), [ 0, 0, 0 ], 'Exempt patron not sent to collections' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Collections and exemption flags both patron attributes' => sub {
+
+        plan tests => 4;
+
+        $schema->storage->txn_begin;
+
+        my ( $collections_type, $exemption_type ) = map {
+            $builder->build_object(
+                {
+                    class => 'Koha::Patron::Attribute::Types',
+                    value => { repeatable => 0, unique_id => 0, authorised_value_category => undef }
+                }
+            )
+        } 1 .. 2;
+
+        my $flag_of = sub {
+            my ($patron) = @_;
+            my $attribute = Koha::Patron::Attributes->find(
+                { borrowernumber => $patron->borrowernumber, code => $collections_type->code } );
+            return $attribute ? $attribute->attribute : undef;
+        };
+
+        my ( $params, $patron ) = $setup->(
+            collections_flag => $collections_type->code,
+            exemptions_flag  => $exemption_type->code,
+        );
+        lives_ok { $plugin->run_submissions_report($params) } 'Query runs';
+        is( $flag_of->($patron), '1', 'Patron flagged with the collections attribute' );
+
+        ( $params, $patron ) = $setup->(
+            collections_flag => $collections_type->code,
+            exemptions_flag  => $exemption_type->code,
+        );
+        Koha::Patron::Attribute->new(
+            { borrowernumber => $patron->borrowernumber, code => $exemption_type->code, attribute => 1 } )->store;
+        lives_ok { $plugin->run_submissions_report($params) } 'Query runs';
+        is( $flag_of->($patron), undef, 'Exempt patron not flagged' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Require lost fee' => sub {
+
+        plan tests => 3;
+
+        $schema->storage->txn_begin;
+
+        my ( $params, $patron ) = $setup->( require_lost => 1 );
+
+        $plugin->run_submissions_report($params);
+        is_deeply(
+            $sent_to_collections->($patron), [ 0, 0, 0 ],
+            'Patron without an outstanding lost fee not sent to collections'
+        );
+
+        $builder->build_object(
+            {
+                class => 'Koha::Account::Lines',
+                value => {
+                    borrowernumber    => $patron->borrowernumber,
+                    branchcode        => $patron->branchcode,
+                    itemnumber        => undef,
+                    debit_type_code   => 'LOST',
+                    credit_type_code  => undef,
+                    amount            => 1,
+                    amountoutstanding => 1,
+                    date              => dt_from_string()->ymd,
+                }
+            }
+        );
+
+        lives_ok { $plugin->run_submissions_report($params) } 'Does not die';
+        is_deeply(
+            $sent_to_collections->($patron), [ 1, 1, 1 ],
+            'Patron with an outstanding lost fee sent to collections'
+        );
 
         $schema->storage->txn_rollback;
     };
