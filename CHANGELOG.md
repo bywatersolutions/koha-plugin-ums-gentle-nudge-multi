@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Restriction and remove-restriction settings were compared against 'yes' but stored as 1/0, so restrictions were never added and patrons were never cleared from collections
+- Clearing a patron from collections now sets a sort1/sort2 flag to '0' (matching the '1' used when flagging) instead of 'no'
+- Missing patron in clear_patron_from_collections no longer exits the caller's loop via `next`
+
 ## [0.9.24] - 2026-09-18
 
 ## [0.9.23] - 2026-09-08

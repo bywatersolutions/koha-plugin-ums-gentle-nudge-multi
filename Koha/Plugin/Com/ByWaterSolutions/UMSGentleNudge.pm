@@ -477,7 +477,7 @@ sub run_submissions_report {
 
             my $patron = Koha::Patrons->find( $r->{borrowernumber} );
             next unless $patron;
-            if ( $params->{restriction} eq 'yes' ) {
+            if ( $params->{restriction} ) {
                 AddDebarment(
                     {
                         borrowernumber => $patron->borrowernumber,
@@ -713,17 +713,15 @@ sub run_update_report_and_clear_paid {
 
             my $due = $r->{Due} || 0;
             $due =~ s/,//;
-            if ( $params->{remove_restriction} eq 'yes' && $due <= $params->{clear_threshold} ) {
+            if ( $params->{remove_restriction} && $due <= $params->{clear_threshold} ) {
                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
-                if ( $params->{remove_restriction} ) {
-                    Koha::Patron::Restrictions->search(
-                        {
-                            borrowernumber => $r->{borrowernumber},
-                            comment        => { 'like' => "Patron sent to collections on %" }
-                        }
-                    )->delete();
-                    Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
-                }
+                Koha::Patron::Restrictions->search(
+                    {
+                        borrowernumber => $r->{borrowernumber},
+                        comment        => { 'like' => "Patron sent to collections on %" }
+                    }
+                )->delete();
+                Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
             }
         }
         close $fh;
@@ -823,10 +821,10 @@ sub clear_patron_from_collections {
     log_info("CLEARING PATRON $borrowernumber FROM COLLECTIONS");
 
     my $patron = Koha::Patrons->find($borrowernumber);
-    next unless $patron;
+    return unless $patron;
 
     if ( $params->{collection_flag_type} eq 'sort' ) {
-        $patron->_result->update( { $params->{collections_flag} => 'no' } );
+        $patron->_result->update( { $params->{collections_flag} => '0' } );
     }
     if ( $params->{collection_flag_type} eq 'attribute' ) {
         my $a = Koha::Patron::Attributes->find(
