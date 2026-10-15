@@ -270,70 +270,85 @@ sub cronjob_nightly {
 
     $self->prune_old_logs();
 
+    unless ( $global_enabled && $global_enabled == 1 ) {
+        log_info("GENTLE NUDGE IS NOT ENABLED, SKIPPING NIGHTLY RUN");
+        return;
+    }
+
     my $todays_configs     = $self->configs->today_enabled_configs;
     my $not_todays_configs = $self->configs->not_today_enabled_configs;
 
+    # Run each config in its own try so that one failing config does not
+    # stop the others. Errors are collected and re-thrown at the end so the
+    # nightly cron still reports them.
+    my @errors;
+
     while ( my $config = $todays_configs->next ) {
-        my $params                = $self->build_params( $config, $sync );
-        my $config_code           = $params->{config_code};
-        my $config_type           = $params->{umsconfig_type};
-        my $collections_flag_type = $params->{collection_flag_type};
-        my $config_branch_helper  = $params->{config_branch_helper};
-        my $config_branch_where   = $params->{config_branch_where};
+        try {
+            my $params                = $self->build_params( $config, $sync );
+            my $config_code           = $params->{config_code};
+            my $config_type           = $params->{umsconfig_type};
+            my $collections_flag_type = $params->{collection_flag_type};
+            my $config_branch_helper  = $params->{config_branch_helper};
+            my $config_branch_where   = $params->{config_branch_where};
 
-        # Clear up archives older than 30 days
-        if ($archive_dir) {
-            if ( -d $archive_dir ) {
-                my $dt = dt_from_string();
-                $dt->subtract( days => 30 );
-                my $age_threshold = $dt->ymd;
-                opendir my $dir, $archive_dir or die "Cannot open directory: $!";
-                my @files = readdir $dir;
-                closedir $dir;
-                my $thresholds = {
-                    new_submissions => "ums-new-submissions-$age_threshold-$config_code.csv",
-                    sync            => "ums-sync-$age_threshold-$config_code.csv",
-                    updates         => "ums-updates-$age_threshold-$config_code.csv",
-                };
+            # Clear up archives older than 30 days
+            if ($archive_dir) {
+                if ( -d $archive_dir ) {
+                    my $dt = dt_from_string();
+                    $dt->subtract( days => 30 );
+                    my $age_threshold = $dt->ymd;
+                    opendir my $dir, $archive_dir or die "Cannot open directory: $!";
+                    my @files = readdir $dir;
+                    closedir $dir;
+                    my $thresholds = {
+                        new_submissions => "ums-new-submissions-$age_threshold-$config_code.csv",
+                        sync            => "ums-sync-$age_threshold-$config_code.csv",
+                        updates         => "ums-updates-$age_threshold-$config_code.csv",
+                    };
 
-                foreach my $f (@files) {
-                    next unless $f =~ /csv$/;
+                    foreach my $f (@files) {
+                        next unless $f =~ /csv$/;
 
-                    my $threshold_filename =
-                          $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
-                        : $f =~ /^$config_code-ums-sync/            ? $thresholds->{sync}
-                        : $f =~ /^$config_code-ums-updates/         ? $thresholds->{updates}
-                        :                                             undef;
+                        my $threshold_filename =
+                              $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
+                            : $f =~ /^$config_code-ums-sync/            ? $thresholds->{sync}
+                            : $f =~ /^$config_code-ums-updates/         ? $thresholds->{updates}
+                            :                                             undef;
 
-                    next unless $threshold_filename;
+                        next unless $threshold_filename;
 
-                    if ( $f lt $threshold_filename ) {
-                        unlink( $archive_dir . "/" . $f );
+                        if ( $f lt $threshold_filename ) {
+                            unlink( $archive_dir . "/" . $f );
+                        }
                     }
+                } else {
+                    make_path $archive_dir or die "Failed to create path: $archive_dir";
+
                 }
-            } else {
-                make_path $archive_dir or die "Failed to create path: $archive_dir";
-
             }
-        }
 
-        $self->run_submissions_report($params);
-
-        #     ### Process UMS Update Report
+            $self->run_submissions_report($params);
+        } catch {
+            my $error = "New submissions for config '" . $config->config_name . "' failed: $_";
+            log_info($error);
+            push @errors, $error;
+        };
     }    #/foreach today config
 
     $sync->{send_sync_report} = "updates";
     while ( my $update_config = $not_todays_configs->next ) {
-        my $params                = $self->build_params( $update_config, $sync );
-        my $config_code           = $params->{config_code};
-        my $config_type           = $params->{umsconfig_type};
-        my $collections_flag_type = $params->{collection_flag_type};
-        my $config_branch_helper  = $params->{config_branch_helper};
-        my $config_branch_where   = $params->{config_branch_where};
-
-        $self->run_update_report_and_clear_paid($params);
-
+        try {
+            my $params = $self->build_params( $update_config, $sync );
+            $self->run_update_report_and_clear_paid($params);
+        } catch {
+            my $error = "Update report for config '" . $update_config->config_name . "' failed: $_";
+            log_info($error);
+            push @errors, $error;
+        };
     }
+
+    die join( "\n", @errors ) . "\n" if @errors;
 
 }    # /cronjob_nightly
 

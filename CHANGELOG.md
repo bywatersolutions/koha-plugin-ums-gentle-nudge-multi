@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Each configuration in the nightly cron now runs in its own try/catch, so one failing configuration no longer stops the others; all errors are reported together at the end of the run
+- The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
+
 ### Fixed
 - Restriction and remove-restriction settings were compared against 'yes' but stored as 1/0, so restrictions were never added and patrons were never cleared from collections
 - Clearing a patron from collections now sets a sort1/sort2 flag to '0' (matching the '1' used when flagging) instead of 'no'
