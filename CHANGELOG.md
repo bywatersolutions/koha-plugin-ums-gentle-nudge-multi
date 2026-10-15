@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Configuration values are checked when a configuration is saved (numbers, day of week, fee age window, flags, date, email addresses, debit types, patron categories, servers, and that an enabled configuration has an SFTP server or UMS email address); the form shows what needs fixing
+
 ### Removed
 - The plugin's reports tool page, which failed whenever a search was run and could have exported the whole Koha action log; it will be rebuilt
 - Unused umshome.tt template
@@ -19,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- Errors when saving a configuration were not shown in the form (except duplicates)
+- The configs API controller did not load Try::Tiny, so its error handling never ran and errors became generic 500 responses
 - Configuration values (patron category codes, attribute codes, day ranges, thresholds, dates, library and group) are now passed to the report queries as bound values instead of being pasted into the SQL; a category code containing a quote previously broke the query
 - An unknown "Fines should use the branch of" setting now fails with a clear error instead of producing invalid SQL
 - Editing a configuration did not load its "Remove minors" setting, so saving could silently turn it on

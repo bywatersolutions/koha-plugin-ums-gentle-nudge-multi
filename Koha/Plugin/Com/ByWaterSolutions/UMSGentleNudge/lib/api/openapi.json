@@ -332,6 +332,9 @@
         "200": {
           "description": "A list of configurations"
         },
+        "400": {
+          "description": "Invalid configuration values; error lists them"
+        },
         "403": {
           "description": "You are not authorized to add configurations"
         },
@@ -583,6 +586,9 @@
       "responses": {
         "200": {
           "description": "Configuration updated"
+        },
+        "400": {
+          "description": "Invalid configuration values; error lists them"
         },
         "403": {
           "description": "You are not authorized to update configurations"

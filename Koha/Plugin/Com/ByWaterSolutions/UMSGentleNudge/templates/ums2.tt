@@ -1034,17 +1034,14 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         $('#UMSConfigModal').modal('hide');
                         loadAll();
                     },
-                    statusCode: {
-                        409: function(xhr) {
-                            alert(xhr.responseJSON.error);
-                        }
-                    },
                     error: function(xhr, status, error) {
                         let message = 'Failed to save config';
-                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                        if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            message += ':\n- ' + xhr.responseJSON.errors.join('\n- ');
+                        } else if (xhr.responseJSON && xhr.responseJSON.error) {
                             message += ': ' + xhr.responseJSON.error;
                         }
-                        //showMessage(message, 'danger');
+                        alert(message);
                     }
                   });
               }

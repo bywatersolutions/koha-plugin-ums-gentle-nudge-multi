@@ -6,6 +6,8 @@ use Mojo::Base 'Mojolicious::Controller';
 use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::Libraries;
 use Koha::Library::Groups;
+use Try::Tiny;
+use UMS::GentleNudge::ConfigValidator;
 
 use JSON;
 
@@ -13,7 +15,7 @@ my $plugin = Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge->new;
 
 =head1 NAME
 
- Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::ConfigController
+Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::ConfigController - REST API controller for UMS configurations
 
 =head1 API
 
@@ -101,12 +103,16 @@ sub add {
         }
     }
 
+    # Legacy: accept debit_type as alias for config_debit_type
+    $body->{config_debit_type} //= delete $body->{debit_type} if exists $body->{debit_type};
+
+    if ( my @errors = UMS::GentleNudge::ConfigValidator::validate($body) ) {
+        return $c->render( status => 400, openapi => { error => join( '; ', @errors ), errors => \@errors } );
+    }
+
     return try {
         my $patron_category_codes = delete $body->{patron_category_codes} // delete $body->{patron_categories};
         my $debit_type_codes      = delete $body->{debit_type_codes};
-
-        # Legacy: accept debit_type as alias for config_debit_type
-        $body->{config_debit_type} //= delete $body->{debit_type} if exists $body->{debit_type};
 
         my $config = $plugin->configs->object_class->new_from_api($body)->store;
         $config->set_debit_types($debit_type_codes);
@@ -154,12 +160,16 @@ sub update {
         $body->{'config_name'} = $library->branchname;
     }
 
+    # Legacy: accept debit_type as alias for config_debit_type
+    $body->{config_debit_type} //= delete $body->{debit_type} if exists $body->{debit_type};
+
+    if ( my @errors = UMS::GentleNudge::ConfigValidator::validate($body) ) {
+        return $c->render( status => 400, openapi => { error => join( '; ', @errors ), errors => \@errors } );
+    }
+
     return try {
         my $patron_category_codes = delete $body->{patron_category_codes} // delete $body->{patron_categories};
         my $debit_type_codes      = delete $body->{debit_type_codes};
-
-        # Legacy: accept debit_type as alias for config_debit_type
-        $body->{config_debit_type} //= delete $body->{debit_type} if exists $body->{debit_type};
 
         $config->set_from_api($body)->store;
         $config->set_debit_types($debit_type_codes)       if $debit_type_codes;
