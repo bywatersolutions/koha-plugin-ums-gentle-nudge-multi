@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 8;
+use Test::More tests => 9;
 use Test::Exception;
 use Test::MockModule;
 use Test::MockObject;
@@ -35,6 +35,7 @@ use Koha::DateUtils qw( dt_from_string );
 use Koha::Account::Lines;
 use Koha::Patron::Attributes;
 use Koha::Patron::Restrictions;
+use Koha::Patron::Debarments qw( AddDebarment );
 use Koha::Patrons;
 
 BEGIN {
@@ -700,4 +701,149 @@ subtest '_upload_report() tests' => sub {
 
     $upload_result = 1;
     lives_ok { $plugin->_upload_report( $params, '/tmp/report.csv', 'report.csv' ) } 'Succeeds when the upload works';
+};
+
+subtest 'run_update_report_and_clear_paid() tests' => sub {
+
+    plan tests => 5;
+
+    my $plugin = $class->new;
+
+    local $Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::archive_dir = tempdir( CLEANUP => 1 );
+
+    my $plugin_mock = Test::MockModule->new($class);
+    $plugin_mock->mock( _upload_report     => sub { } );
+    $plugin_mock->mock( _send_report_email => sub { } );
+    $plugin_mock->mock( retrieve_data      => sub { return } );
+
+    # Builds a library config and a patron at that library who is in
+    # collections, with a collections restriction and the given balance.
+    # Runs the update report and returns whether the patron is still
+    # [ in collections, restricted ].
+    my $run = sub {
+        my ( $balance, %config_values ) = @_;
+
+        my $library = $builder->build_object( { class => 'Koha::Libraries' } );
+        my $config  = $builder->build_object(
+            {
+                class => 'UMS::GentleNudge::Configs',
+                value => {
+                    config_type        => 'library',
+                    branch             => $library->branchcode,
+                    config_group       => undef,
+                    enabled            => 1,
+                    collections_flag   => 'sort1',
+                    exemptions_flag    => 'sort2',
+                    clear_below        => 1,
+                    clear_threshold    => 5,
+                    remove_restriction => 1,
+                    unique_email       => 'ums@example.org',
+                    additional_email   => undef,
+                    config_debit_type  => 'MANUAL',
+                    require_lost       => 0,
+                    sftp_server        => undef,
+                    smtp_server        => undef,
+                    %config_values,
+                }
+            }
+        );
+
+        my $patron = $builder->build_object(
+            {
+                class => 'Koha::Patrons',
+                value => { branchcode => $library->branchcode, sort1 => '1', sort2 => undef, debarred => undef }
+            }
+        );
+        $builder->build_object(
+            {
+                class => 'Koha::Account::Lines',
+                value => {
+                    borrowernumber    => $patron->borrowernumber,
+                    branchcode        => $library->branchcode,
+                    itemnumber        => undef,
+                    debit_type_code   => 'OVERDUE',
+                    credit_type_code  => undef,
+                    amount            => 20,
+                    amountoutstanding => $balance,
+                }
+            }
+        );
+        AddDebarment(
+            {
+                borrowernumber => $patron->borrowernumber,
+                type           => 'MANUAL',
+                comment        => 'Patron sent to collections on 2026-01-01',
+            }
+        );
+
+        my $params = $plugin->build_params(
+            $config,
+            { global_enabled => 1, global_fine_branch => 'patron', send_sync_report => 'updates' }
+        );
+        $plugin->run_update_report_and_clear_paid($params);
+
+        $patron->discard_changes;
+        return [
+            ( $patron->sort1 // '' ) eq '1' ? 1 : 0,
+            Koha::Patron::Restrictions->search( { borrowernumber => $patron->borrowernumber } )->count ? 1 : 0,
+        ];
+    };
+
+    subtest 'clear_below on: cleared at or below clear_threshold' => sub {
+
+        plan tests => 3;
+
+        $schema->storage->txn_begin;
+
+        is_deeply( $run->(3),  [ 0, 0 ], 'Balance below the threshold: cleared and restriction removed' );
+        is_deeply( $run->(5),  [ 0, 0 ], 'Balance at the threshold: cleared and restriction removed' );
+        is_deeply( $run->(10), [ 1, 1 ], 'Balance above the threshold: still in collections' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'clear_below off: cleared only when paid in full' => sub {
+
+        plan tests => 2;
+
+        $schema->storage->txn_begin;
+
+        is_deeply( $run->( 3, clear_below => 0 ), [ 1, 1 ], 'Balance below the threshold: still in collections' );
+        is_deeply( $run->( 0, clear_below => 0 ), [ 0, 0 ], 'Paid in full: cleared and restriction removed' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'remove_restriction off: cleared but restriction kept' => sub {
+
+        plan tests => 1;
+
+        $schema->storage->txn_begin;
+
+        is_deeply( $run->( 3, remove_restriction => 0 ), [ 0, 1 ], 'Cleared from collections, still restricted' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Balance of 1,000,000 or more is compared correctly' => sub {
+
+        plan tests => 1;
+
+        $schema->storage->txn_begin;
+
+        is_deeply( $run->( 1_000_000, clear_threshold => 5 ), [ 1, 1 ], 'Large balance: still in collections' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'No clear_threshold set with clear_below on' => sub {
+
+        plan tests => 1;
+
+        $schema->storage->txn_begin;
+
+        is_deeply( $run->( 0, clear_threshold => undef ), [ 0, 0 ], 'Paid in full: cleared' );
+
+        $schema->storage->txn_rollback;
+    };
 };

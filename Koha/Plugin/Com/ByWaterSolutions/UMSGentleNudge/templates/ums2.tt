@@ -329,7 +329,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="clear_below">Clear flag when balance at or below threshold <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons who have paid off all they owe will have the collections flag removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <label for="clear_below">Clear flag when balance at or below threshold <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons are cleared from collections once their balance is at or below the clear collections flag threshold. If disabled, patrons are only cleared once they have paid in full." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select class="form-control" id="clear_below">
                                         <option value="1">Yes</option>
                                         <option value="0">No</option>
@@ -338,7 +338,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                               </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="clear_threshold">Clear collections flag threshold <i id="info_added" data-bs-toggle="tooltip" title="If set, the patron will be cleared from collections if if they do not exceed this threshold." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <label for="clear_threshold">Clear collections flag threshold <i id="info_added" data-bs-toggle="tooltip" title="Used when clearing at or below the threshold is enabled: the patron will be cleared from collections if their balance does not exceed this threshold." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <div class="input-group">
                                         <div class="input-group-addon">$ </div>
                                         <input type="text" name="clear_threshold" id="clear_threshold" class="form-control" value="[% auto_clear_paid_threshold || 0 %]">
@@ -358,7 +358,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                               </div><!-- /col-md-6 -->
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="remove_restriction">Remove restriction for patrons leaving collections <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons that have paid their debt will have any restrictions added when entering collections removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <label for="remove_restriction">Remove restriction for patrons leaving collections <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons leaving collections will have the restriction added when they entered collections removed automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select name="remove_restriction" id="remove_restriction" class="form-control">
                                         <option value="1" [% IF remove_restriction == "yes" %]selected="selected"[% END %]>Yes</option>
                                         <option value="0" [% IF remove_restriction == "no" %]selected="selected"[% END %]>No</option>

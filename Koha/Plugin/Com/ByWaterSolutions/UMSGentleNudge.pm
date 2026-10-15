@@ -813,16 +813,22 @@ sub run_update_report_and_clear_paid {
             };
 
             my $due = $r->{Due} || 0;
-            $due =~ s/,//;
-            if ( $params->{remove_restriction} && $due <= $params->{clear_threshold} ) {
+            $due =~ s/,//g;
+
+            # With clear_below, patrons are cleared once they have paid down
+            # to clear_threshold; without it, only once they have paid in full
+            my $clear_at = $params->{clear_below} ? ( $params->{clear_threshold} || 0 ) : 0;
+            if ( $due <= $clear_at ) {
                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
-                Koha::Patron::Restrictions->search(
-                    {
-                        borrowernumber => $r->{borrowernumber},
-                        comment        => { 'like' => "Patron sent to collections on %" }
-                    }
-                )->delete();
-                Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
+                if ( $params->{remove_restriction} ) {
+                    Koha::Patron::Restrictions->search(
+                        {
+                            borrowernumber => $r->{borrowernumber},
+                            comment        => { 'like' => "Patron sent to collections on %" }
+                        }
+                    )->delete();
+                    Koha::Patron::Debarments::UpdateBorrowerDebarmentFlags( $r->{borrowernumber} );
+                }
             }
         }
         close $fh;

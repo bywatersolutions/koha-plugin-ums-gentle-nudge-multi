@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- The update report now clears patrons from collections according to "Clear flag when balance at or below threshold" (clear_below): when on, at or below the clear threshold; when off, only once paid in full. "Remove restriction" now only controls whether the collections restriction is lifted, rather than whether patrons are cleared at all
 - New submissions are now sent to collections in a single transaction: if the report cannot be delivered to UMS (by SFTP or the UMS email address), patron flags, restrictions and processing fees are rolled back so the patrons are picked up again on the next run. A configuration with neither an SFTP server nor a UMS email address no longer flags anyone
 - Report delivery failures (SFTP, UMS email, additional email) are all attempted and reported together instead of stopping at the first failure
 - Each configuration in the nightly cron now runs in its own try/catch, so one failing configuration no longer stops the others; all errors are reported together at the end of the run
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- Balances of 1,000,000 or more were compared against the clear threshold incorrectly
 - Exemptions stored in sort1/sort2 were ignored, so exempt patrons were sent to collections
 - New submissions query failed with "Column 'attribute' in WHERE is ambiguous" when both the collections and exemption flags were patron attributes
 - "Require lost fee" setting had no effect; patrons are now only sent to collections when it is on if they have an outstanding lost fee
