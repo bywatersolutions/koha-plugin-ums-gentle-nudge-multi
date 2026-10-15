@@ -292,41 +292,7 @@ sub cronjob_nightly {
             my $config_branch_helper  = $params->{config_branch_helper};
             my $config_branch_where   = $params->{config_branch_where};
 
-            # Clear up archives older than 30 days
-            if ($archive_dir) {
-                if ( -d $archive_dir ) {
-                    my $dt = dt_from_string();
-                    $dt->subtract( days => 30 );
-                    my $age_threshold = $dt->ymd;
-                    opendir my $dir, $archive_dir or die "Cannot open directory: $!";
-                    my @files = readdir $dir;
-                    closedir $dir;
-                    my $thresholds = {
-                        new_submissions => "ums-new-submissions-$age_threshold-$config_code.csv",
-                        sync            => "ums-sync-$age_threshold-$config_code.csv",
-                        updates         => "ums-updates-$age_threshold-$config_code.csv",
-                    };
-
-                    foreach my $f (@files) {
-                        next unless $f =~ /csv$/;
-
-                        my $threshold_filename =
-                              $f =~ /^$config_code-ums-new-submissions/ ? $thresholds->{new_submissions}
-                            : $f =~ /^$config_code-ums-sync/            ? $thresholds->{sync}
-                            : $f =~ /^$config_code-ums-updates/         ? $thresholds->{updates}
-                            :                                             undef;
-
-                        next unless $threshold_filename;
-
-                        if ( $f lt $threshold_filename ) {
-                            unlink( $archive_dir . "/" . $f );
-                        }
-                    }
-                } else {
-                    make_path $archive_dir or die "Failed to create path: $archive_dir";
-
-                }
-            }
+            $self->prune_archives($config_code);
 
             $self->run_submissions_report($params);
         } catch {
@@ -340,6 +306,7 @@ sub cronjob_nightly {
     while ( my $update_config = $not_todays_configs->next ) {
         try {
             my $params = $self->build_params( $update_config, $sync );
+            $self->prune_archives( $params->{config_code} );
             $self->run_update_report_and_clear_paid($params);
         } catch {
             my $error = "Update report for config '" . $update_config->config_name . "' failed: $_";
@@ -351,6 +318,41 @@ sub cronjob_nightly {
     die join( "\n", @errors ) . "\n" if @errors;
 
 }    # /cronjob_nightly
+
+=head3 prune_archives
+
+    $self->prune_archives($config_code);
+
+Deletes this configuration's archived report CSVs (new submissions, sync and
+update reports) that are more than 30 days old. Archives are named
+C<ums-E<lt>typeE<gt>-E<lt>YYYY-MM-DDE<gt>-E<lt>config_codeE<gt>.csv>. Creates the archive
+directory if it does not exist. Does nothing unless
+C<UMS_COLLECTIONS_ARCHIVES_DIR> is set.
+
+=cut
+
+sub prune_archives {
+    my ( $self, $config_code ) = @_;
+
+    return unless $archive_dir;
+
+    unless ( -d $archive_dir ) {
+        make_path $archive_dir or die "Failed to create path: $archive_dir";
+        return;
+    }
+
+    my $cutoff = dt_from_string()->subtract( days => 30 )->ymd;
+
+    opendir my $dir, $archive_dir or die "Cannot open directory: $!";
+    my @files = readdir $dir;
+    closedir $dir;
+
+    foreach my $f (@files) {
+        next unless $f =~ /^ums-(?:new-submissions|sync|updates)-(\d{4}-\d{2}-\d{2})-\Q$config_code\E\.csv$/;
+        my $file_date = $1;
+        unlink( $archive_dir . "/" . $f ) if $file_date lt $cutoff;
+    }
+}
 
 =head3 run_submissions_report
 

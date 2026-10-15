@@ -20,13 +20,16 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 4;
+use Test::More tests => 5;
 use Test::Exception;
 use Test::MockModule;
 
 use t::lib::TestBuilder;
 
+use File::Temp qw( tempdir );
+
 use Koha::Database;
+use Koha::DateUtils qw( dt_from_string );
 use Koha::Patron::Attributes;
 use Koha::Patrons;
 
@@ -237,5 +240,56 @@ subtest 'clear_patron_from_collections() tests' => sub {
         is_deeply( \@warnings, [], 'No "Exiting subroutine via next" warning' );
 
         $schema->storage->txn_rollback;
+    };
+};
+
+subtest 'prune_archives() tests' => sub {
+
+    plan tests => 2;
+
+    my $plugin = $class->new;
+
+    subtest 'Removes only this configuration\'s archives older than 30 days' => sub {
+
+        plan tests => 8;
+
+        my $dir = tempdir( CLEANUP => 1 );
+        local $Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::archive_dir = $dir;
+
+        my $old    = dt_from_string()->subtract( days => 31 )->ymd;
+        my $recent = dt_from_string()->subtract( days => 29 )->ymd;
+
+        my %expect_kept = (
+            "ums-new-submissions-$recent-MAIN.csv" => 1,
+            "ums-updates-$recent-MAIN.csv"         => 1,
+            "ums-new-submissions-$old-MAIN2.csv"   => 1,    # another config
+            "ums-updates-$old-MAINX.csv"           => 1,    # code only differs by suffix
+            "notes-$old-MAIN.csv"                  => 1,    # not a report archive
+        );
+        my @expect_removed = (
+            "ums-new-submissions-$old-MAIN.csv",
+            "ums-sync-$old-MAIN.csv",
+            "ums-updates-$old-MAIN.csv",
+        );
+        for my $f ( keys %expect_kept, @expect_removed ) {
+            open my $fh, '>', "$dir/$f" or die $!;
+            close $fh;
+        }
+
+        $plugin->prune_archives('MAIN');
+
+        ok( !-e "$dir/$_", "Removed $_" ) for @expect_removed;
+        ok( -e "$dir/$_",  "Kept $_" )    for sort keys %expect_kept;
+    };
+
+    subtest 'Creates the archive directory if missing' => sub {
+
+        plan tests => 1;
+
+        my $dir = tempdir( CLEANUP => 1 ) . '/archives';
+        local $Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::archive_dir = $dir;
+
+        $plugin->prune_archives('MAIN');
+        ok( -d $dir, 'Directory created' );
     };
 };
