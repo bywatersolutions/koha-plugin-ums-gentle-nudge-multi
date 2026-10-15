@@ -241,9 +241,18 @@
                                         "sftp_server": {
                                             "type": [
                                                 "string",
+                                                "integer",
                                                 "null"
                                             ],
-                                            "description": "What debit type should be used"
+                                            "description": "ID of the SFTP server reports are uploaded to"
+                                        },
+                                        "smtp_server": {
+                                            "type": [
+                                                "string",
+                                                "integer",
+                                                "null"
+                                            ],
+                                            "description": "ID of the SMTP server reports are emailed through; the default server if empty"
                                         },
                                         "updated_at": {
                                             "type": [
@@ -547,9 +556,18 @@
                 "sftp_server": {
                     "type": [
                         "string",
+                        "integer",
                         "null"
                     ],
-                    "description": "What debit type should be used"
+                    "description": "ID of the SFTP server reports are uploaded to"
+                },
+                "smtp_server": {
+                    "type": [
+                        "string",
+                        "integer",
+                        "null"
+                    ],
+                    "description": "ID of the SMTP server reports are emailed through; the default server if empty"
                 },
                 "updated_at": {
                     "type": [

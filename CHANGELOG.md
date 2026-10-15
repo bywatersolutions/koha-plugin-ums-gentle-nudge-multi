@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- Unused umshome.tt template
+
 ### Changed
 - The update report now clears patrons from collections according to "Clear flag when balance at or below threshold" (clear_below): when on, at or below the clear threshold; when off, only once paid in full. "Remove restriction" now only controls whether the collections restriction is lifted, rather than whether patrons are cleared at all
 - New submissions are now sent to collections in a single transaction: if the report cannot be delivered to UMS (by SFTP or the UMS email address), patron flags, restrictions and processing fees are rolled back so the patrons are picked up again on the next run. A configuration with neither an SFTP server nor a UMS email address no longer flags anyone
@@ -15,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- Editing a configuration did not load its "Remove minors" setting, so saving could silently turn it on
+- The SMTP server selector listed no servers and its choice was never saved, so reports were always emailed through the default SMTP server
+- Editing a configuration without an SFTP server, or creating a new one, kept the SFTP server of the previously opened configuration, which saving then stored
 - Values on the configuration page (library, group, category, debit type, attribute and server names and codes, email addresses) are now HTML-escaped
 - Balances of 1,000,000 or more were compared against the clear threshold incorrectly
 - Exemptions stored in sort1/sort2 were ignored, so exempt patrons were sent to collections

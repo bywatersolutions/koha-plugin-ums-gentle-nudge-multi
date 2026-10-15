@@ -163,8 +163,8 @@ sub configure {
     my $config       = $cgi->param('config');
     my $groups       = Koha::Library::Groups->search( { branchcode => undef }, { order_by => ['title'] } );
     my @debit_types  = Koha::Account::DebitTypes->search()->as_list;
-    my @smtp_servers = Koha::SMTP::Servers->search();
-    my @sftp_servers = Koha::File::Transports->search();
+    my @smtp_servers = Koha::SMTP::Servers->search->as_list;
+    my @sftp_servers = Koha::File::Transports->search->as_list;
     my @group_array  = Koha::Library::Groups->search();
     my @branch_array = Koha::Libraries->search();
     my $action_type  = scalar $cgi->param('step');
@@ -217,8 +217,8 @@ sub configure {
     $template->param(
         groups             => $groups,
         debit_types        => \@debit_types,
-        smtp_servers       => @smtp_servers,
-        sftp_servers       => @sftp_servers,
+        smtp_servers       => \@smtp_servers,
+        sftp_servers       => \@sftp_servers,
         global_enabled     => $self->retrieve_data('global_enabled'),
         global_fine_branch => $self->retrieve_data('global_fine_branch')
     );

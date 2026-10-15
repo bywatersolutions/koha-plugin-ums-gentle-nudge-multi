@@ -398,11 +398,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                   </div><!-- /form-group mb-3 -->
                               </div><!-- /col-md-6 -->
                           </div><!-- /row -->
-                        [% count_sftp_servers = 0 %]
-                        [% FOREACH server IN sftp_servers %]
-                            [% count_sftp_servers = count_smtp_servers + 1 %]
-                        [% END %]
-                        [% IF (count_sftp_servers > 0) %]
+                        [% IF ( sftp_servers.size ) %]
                         <div class="row">
                             <div class="row">
                                 <legend>SFTP Information</legend>
@@ -428,11 +424,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                             [% ELSE %]
                             <div id="sftp_selector_select" />
                             [% END %]
-                        [% count_smtp_servers = 0 %]
-                        [% FOREACH server IN smtp_servers %]
-                            [% count_smtp_servers = count_smtp_servers + 1 %]
-                        [% END %]
-                        [% IF (count_smtp_servers > 0) %]
+                        [% IF ( smtp_servers.size ) %]
                         <div class="row">
                             <div class="row">
                                 <legend>SMTP Information</legend>
@@ -447,7 +439,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                                             <label for="smtp_server" class="required">SMTP server to use: </label>
                                             <select name="smtp_selector" id="smtp_selector_select" class="form-control">
                                             <option class="modal-select-type" value="">Select a server</option>
-                                                [% FOREACH server IN servers %]
+                                                [% FOREACH server IN smtp_servers %]
                                                     <option value="[% server.id | html %]">[% server.name | html %]</option>
                                                 [% END %]
                                             </select><!-- /smtp_selector-->
@@ -648,6 +640,8 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("add_restriction").value = '0';
                         document.getElementById("remove_restriction").value = '0';
                         document.getElementById("fees_threshold").value = '0';
+                        document.getElementById("sftp_selector_select").value = '';
+                        document.getElementById("smtp_selector_select").value = '';
                         document.getElementById("collections_flag").value = 'sort1';
                         document.getElementById("exemption_flag").value = 'sort2';
                         document.getElementById("umsconfig_id_select").value = '';
@@ -674,9 +668,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         if (config.config_type == "global") {
                             document.getElementById("umsconfig_id_select").value = 'global';
                         }
-                        if (config.sftp_server) {
-                            document.getElementById("sftp_selector_select").value = config.sftp_server;
-                        }
+                        // Always set, so a config without a server does not keep the
+                        // previously opened config's server
+                        document.getElementById("sftp_selector_select").value = config.sftp_server ?? '';
+                        document.getElementById("smtp_selector_select").value = config.smtp_server ?? '';
 
                         document.getElementById("umsconfig_id_select").setAttribute("disabled","disabled");
                         document.getElementById("cc_email").value = config.additional_email;
@@ -697,6 +692,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         document.getElementById("processing_fee").value = config.processing_fee;
                         document.getElementById("add_restriction").value = config.restriction;
                         document.getElementById("remove_restriction").value = config.remove_restriction;
+                        document.getElementById("age_limitation").value = [ 1, '1', true ].includes(config.remove_minors) ? '1' : '0';
                         document.getElementById("fees_threshold").value = config.threshold;
                         document.getElementById("unique_email").value = config.unique_email;
                         document.getElementById("require_lost_fee").value = config.require_lost;
@@ -978,8 +974,12 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 var exemption = exemption_select.value;
                 var ignore_before = document.getElementById('fees_created_before_date_filter').value;
                 var sftp = null;
-                [% IF sftp_servers %]
-                sftp = document.getElementById("sftp_selector_select").value;
+                [% IF ( sftp_servers.size ) %]
+                sftp = document.getElementById("sftp_selector_select").value || null;
+                [% END %]
+                var smtp = null;
+                [% IF ( smtp_servers.size ) %]
+                smtp = document.getElementById("smtp_selector_select").value || null;
                 [% END %]
 
                 if (!ignore_before){
@@ -1010,6 +1010,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                     require_lost: $('#require_lost_fee').val(),
                     restriction: $('#add_restriction').val(),
                     sftp_server: sftp,
+                    smtp_server: smtp,
 
                     threshold: $('#fees_threshold').val(),
                     unique_email: $('#unique_email').val()
