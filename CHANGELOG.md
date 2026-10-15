@@ -8,10 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- New submissions are now sent to collections in a single transaction: if the report cannot be delivered to UMS (by SFTP or the UMS email address), patron flags, restrictions and processing fees are rolled back so the patrons are picked up again on the next run. A configuration with neither an SFTP server nor a UMS email address no longer flags anyone
+- Report delivery failures (SFTP, UMS email, additional email) are all attempted and reported together instead of stopping at the first failure
 - Each configuration in the nightly cron now runs in its own try/catch, so one failing configuration no longer stops the others; all errors are reported together at the end of the run
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- SFTP upload never ran because the reports looked up the wrong parameter, and a failed upload was ignored
 - "Item home branch" fine branch setting produced invalid SQL, so reports failed for library and group configurations
 - Archived report CSVs older than 30 days were never deleted because the clean up looked for the wrong file names; update-only configurations' archives are now cleaned up too
 - Restriction and remove-restriction settings were compared against 'yes' but stored as 1/0, so restrictions were never added and patrons were never cleared from collections

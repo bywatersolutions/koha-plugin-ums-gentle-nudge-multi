@@ -16,6 +16,8 @@ use C4::Templates;
 use Koha::Account::DebitTypes;
 require UMS::GentleNudge::CSV;
 use Koha::DateUtils qw(dt_from_string);
+use Koha::Database;
+use Koha::Email;
 use Koha::File::Transports;
 use Koha::Libraries;
 use Koha::Library::Groups;
@@ -33,6 +35,7 @@ use Module::Metadata;
 use Net::SFTP::Foreign;
 use Try::Tiny;
 use POSIX qw( strftime );
+use Scalar::Util qw( blessed );
 
 use constant LOG_INFO_LL  => 1;
 use constant LOG_DEBUG_LL => 2;
@@ -371,6 +374,7 @@ sub run_submissions_report {
     my $dbh           = C4::Context->dbh;
     $dbh->{RaiseError} = 1;    # die if a query has problems
     my $info = {};
+    my @errors;    # Delivery failures that did not stop the report reaching UMS
     try {
         my $sth;
 
@@ -483,10 +487,6 @@ sub run_submissions_report {
 
         log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
 
-### Update new submissions patrons, add fee, mark as being in collections
-        $sth = $dbh->prepare($ums_submission_query);
-        $sth->execute();
-
         my $columns = [
             "borrowernumber",     "surname",
             "firstname",          "cardnumber",
@@ -501,164 +501,220 @@ sub run_submissions_report {
             "email"
         ];
 
-        my $csv = UMS::GentleNudge::CSV->new;
         $archive_dir ||= C4::Context->temporary_directory;
 
         my $filename  = "ums-new-submissions-$params->{date}-$params->{config_code}.csv";
         my $file_path = "$archive_dir/$filename";
-
-        open( my $fh, '>:encoding(UTF-8)', $file_path ) or die "Cannot write to $file_path: $!";
-        $csv->print( $fh, $columns );
-
-        my @ums_new_submissions;
-        while ( my $r = $sth->fetchrow_hashref ) {
-            log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
-
-            my $patron = Koha::Patrons->find( $r->{borrowernumber} );
-            next unless $patron;
-            if ( $params->{restriction} ) {
-                AddDebarment(
-                    {
-                        borrowernumber => $patron->borrowernumber,
-                        expiration     => undef,
-                        type           => 'MANUAL',
-                        comment        => "Patron sent to collections on $params->{date}",
-                    }
-                );
-            }
-
-            if ( $params->{collection_flag_type} eq 'sort' ) {
-                $patron->update( { $params->{collections_flag} => '1' } );
-            }
-            if ( $params->{collection_flag_type} eq 'attribute' ) {
-                my $a = Koha::Patron::Attributes->find(
-                    {
-                        borrowernumber => $patron->id,
-                        code           => $params->{collections_flag},
-                    }
-                );
-
-                if ($a) {
-                    $a->attribute(1)->store();
-                } else {
-                    Koha::Patron::Attribute->new(
-                        {
-                            borrowernumber => $patron->id,
-                            code           => $params->{collections_flag},
-                            attribute      => 1,
-                        }
-                    )->store();
-                }
-            }
-
-            my $processing_fee = $params->{processing_fee};
-            $patron->account->add_debit(
-                {
-                    amount      => $params->{processing_fee},
-                    description => "UMS Processing Fee",
-                    interface   => 'cron',
-                    type        => $params->{config_debit_type},
-                }
-            ) if $processing_fee && $processing_fee > 0;
-            my @row = @{$r}{@$columns};
-            $csv->print( $fh, \@row );
-            ##push( @ums_new_submissions, $r );
-
-        }
-        close $fh;
-
-        log_info("ARCHIVE WRITTEN TO $file_path");
-
-        if ( $params->{sftp_server} ) {
-            my $transport_id = $params->{sftp_server};
-            my $transport    = Koha::File::Transports->find($transport_id);
-            $transport->upload_file( $file_path, $filename );
-        }
-
-        ## Email the results
-
-        my $email_to   = $params->{unique_email};
-        my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-        my $email_cc   = $params->{additional_email};
+        my $count     = 0;
+        my $csv_content;
 
         $info = {
-            count     => scalar @ums_new_submissions,
             filename  => $filename,
             file_path => $file_path,
         };
 
-        open my $csv_in, '<:raw', $file_path or die "Cannot read $file_path: $!";
-        my $csv_content = do { local $/; <$csv_in> };
-        close $csv_in;
+        # Flag, restrict and charge the patrons and send the report to UMS in
+        # one transaction. If the report does not reach UMS, the patron changes
+        # are rolled back so the patrons are picked up again on the next run,
+        # rather than being marked as in collections without UMS knowing.
+        Koha::Database->new->schema->txn_do(
+            sub {
+### Update new submissions patrons, add fee, mark as being in collections
+                $sth = $dbh->prepare($ums_submission_query);
+                $sth->execute();
 
-        foreach my $email_address ( $email_to, $email_cc ) {
-            next unless $email_address;
-            log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
+                my $csv = UMS::GentleNudge::CSV->new;
+                open( my $fh, '>:encoding(UTF-8)', $file_path ) or die "Cannot write to $file_path: $!";
+                $csv->print( $fh, $columns );
 
-            $info->{email_to}   = $email_address;
-            $info->{email_from} = $email_from;
+                while ( my $r = $sth->fetchrow_hashref ) {
+                    log_debug( "QUERY RESULT: " . Data::Dumper::Dumper($r) );
 
-            my $email = Koha::Email->create(
-                {                 
-                    to      => $email_address,
-                    from    => $email_from,
-                    subject => sprintf(
-                        "UMS %s for %s",
-                        ucfirst($type), $params->{config_name}
-                    ),
-                    text_body => 'textbody',
+                    my $patron = Koha::Patrons->find( $r->{borrowernumber} );
+                    next unless $patron;
+                    if ( $params->{restriction} ) {
+                        AddDebarment(
+                            {
+                                borrowernumber => $patron->borrowernumber,
+                                expiration     => undef,
+                                type           => 'MANUAL',
+                                comment        => "Patron sent to collections on $params->{date}",
+                            }
+                        );
+                    }
+
+                    if ( $params->{collection_flag_type} eq 'sort' ) {
+                        $patron->update( { $params->{collections_flag} => '1' } );
+                    }
+                    if ( $params->{collection_flag_type} eq 'attribute' ) {
+                        my $a = Koha::Patron::Attributes->find(
+                            {
+                                borrowernumber => $patron->id,
+                                code           => $params->{collections_flag},
+                            }
+                        );
+
+                        if ($a) {
+                            $a->attribute(1)->store();
+                        } else {
+                            Koha::Patron::Attribute->new(
+                                {
+                                    borrowernumber => $patron->id,
+                                    code           => $params->{collections_flag},
+                                    attribute      => 1,
+                                }
+                            )->store();
+                        }
+                    }
+
+                    my $processing_fee = $params->{processing_fee};
+                    $patron->account->add_debit(
+                        {
+                            amount      => $params->{processing_fee},
+                            description => "UMS Processing Fee",
+                            interface   => 'cron',
+                            type        => $params->{config_debit_type},
+                        }
+                    ) if $processing_fee && $processing_fee > 0;
+                    my @row = @{$r}{@$columns};
+                    $csv->print( $fh, \@row );
+                    $count++;
                 }
-            );
+                close $fh;
+                $info->{count} = $count;
 
-            $email->attach(
-                $csv_content,
-                content_type => "text/csv",
-                filename     => $filename,
-                name         => $filename,
-                disposition  => 'attachment',
-            );
+                log_info("ARCHIVE WRITTEN TO $file_path");
 
+                open my $csv_in, '<:raw', $file_path or die "Cannot read $file_path: $!";
+                $csv_content = do { local $/; <$csv_in> };
+                close $csv_in;
 
-            my $smtp_id = $params->{smtp_server};
-            my $smtp_server;
-            if ($smtp_id) {
+                # The run counts as delivered if any UMS destination got the
+                # report. Failures alongside a success are still reported.
+                my $delivered = 0;
+                my @ums_errors;
+                if ( $params->{sftp_server_id} ) {
+                    try {
+                        $self->_upload_report( $params, $file_path, $filename );
+                        $delivered = 1;
+                    } catch {
+                        push @ums_errors, "SFTP upload failed: $_";
+                    };
+                }
+                if ( $params->{unique_email} ) {
+                    try {
+                        $self->_send_report_email( $params, $params->{unique_email}, $type, $filename, $csv_content );
+                        $delivered = 1;
+                    } catch {
+                        push @ums_errors, "Email to $params->{unique_email} failed: $_";
+                    };
+                }
 
-                $smtp_server = Koha::SMTP::Servers->find($smtp_id);
-            } else {
-                $smtp_server = Koha::SMTP::Servers->get_default;
+                unless ($delivered) {
+                    die "Report was not delivered to UMS, so no patrons were sent to collections: "
+                        . ( @ums_errors ? join( '; ', @ums_errors ) : 'no SFTP server or UMS email address is configured' )
+                        . "\n";
+                }
+                push @errors, @ums_errors;
             }
-            my $transport = $smtp_server->transport;
-            $email->transport($transport);
+        );
 
+        # The library's copy is not needed for UMS to have the report, so a
+        # failure here is reported but does not undo the run.
+        if ( $params->{additional_email} ) {
             try {
-                $email->send_or_die unless $no_email;
+                $self->_send_report_email( $params, $params->{additional_email}, $type, $filename, $csv_content );
             } catch {
-                logaction(
-                    'GentleNudge',        "NEW SUBMISSION _ERROR", undef,
-                    $json->encode($info), 'cron'
-                );
-                $info->{email_failed}  = 'true';
-                $info->{email_address} = $email_address;
-                $info->{email_error}   = $_;
-
-                die "Mail not sent: $_";
+                push @errors, "Email to $params->{additional_email} failed: $_";
             };
         }
 
+        $info->{delivery_errors} = \@errors if @errors;
         logaction(
             'GentleNudge',        "NEW", undef,
             $json->encode($info), 'cron'
         );
 
+        die join( '; ', @errors ) . "\n" if @errors;
+
     } catch {
-        if ( $_->isa('Koha::Exception') ) {
+        if ( blessed $_ && $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
         } else {
-            $info->{error} = $_;
+            $info->{error} = "$_";
         }
 
-        die "error in  run_submissions_report: " . $info->{error};
+        logaction(
+            'GentleNudge',        uc($type) . "_ERROR", undef,
+            $json->encode($info), 'cron'
+        );
+        die "error in run_submissions_report: " . $info->{error};
     };
+}
+
+=head3 _upload_report
+
+    $self->_upload_report( $params, $file_path, $filename );
+
+Uploads a report to the configuration's SFTP server. Dies if the server cannot
+be found or the upload fails.
+
+=cut
+
+sub _upload_report {
+    my ( $self, $params, $file_path, $filename ) = @_;
+
+    my $transport_id = $params->{sftp_server_id};
+    my $transport    = Koha::File::Transports->find($transport_id)
+        or die "SFTP server $transport_id not found\n";
+
+    log_info("UPLOADING $filename TO SFTP SERVER $transport_id");
+    $transport->upload_file( $file_path, $filename )
+        or die "Upload of $filename to SFTP server $transport_id failed\n";
+
+    return 1;
+}
+
+=head3 _send_report_email
+
+    $self->_send_report_email( $params, $email_address, $type, $filename, $csv_content );
+
+Emails a report as a CSV attachment through the configuration's SMTP server,
+or the default one. Dies if the email cannot be sent. Does not send when the
+C<UMS_COLLECTIONS_NO_EMAIL> environment variable is set.
+
+=cut
+
+sub _send_report_email {
+    my ( $self, $params, $email_address, $type, $filename, $csv_content ) = @_;
+
+    log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
+
+    my $email = Koha::Email->create(
+        {
+            to        => $email_address,
+            from      => C4::Context->preference('KohaAdminEmailAddress'),
+            subject   => sprintf( "UMS %s for %s", ucfirst($type), $params->{config_name} ),
+            text_body => 'textbody',
+        }
+    );
+    $email->attach(
+        $csv_content,
+        content_type => "text/csv",
+        filename     => $filename,
+        name         => $filename,
+        disposition  => 'attachment',
+    );
+
+    my $smtp_server =
+          $params->{smtp_server}
+        ? Koha::SMTP::Servers->find( $params->{smtp_server} )
+        : Koha::SMTP::Servers->get_default;
+    $email->transport( $smtp_server->transport );
+
+    $email->send_or_die unless $no_email;
+
+    return 1;
 }
 
 =head3 run_update_report_and_clear_paid
@@ -767,16 +823,6 @@ sub run_update_report_and_clear_paid {
         log_info("ARCHIVE WRITTEN TO $archive_dir/ums-$type-$params->{date}-$params->{config_code}.csv")
             if $archive_dir;
 
-        if ( $params->{sftp_server} ) {
-            my $transport_id = $params->{sftp_server};
-            my $transport    = Koha::File::Transports->find($transport_id);
-            $transport->upload_file( $file_path, $filename );
-        }
-
-        my $email_to   = $params->{unique_email};
-        my $email_from = C4::Context->preference('KohaAdminEmailAddress');
-        my $email_cc   = $params->{additional_email};
-
         $info = {
             count     => scalar @ums_updates,
             filename  => $filename,
@@ -787,58 +833,34 @@ sub run_update_report_and_clear_paid {
         my $csv_content = do { local $/; <$csv_in> };
         close $csv_in;
 
-        foreach my $email_address ( $email_to, $email_cc ) {
-            next unless $email_address;
-            log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
-
-            my $email = Koha::Email->create(
-                {                 
-                    to      => $email_address,
-                    from    => $email_from,
-                    subject => sprintf(
-                        "UMS %s for %s",
-                        ucfirst($type), $params->{config_name}
-                    ),
-                    text_body => 'textbody',
-                }
-            );
-            $email->attach(
-                $csv_content,
-                content_type => "text/csv",
-                filename     => $filename,
-                name         => $filename,
-                disposition  => 'attachment',
-            );
-            my $smtp_server;
-
-            if ( $params->{smtp_server} ) {
-            my $smtp_id = $params->{smtp_server};
-            $smtp_server = Koha::SMTP::Servers->find($smtp_id);
-            } else {
-                $smtp_server = Koha::SMTP::Servers->get_default;
-            }
-            $email->transport( $smtp_server->transport );
-
+        # Try every destination, then report all failures together
+        my @errors;
+        if ( $params->{sftp_server_id} ) {
             try {
-                $email->send_or_die unless $no_email;
+                $self->_upload_report( $params, $file_path, $filename );
             } catch {
-
-                logaction(
-                    'GentleNudge',        uc($type) . "_ERROR", undef,
-                    $json->encode($info), 'cron'
-                );
-
-                die "Mail not sent: $_";
+                push @errors, "SFTP upload failed: $_";
             };
         }
+        foreach my $email_address ( $params->{unique_email}, $params->{additional_email} ) {
+            next unless $email_address;
+            try {
+                $self->_send_report_email( $params, $email_address, $type, $filename, $csv_content );
+            } catch {
+                push @errors, "Email to $email_address failed: $_";
+            };
+        }
+        $info->{delivery_errors} = \@errors if @errors;
 
         logaction(
             'GentleNudge',        uc($type), undef,
             $json->encode($info), 'cron'
         );
 
+        die join( '; ', @errors ) . "\n" if @errors;
+
     } catch {
-        if ( $_->isa('Koha::Exception') ) {
+        if ( blessed $_ && $_->isa('Koha::Exception') ) {
             $info->{error} = $_->error . "\n" . $_->trace->as_string;
         } else {
             $info->{error} = $_;

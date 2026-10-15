@@ -20,9 +20,10 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 6;
+use Test::More tests => 8;
 use Test::Exception;
 use Test::MockModule;
+use Test::MockObject;
 
 use t::lib::TestBuilder;
 
@@ -30,7 +31,9 @@ use File::Temp qw( tempdir );
 
 use Koha::Database;
 use Koha::DateUtils qw( dt_from_string );
+use Koha::Account::Lines;
 use Koha::Patron::Attributes;
+use Koha::Patron::Restrictions;
 use Koha::Patrons;
 
 BEGIN {
@@ -374,4 +377,219 @@ subtest 'build_params() tests' => sub {
     is_deeply( $matching_fines->('item_home'),   [$fine_1],            'item_home: fines for items owned by the library' );
 
     $schema->storage->txn_rollback;
+};
+
+subtest 'run_submissions_report() tests' => sub {
+
+    plan tests => 5;
+
+    my $plugin = $class->new;
+
+    local $Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::archive_dir = tempdir( CLEANUP => 1 );
+
+    # Record deliveries instead of sending, failing any destination in %fail
+    my ( @delivered_to, %fail );
+    my $plugin_mock = Test::MockModule->new($class);
+    $plugin_mock->mock(
+        _upload_report => sub {
+            die "sftp down\n" if $fail{sftp};
+            push @delivered_to, 'sftp';
+        }
+    );
+    $plugin_mock->mock(
+        _send_report_email => sub {
+            my ( $self, $params, $email_address ) = @_;
+            die "smtp down\n" if $fail{$email_address};
+            push @delivered_to, $email_address;
+        }
+    );
+    $plugin_mock->mock( retrieve_data => sub { return } );
+
+    # Builds a library config, plus a patron at that library with a fine old
+    # enough to be sent to collections. Returns the report params and patron.
+    my $setup = sub {
+        my (%config_values) = @_;
+
+        @delivered_to = ();
+        %fail         = ();
+
+        my $library = $builder->build_object( { class => 'Koha::Libraries' } );
+        my $config  = $builder->build_object(
+            {
+                class => 'UMS::GentleNudge::Configs',
+                value => {
+                    config_type        => 'library',
+                    branch             => $library->branchcode,
+                    config_group       => undef,
+                    enabled            => 1,
+                    threshold          => 10,
+                    processing_fee     => 10,
+                    collections_flag   => 'sort1',
+                    exemptions_flag    => 'sort2',
+                    fees_newer         => 90,
+                    fees_older         => 60,
+                    ignore_before      => undef,
+                    restriction        => 1,
+                    remove_minors      => 0,
+                    unique_email       => 'ums@example.org',
+                    additional_email   => 'library@example.org',
+                    config_debit_type  => 'MANUAL',
+                    require_lost       => 0,
+                    sftp_server        => undef,
+                    smtp_server        => undef,
+                    %config_values,
+                }
+            }
+        );
+
+        my $patron = $builder->build_object(
+            { class => 'Koha::Patrons', value => { branchcode => $library->branchcode, sort1 => undef } } );
+        $builder->build_object(
+            {
+                class => 'Koha::Account::Lines',
+                value => {
+                    borrowernumber    => $patron->borrowernumber,
+                    branchcode        => $library->branchcode,
+                    itemnumber        => undef,
+                    debit_type_code   => 'OVERDUE',
+                    credit_type_code  => undef,
+                    amount            => 20,
+                    amountoutstanding => 20,
+                    date              => dt_from_string()->subtract( days => 70 )->ymd,
+                }
+            }
+        );
+
+        my $params = $plugin->build_params(
+            $config,
+            { global_enabled => 1, global_fine_branch => 'patron', send_sync_report => 'new' }
+        );
+        return ( $params, $patron );
+    };
+
+    # What happened to the patron: [ in collections, restricted, charged the processing fee ]
+    my $sent_to_collections = sub {
+        my ($patron) = @_;
+        $patron->discard_changes;
+        return [
+            ( $patron->sort1 // '' ) eq '1' ? 1 : 0,
+            Koha::Patron::Restrictions->search( { borrowernumber => $patron->borrowernumber } )->count ? 1 : 0,
+            Koha::Account::Lines->search(
+                { borrowernumber => $patron->borrowernumber, description => 'UMS Processing Fee' }
+            )->count ? 1 : 0,
+        ];
+    };
+
+    subtest 'Report delivered: patron is sent to collections' => sub {
+
+        plan tests => 3;
+
+        $schema->storage->txn_begin;
+
+        my ( $params, $patron ) = $setup->();
+
+        lives_ok { $plugin->run_submissions_report($params) } 'Does not die';
+        is_deeply( $sent_to_collections->($patron), [ 1, 1, 1 ], 'Patron flagged, restricted and charged' );
+        is_deeply( \@delivered_to, [ 'ums@example.org', 'library@example.org' ], 'Sent to UMS and the library' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'UMS email fails: patron changes are rolled back' => sub {
+
+        plan tests => 3;
+
+        $schema->storage->txn_begin;
+
+        my ( $params, $patron ) = $setup->();
+        $fail{'ums@example.org'} = 1;
+
+        throws_ok { $plugin->run_submissions_report($params) }
+        qr/Report was not delivered to UMS.*Email to ums\@example.org failed: smtp down/,
+            'Dies explaining the report was not delivered';
+        is_deeply( $sent_to_collections->($patron), [ 0, 0, 0 ], 'Patron not flagged, restricted or charged' );
+        is_deeply( \@delivered_to, [], 'Library copy not sent either' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'SFTP fails but UMS email succeeds: run is kept, error reported' => sub {
+
+        plan tests => 3;
+
+        $schema->storage->txn_begin;
+
+        my ( $params, $patron ) = $setup->();
+        $params->{sftp_server_id} = 1;
+        $fail{sftp} = 1;
+
+        throws_ok { $plugin->run_submissions_report($params) } qr/SFTP upload failed: sftp down/,
+            'Dies reporting the SFTP failure';
+        is_deeply( $sent_to_collections->($patron), [ 1, 1, 1 ], 'Patron flagged, restricted and charged' );
+        is_deeply( \@delivered_to, [ 'ums@example.org', 'library@example.org' ], 'Emails still sent' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Library copy fails: run is kept, error reported' => sub {
+
+        plan tests => 2;
+
+        $schema->storage->txn_begin;
+
+        my ( $params, $patron ) = $setup->();
+        $fail{'library@example.org'} = 1;
+
+        throws_ok { $plugin->run_submissions_report($params) } qr/Email to library\@example.org failed: smtp down/,
+            'Dies reporting the failed library copy';
+        is_deeply( $sent_to_collections->($patron), [ 1, 1, 1 ], 'Patron flagged, restricted and charged' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'No UMS destination configured: nothing is changed' => sub {
+
+        plan tests => 3;
+
+        $schema->storage->txn_begin;
+
+        my ( $params, $patron ) = $setup->( unique_email => undef );
+
+        throws_ok { $plugin->run_submissions_report($params) }
+        qr/no SFTP server or UMS email address is configured/,
+            'Dies explaining nothing is configured';
+        is_deeply( $sent_to_collections->($patron), [ 0, 0, 0 ], 'Patron not flagged, restricted or charged' );
+        is_deeply( \@delivered_to, [], 'Nothing sent' );
+
+        $schema->storage->txn_rollback;
+    };
+};
+
+subtest '_upload_report() tests' => sub {
+
+    plan tests => 3;
+
+    my $plugin = $class->new;
+
+    my $upload_result;
+    my $transport = Test::MockObject->new;
+    $transport->mock( upload_file => sub { return $upload_result } );
+
+    my $transports_mock = Test::MockModule->new('Koha::File::Transports');
+    my $found;
+    $transports_mock->mock( find => sub { return $found ? $transport : undef } );
+
+    my $params = { sftp_server_id => 42 };
+
+    $found = 0;
+    throws_ok { $plugin->_upload_report( $params, '/tmp/report.csv', 'report.csv' ) }
+    qr/SFTP server 42 not found/, 'Dies when the SFTP server does not exist';
+
+    $found         = 1;
+    $upload_result = 0;
+    throws_ok { $plugin->_upload_report( $params, '/tmp/report.csv', 'report.csv' ) }
+    qr/Upload of report.csv to SFTP server 42 failed/, 'Dies when upload_file returns false';
+
+    $upload_result = 1;
+    lives_ok { $plugin->_upload_report( $params, '/tmp/report.csv', 'report.csv' ) } 'Succeeds when the upload works';
 };
