@@ -570,20 +570,6 @@ sub run_submissions_report {
             file_path => $file_path,
         };
 
-        foreach my $email_address ( $email_to, $email_cc ) {
-            next unless $email_address;
-            log_info("ATTEMPTING TO SEND NEW SUBMISSIONS REPORT TO $email_address");
-
-            $info->{email_to}   = $email_address;
-            $info->{email_from} = $email_from;
-
-            my $p = {
-                to      => $email_address,
-                from    => $email_from,
-                subject => "UMS New Submissions for $params->{config_name}",
-                text_body => " ",
-            };
-
         open my $csv_in, '<:raw', $file_path or die "Cannot read $file_path: $!";
         my $csv_content = do { local $/; <$csv_in> };
         close $csv_in;
@@ -591,6 +577,10 @@ sub run_submissions_report {
         foreach my $email_address ( $email_to, $email_cc ) {
             next unless $email_address;
             log_info("ATTEMPTING TO SEND ${\(uc($type))} REPORT TO $email_address");
+
+            $info->{email_to}   = $email_address;
+            $info->{email_from} = $email_from;
+
             my $email = Koha::Email->create(
                 {                 
                     to      => $email_address,
@@ -652,7 +642,6 @@ sub run_submissions_report {
 
         die "error in  run_submissions_report: " . $info->{error};
     };
-}
 }
 
 =head3 run_update_report_and_clear_paid
