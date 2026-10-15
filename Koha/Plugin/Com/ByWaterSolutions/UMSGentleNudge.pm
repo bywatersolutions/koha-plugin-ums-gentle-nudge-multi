@@ -83,6 +83,13 @@ our $json = JSON->new;
 $json->pretty(1);
 $json->convert_blessed(1);
 
+=head1 NAME
+
+Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge - Send patrons with
+outstanding fines to Unique Management Services for collections
+
+=head1 METHODS
+
 =head2 Internal methods
 
 
@@ -229,6 +236,12 @@ sub configure {
 #     |;
 # }
 
+=head3 static_routes
+
+Returns the OpenAPI spec for the plugin's static file routes, read from F<staticapi.json>.
+
+=cut
+
 sub static_routes {
     my ( $self, $args ) = @_;
 
@@ -323,6 +336,15 @@ sub cronjob_nightly {
     }
 
 }    # /cronjob_nightly
+
+=head3 run_submissions_report
+
+Finds patrons who meet the configuration's collections criteria and are not
+already flagged, and flags them (optionally adding a restriction and processing
+fee). Writes the results to a CSV and sends it to UMS and any configured
+recipients.
+
+=cut
 
 sub run_submissions_report {
 
@@ -632,6 +654,16 @@ sub run_submissions_report {
     };
 }
 }
+
+=head3 run_update_report_and_clear_paid
+
+Builds the update report of patrons currently flagged for collections, and
+writes it to a CSV for UMS. Patrons whose balance has dropped to the clear
+threshold or below are removed from collections, and their collections
+restriction is lifted, when the configuration has remove_restriction set.
+
+=cut
+
 sub run_update_report_and_clear_paid {
     my ( $self, $params ) = @_;
     my $dbh = C4::Context->dbh;
@@ -814,6 +846,15 @@ sub run_update_report_and_clear_paid {
     };
 }
 
+=head3 clear_patron_from_collections
+
+    $self->clear_patron_from_collections( $params, $borrowernumber );
+
+Resets the patron's collections flag (sort1/sort2 field or patron attribute)
+to 0. Does nothing if the patron cannot be found.
+
+=cut
+
 sub clear_patron_from_collections {
 
     my ( $self, $params, $borrowernumber ) = @_;
@@ -845,6 +886,12 @@ sub clear_patron_from_collections {
 
 }
 
+=head3 api_routes
+
+Returns the plugin's REST API spec, read from F<lib/api/openapi.json>.
+
+=cut
+
 sub api_routes {
     my ($self) = @_;
 
@@ -853,6 +900,12 @@ sub api_routes {
 
     return $spec;
 }
+
+=head3 api_namespace
+
+Returns the namespace the plugin's REST API routes are mounted under.
+
+=cut
 
 sub api_namespace {
     my ($self) = @_;
@@ -931,7 +984,7 @@ sub install() {
                     config_debit_type VARCHAR(191) NOT NULL,
                     # updated_at timestamp NOT NULL COMMENT 'When the config was last updated',
                     require_lost TINYINT(1) NOT NULL COMMENT 'Does patron require a lost fee to go to collections',
-                    smtp_server int(11) NULL COMMENT 'The ID of the SMPT server to use',
+                    smtp_server int(11) NULL COMMENT 'The ID of the SMTP server to use',
                     sftp_server int(11) NULL COMMENT 'The ID of the SFTP server to use',
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
@@ -1169,6 +1222,13 @@ sub uninstall() {
     );
 }
 
+=head3 _log_file
+
+Returns the path of today's log file in F<~/gentle_nudge_logs>, creating the
+directory if needed.
+
+=cut
+
 sub _log_file {
 
     my $home   = $ENV{HOME} || ( getpwuid($<) )[7];
@@ -1178,6 +1238,12 @@ sub _log_file {
     my $date = strftime( "%Y-%m-%d", localtime );
     return File::Spec->catfile( $logdir, "gentle_nudge.$date.log" );
 }
+
+=head3 prune_old_logs
+
+Deletes gentle nudge log files older than 30 days.
+
+=cut
 
 sub prune_old_logs {
 
@@ -1196,6 +1262,14 @@ sub prune_old_logs {
     closedir $dh;
 }
 
+=head3 _log
+
+    _log( $level, $message );
+
+Appends a timestamped line to today's log file, then prunes old logs.
+
+=cut
+
 sub _log {
 
     my ( $level, $msg ) = @_;
@@ -1209,6 +1283,13 @@ sub _log {
     prune_old_logs();
 
 }
+
+=head3 tool
+
+Displays the UMS reports page and, when requested, exports the selected action
+logs as CSV.
+
+=cut
 
 sub tool {
 
@@ -1411,6 +1492,23 @@ my $template = $self->get_template({ file => 'templates/ums_reports.tt' });
 } 
 
 }
+
+=head3 log_info
+
+    log_info($message);
+
+Writes an INFO message to the log file when the C<UMS_COLLECTIONS_DEBUG>
+environment variable is 1 or higher.
+
+=head3 log_debug
+
+Writes a DEBUG message when C<UMS_COLLECTIONS_DEBUG> is 2 or higher.
+
+=head3 log_trace
+
+Writes a TRACE message when C<UMS_COLLECTIONS_DEBUG> is 3 or higher.
+
+=cut
 
 sub log_info  { _log( "INFO",  shift ) if $debug >= 1; }
 sub log_debug { _log( "DEBUG", shift ) if $debug >= 2; }
