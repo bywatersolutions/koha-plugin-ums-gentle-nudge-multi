@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Removed
+- The plugin's reports tool page, which failed whenever a search was run and could have exported the whole Koha action log; it will be rebuilt
 - Unused umshome.tt template
 
 ### Changed
