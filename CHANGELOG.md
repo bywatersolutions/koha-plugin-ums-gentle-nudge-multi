@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- Configuration values (patron category codes, attribute codes, day ranges, thresholds, dates, library and group) are now passed to the report queries as bound values instead of being pasted into the SQL; a category code containing a quote previously broke the query
+- An unknown "Fines should use the branch of" setting now fails with a clear error instead of producing invalid SQL
 - Editing a configuration did not load its "Remove minors" setting, so saving could silently turn it on
 - The SMTP server selector listed no servers and its choice was never saved, so reports were always emailed through the default SMTP server
 - Editing a configuration without an SFTP server, or creating a new one, kept the SFTP server of the previously opened configuration, which saving then stored

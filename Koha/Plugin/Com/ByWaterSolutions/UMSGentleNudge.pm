@@ -287,14 +287,9 @@ sub cronjob_nightly {
 
     while ( my $config = $todays_configs->next ) {
         try {
-            my $params                = $self->build_params( $config, $sync );
-            my $config_code           = $params->{config_code};
-            my $config_type           = $params->{umsconfig_type};
-            my $collections_flag_type = $params->{collection_flag_type};
-            my $config_branch_helper  = $params->{config_branch_helper};
-            my $config_branch_where   = $params->{config_branch_where};
+            my $params = $self->build_params( $config, $sync );
 
-            $self->prune_archives($config_code);
+            $self->prune_archives( $params->{config_code} );
 
             $self->run_submissions_report($params);
         } catch {
@@ -356,6 +351,21 @@ sub prune_archives {
     }
 }
 
+=head3 _sort_column
+
+    my $column = _sort_column($flag);
+
+Returns the borrowers column for a sort1/sort2 collections or exemption flag,
+so it can be used in SQL. Dies for anything else.
+
+=cut
+
+sub _sort_column {
+    my ($flag) = @_;
+    my %allowed = ( sort1 => 'sort1', sort2 => 'sort2' );
+    return $allowed{ $flag // '' } // die "Invalid sort field flag '" . ( $flag // '' ) . "'\n";
+}
+
 =head3 run_submissions_report
 
 Finds patrons who meet the configuration's collections criteria and are not
@@ -375,10 +385,10 @@ sub run_submissions_report {
     my $info = {};
     my @errors;    # Delivery failures that did not stop the report reaching UMS
 
-    # Forced to a number as it is interpolated into the query
     my $processing_fee = sprintf( '%.2f', $params->{processing_fee} || 0 );
     try {
         my $sth;
+        my @binds;    # Placeholder values, in the order they appear in the query
 
         my $ums_submission_query = q{
             SELECT
@@ -414,13 +424,15 @@ sub run_submissions_report {
 
         $ums_submission_query .= qq{
             LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-            AND borrower_attributes.code = ${\ $dbh->quote( $params->{collections_flag} ) }
+            AND borrower_attributes.code = ?
              } if $params->{collection_flag_type} eq 'attribute';
+        push @binds, $params->{collections_flag} if $params->{collection_flag_type} eq 'attribute';
 
         $ums_submission_query .= qq{
             LEFT JOIN borrower_attributes ba_ef ON accountlines.borrowernumber = ba_ef.borrowernumber
-            AND ba_ef.code = ${\ $dbh->quote( $params->{exemptions_flag} ) }
+            AND ba_ef.code = ?
              } if $params->{exemptions_flag_type} eq 'attribute';
+        push @binds, $params->{exemptions_flag} if $params->{exemptions_flag_type} eq 'attribute';
 
         $ums_submission_query .= qq{
             LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
@@ -434,24 +446,29 @@ sub run_submissions_report {
             LEFT JOIN categories ON ( categories.categorycode = borrowers.categorycode )
             LEFT JOIN ( SELECT
                 REPLACE( FORMAT( SUM( accountlines.amountoutstanding ), 2), ',', '' ) AS Due,
-                REPLACE( FORMAT( SUM( accountlines.amountoutstanding ) + $processing_fee, 2), ',', '' ) AS DuePlus,
+                REPLACE( FORMAT( SUM( accountlines.amountoutstanding ) + ?, 2), ',', '' ) AS DuePlus,
                 borrowernumber
             FROM accountlines
             GROUP BY borrowernumber) AS sub ON ( borrowers.borrowernumber = sub.borrowernumber)
-            WHERE DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL $params->{fees_newer} DAY)
-                AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL $params->{fees_older} DAY)
+            WHERE DATE(accountlines.date) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                AND DATE(accountlines.date) <= DATE_SUB(CURDATE(), INTERVAL ? DAY)
             };
+        push @binds, $processing_fee, $params->{fees_newer} // 0, $params->{fees_older} // 0;
 
         if ( @{ $params->{debit_type_codes} } ) {
-            my $codes = join( ',', map { $dbh->quote($_) } @{ $params->{debit_type_codes} } );
+            my @codes = @{ $params->{debit_type_codes} };
             $ums_submission_query .= qq{
-                AND accountlines.debit_type_code IN ( $codes )
+                AND accountlines.debit_type_code IN ( ${\ join( ',', ('?') x @codes ) } )
             };
+            push @binds, @codes;
         }
 
-        $ums_submission_query .= qq{
-                AND ( borrowers.$params->{collections_flag} = 'no' OR borrowers.$params->{collections_flag} IS NULL OR borrowers.$params->{collections_flag} = "" OR borrowers.$params->{collections_flag} = "0")
-            } if $params->{collection_flag_type} eq 'sort';
+        if ( $params->{collection_flag_type} eq 'sort' ) {
+            my $column = _sort_column( $params->{collections_flag} );
+            $ums_submission_query .= qq{
+                AND ( borrowers.$column = 'no' OR borrowers.$column IS NULL OR borrowers.$column = "" OR borrowers.$column = "0")
+            };
+        }
 
         $ums_submission_query .= qq{
                 AND ( borrower_attributes.attribute = 'no' OR borrower_attributes.attribute IS NULL OR borrower_attributes.attribute = "" OR borrower_attributes.attribute = "0" )
@@ -462,19 +479,23 @@ sub run_submissions_report {
                 AND ( ba_ef.attribute = '0' OR ba_ef.attribute IS NULL )
             } if $params->{exemptions_flag_type} eq 'attribute';
 
-        $ums_submission_query .= qq{
-                AND ( borrowers.$params->{exemptions_flag} = 'no' OR borrowers.$params->{exemptions_flag} IS NULL OR borrowers.$params->{exemptions_flag} = "" OR borrowers.$params->{exemptions_flag} = "0")
-            } if $params->{exemptions_flag} && $params->{exemptions_flag_type} eq 'sort';
+        if ( $params->{exemptions_flag} && $params->{exemptions_flag_type} eq 'sort' ) {
+            my $column = _sort_column( $params->{exemptions_flag} );
+            $ums_submission_query .= qq{
+                AND ( borrowers.$column = 'no' OR borrowers.$column IS NULL OR borrowers.$column = "" OR borrowers.$column = "0")
+            };
+        }
 
         $ums_submission_query .= q{
                 AND lost_fees_count.lost_fees_count > 0
             } if $params->{require_lost_fee};
 
         if ( @{ $params->{categorycodes} } ) {
-            my $codes = join( ',', map { qq{"$_"} } @{ $params->{categorycodes} } );
+            my @codes = @{ $params->{categorycodes} };
             $ums_submission_query .= qq{
-                    AND borrowers.categorycode IN ( $codes )
+                    AND borrowers.categorycode IN ( ${\ join( ',', ('?') x @codes ) } )
                 };
+            push @binds, @codes;
         }
 
         if ( $remove_minors == 1 ) {
@@ -482,17 +503,19 @@ sub run_submissions_report {
         }
 
         if ( $params->{ignore_before} ) {
-            $ums_submission_query .= qq{ AND accountlines.date > "$params->{ignore_before}" };
+            $ums_submission_query .= q{ AND accountlines.date > ? };
+            push @binds, $params->{ignore_before};
         }
 
         $ums_submission_query .= qq{
                 $params->{config_branch_helper} 
                 GROUP BY borrowers.borrowernumber
-                    HAVING Sum(amountoutstanding) >= $params->{fees_threshold}
+                    HAVING Sum(amountoutstanding) >= ?
                     ORDER BY borrowers.surname ASC
             };
+        push @binds, @{ $params->{config_branch_binds} }, $params->{fees_threshold} // 0;
 
-        log_debug("UMS SUBMISSION QUERY:\n$ums_submission_query");
+        log_debug( "UMS SUBMISSION QUERY:\n$ums_submission_query\nBIND VALUES: " . join( ', ', map { $_ // 'NULL' } @binds ) );
 
         my $columns = [
             "borrowernumber",     "surname",
@@ -528,7 +551,7 @@ sub run_submissions_report {
             sub {
 ### Update new submissions patrons, add fee, mark as being in collections
                 $sth = $dbh->prepare($ums_submission_query);
-                $sth->execute();
+                $sth->execute(@binds);
 
                 my $csv = UMS::GentleNudge::CSV->new;
                 open( my $fh, '>:encoding(UTF-8)', $file_path ) or die "Cannot write to $file_path: $!";
@@ -752,35 +775,44 @@ sub run_update_report_and_clear_paid {
                         LEFT JOIN borrowers USING(borrowernumber)
                         LEFT JOIN categories USING(categorycode)
          };
-        $ums_update_query .= qq{
+        my @binds;    # Placeholder values, in the order they appear in the query
+
+        if ( $params->{collection_flag_type} eq 'attribute' ) {
+            $ums_update_query .= q{
             LEFT JOIN borrower_attributes ON accountlines.borrowernumber = borrower_attributes.borrowernumber
-            AND code = '$params->{collections_flag}'
-             } if $params->{collection_flag_type} eq 'attribute';
+            AND borrower_attributes.code = ?
+             };
+            push @binds, $params->{collections_flag};
+        }
 
         $ums_update_query .= q{
              WHERE  1=1
          };
 
-        $ums_update_query .= qq{
-             AND ( attribute = '1' OR attribute = 'yes' )
+        $ums_update_query .= q{
+             AND ( borrower_attributes.attribute = '1' OR borrower_attributes.attribute = 'yes' )
          } if $params->{collection_flag_type} eq 'attribute';
 
-        $ums_update_query .= qq{
-             AND ( borrowers.$params->{collections_flag} = 'yes' OR  borrowers.$params->{collections_flag} = '1' )
-         } if $params->{collection_flag_type} eq 'sort';
+        if ( $params->{collection_flag_type} eq 'sort' ) {
+            my $column = _sort_column( $params->{collections_flag} );
+            $ums_update_query .= qq{
+             AND ( borrowers.$column = 'yes' OR  borrowers.$column = '1' )
+         };
+        }
 
         $ums_update_query .= qq{
                 $params->{config_branch_helper} 
             };
+        push @binds, @{ $params->{config_branch_binds} };
         $ums_update_query .= q{
              GROUP BY borrowers.borrowernumber, borrowers.cardnumber
                  ORDER BY borrowers.surname ASC
          };
 
-        log_debug("UMS UPDATE QUERY:\n$ums_update_query");
+        log_debug( "UMS UPDATE QUERY:\n$ums_update_query\nBIND VALUES: " . join( ', ', map { $_ // 'NULL' } @binds ) );
 
         $sth = $dbh->prepare($ums_update_query);
-        $sth->execute();
+        $sth->execute(@binds);
 
         my $columns = [ "borrowernumber", "surname", "firstname", "cardnumber", "Due" ];
 
@@ -1106,6 +1138,8 @@ sub build_params {
         if ( $sync->{global_fine_branch} eq 'accountline' ) {
             $branch_query = "AND accountlines.branchcode ";
         }
+        die "Unknown global_fine_branch setting '" . ( $sync->{global_fine_branch} // '' ) . "'\n"
+            unless $branch_query;
     } else {
         return 0;
     }
@@ -1176,14 +1210,18 @@ sub build_params {
         $config_type = "library";
     }
 
-    my $config_branch_where;
+    # The branch filter is SQL with placeholders; config_branch_binds holds
+    # their values, in order
     my $config_branch_helper;
+    my @config_branch_binds;
     if ( $config_type eq "library" ) {
-        $config_branch_helper = "$branch_query ='$config_code'";
+        $config_branch_helper = "$branch_query = ?";
+        @config_branch_binds  = ($config_code);
     }
     if ( $config_type eq "group" ) {
+        @config_branch_binds  = ($config_code);
         $config_branch_helper = $branch_query . "IN (SELECT library_groups.branchcode 
-                FROM library_groups WHERE library_groups.parent_id = " . $config_code . "
+                FROM library_groups WHERE library_groups.parent_id = ?
                 AND library_groups.branchcode NOT IN 
                         (SELECT koha_plugin_com_bywatersolutions_umsgentlenudge_config.branch 
                         FROM koha_plugin_com_bywatersolutions_umsgentlenudge_config 
@@ -1212,8 +1250,8 @@ sub build_params {
     $params->{exemptions_flag_type} = $exemptions_flag_type;
     $params->{file_id}              = $config_code;
     $params->{config_code}          = $config_code;
-    $params->{config_branch_where}  = $config_branch_where;
     $params->{config_branch_helper} = $config_branch_helper;
+    $params->{config_branch_binds}  = \@config_branch_binds;
     $params->{config_type}          = $config_type;
     return $params;
 

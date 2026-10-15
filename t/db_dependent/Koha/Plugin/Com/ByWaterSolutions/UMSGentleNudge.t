@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 9;
+use Test::More tests => 10;
 use Test::Exception;
 use Test::MockModule;
 use Test::MockObject;
@@ -301,7 +301,7 @@ subtest 'prune_archives() tests' => sub {
 
 subtest 'build_params() tests' => sub {
 
-    plan tests => 3;
+    plan tests => 4;
 
     $schema->storage->txn_begin;
 
@@ -368,7 +368,9 @@ subtest 'build_params() tests' => sub {
                     LEFT JOIN borrowers ON ( accountlines.borrowernumber = borrowers.borrowernumber )
                     WHERE accountlines.accountlines_id IN ( $fine_1, $fine_2, $fine_3 )
                     $params->{config_branch_helper}
-                }
+                },
+                    undef,
+                    @{ $params->{config_branch_binds} }
                 )
             }
         ];
@@ -378,12 +380,15 @@ subtest 'build_params() tests' => sub {
     is_deeply( $matching_fines->('accountline'), [$fine_2],            'accountline: fines created at the library' );
     is_deeply( $matching_fines->('item_home'),   [$fine_1],            'item_home: fines for items owned by the library' );
 
+    throws_ok { $plugin->build_params( $config, { global_enabled => 1, global_fine_branch => 'bogus' } ) }
+    qr/Unknown global_fine_branch setting 'bogus'/, 'Unknown fine branch setting dies';
+
     $schema->storage->txn_rollback;
 };
 
 subtest 'run_submissions_report() tests' => sub {
 
-    plan tests => 8;
+    plan tests => 9;
 
     my $plugin = $class->new;
 
@@ -656,6 +661,23 @@ subtest 'run_submissions_report() tests' => sub {
         $schema->storage->txn_rollback;
     };
 
+    subtest 'Configuration values containing quotes' => sub {
+
+        plan tests => 2;
+
+        $schema->storage->txn_begin;
+
+        my $category = $builder->build_object( { class => 'Koha::Patron::Categories', value => { categorycode => q{Q"'1} } } );
+        my ( $params, $patron ) = $setup->();
+        $patron->set( { categorycode => $category->categorycode } )->store;
+        $params->{categorycodes} = [ $category->categorycode ];
+
+        lives_ok { $plugin->run_submissions_report($params) } 'Query runs';
+        is_deeply( $sent_to_collections->($patron), [ 1, 1, 1 ], 'Patron in the quoted category sent to collections' );
+
+        $schema->storage->txn_rollback;
+    };
+
     subtest 'No UMS destination configured: nothing is changed' => sub {
 
         plan tests => 3;
@@ -846,4 +868,16 @@ subtest 'run_update_report_and_clear_paid() tests' => sub {
 
         $schema->storage->txn_rollback;
     };
+};
+
+subtest '_sort_column() tests' => sub {
+
+    plan tests => 4;
+
+    my $sort_column = \&Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge::_sort_column;
+
+    is( $sort_column->('sort1'), 'sort1', 'sort1 allowed' );
+    is( $sort_column->('sort2'), 'sort2', 'sort2 allowed' );
+    throws_ok { $sort_column->('sort1 = 1 OR 1') } qr/Invalid sort field flag/, 'Anything else dies';
+    throws_ok { $sort_column->(undef) } qr/Invalid sort field flag ''/, 'Undefined dies';
 };
