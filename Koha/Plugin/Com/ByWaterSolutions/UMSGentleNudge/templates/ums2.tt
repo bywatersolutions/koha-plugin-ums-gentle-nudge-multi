@@ -329,7 +329,7 @@ If using another category, the authorized values should be 0 and 1, but the desc
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="clear_below">Clear flag when balance at or below threshold <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons are cleared from collections once their balance is at or below the clear collections flag threshold. If disabled, patrons are only cleared once they have paid in full." data-bs-placement="right" class="fa fa-info-circle"></i></label>
+                                    <label for="clear_below">Clear flag when balance at or below threshold <i id="info_added" data-bs-toggle="tooltip" title="If enabled, patrons are cleared from collections once their balance is at or below the clear collections flag threshold. If disabled, patrons are never cleared automatically." data-bs-placement="right" class="fa fa-info-circle"></i></label>
                                     <select class="form-control" id="clear_below">
                                         <option value="1">Yes</option>
                                         <option value="0">No</option>

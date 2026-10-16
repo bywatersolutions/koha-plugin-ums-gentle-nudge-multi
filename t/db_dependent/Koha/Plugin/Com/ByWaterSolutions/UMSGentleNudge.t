@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 11;
+use Test::More tests => 12;
 use Test::Exception;
 use Test::MockModule;
 use Test::MockObject;
@@ -824,14 +824,14 @@ subtest 'run_update_report_and_clear_paid() tests' => sub {
         $schema->storage->txn_rollback;
     };
 
-    subtest 'clear_below off: cleared only when paid in full' => sub {
+    subtest 'clear_below off: never cleared' => sub {
 
         plan tests => 2;
 
         $schema->storage->txn_begin;
 
         is_deeply( $run->( 3, clear_below => 0 ), [ 1, 1 ], 'Balance below the threshold: still in collections' );
-        is_deeply( $run->( 0, clear_below => 0 ), [ 0, 0 ], 'Paid in full: cleared and restriction removed' );
+        is_deeply( $run->( 0, clear_below => 0 ), [ 1, 1 ], 'Paid in full: still in collections' );
 
         $schema->storage->txn_rollback;
     };
@@ -930,4 +930,188 @@ subtest 'upgrade() tests' => sub {
         'Second config for a library is refused by branch_unique';
 
     $dbh->do("DROP TABLE IF EXISTS $table");
+};
+
+subtest 'migrate_from_unique_collections() tests' => sub {
+
+    plan tests => 3;
+
+    my $old_class = 'Koha::Plugin::Com::ByWaterSolutions::UniqueCollections';
+    my $dbh       = C4::Context->dbh;
+
+    my $set_old = sub {
+        my (%settings) = @_;
+        $dbh->do( 'DELETE FROM plugin_data WHERE plugin_class = ?', undef, $old_class );
+        $dbh->do(
+            'INSERT INTO plugin_data ( plugin_class, plugin_key, plugin_value ) VALUES ( ?, ?, ? )',
+            undef, $old_class, $_, $settings{$_}
+        ) for keys %settings;
+    };
+
+    # Each subtest makes its own global configuration with the install defaults
+    my $new_global = sub {
+        UMS::GentleNudge::Configs->search( { config_type => 'global' } )->delete;
+        return $builder->build_object(
+            {
+                class => 'UMS::GentleNudge::Configs',
+                value => {
+                    config_name        => 'Global',
+                    config_type        => 'global',
+                    branch             => undef,
+                    config_group       => undef,
+                    enabled            => 0,
+                    day_of_week        => 0,
+                    threshold          => 10,
+                    processing_fee     => undef,
+                    config_debit_type  => 'MANUAL',
+                    clear_below        => 0,
+                    clear_threshold    => undef,
+                    require_lost       => 0,
+                    remove_minors      => 0,
+                    fees_newer         => 90,
+                    fees_older         => 60,
+                    ignore_before      => undef,
+                    remove_restriction => 0,
+                    restriction        => 0,
+                    collections_flag   => 'sort1',
+                    exemptions_flag    => 'sort2',
+                    unique_email       => undef,
+                    additional_email   => undef,
+                    sftp_server        => undef,
+                    smtp_server        => undef,
+                }
+            }
+        );
+    };
+
+    subtest 'Nothing to migrate' => sub {
+
+        plan tests => 2;
+
+        $schema->storage->txn_begin;
+
+        my $global = $new_global->();
+        $set_old->( __ENABLED__ => 1, __INSTALLED_VERSION__ => '2.25.1' );
+
+        is(
+            $class->new->migrate_from_unique_collections, undef,
+            'Returns undef when the old plugin was never configured'
+        );
+        is_deeply( $global->get_from_storage->unblessed, $global->unblessed, 'Global configuration unchanged' );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Old settings become the global configuration' => sub {
+
+        plan tests => 27;
+
+        $schema->storage->txn_begin;
+
+        my $global    = $new_global->();
+        my $category  = $builder->build_object( { class => 'Koha::Patron::Categories' } );
+        my $attribute = $builder->build_object( { class => 'Koha::Patron::Attribute::Types' } );
+
+        $set_old->(
+            __ENABLED__                     => 1,
+            run_on_dow                      => 3,
+            require_lost_fee                => 'yes',
+            categorycodes                   => $category->categorycode . ', NOT_A_CATEGORY',
+            debit_type_codes                => 'OVERDUE,LOST',
+            fees_threshold                  => '25.50',
+            processing_fee                  => '10.75',
+            unique_email                    => 'ums@example.com',
+            cc_email                        => 'a@example.com; b@example.com not-an-email',
+            collections_flag                => $attribute->code,
+            fees_starting_age               => 60,
+            fees_ending_age                 => 120,
+            auto_clear_paid                 => 'yes',
+            auto_clear_paid_threshold       => '5',
+            add_restriction                 => 'yes',
+            remove_restriction              => 'no',
+            age_limitation                  => 'yes',
+            fees_created_before_date_filter => '2024-01-15',
+            host                            => 'sftp.example.com',
+            username                        => 'library',
+            password                        => 's3cret',
+            upload_path                     => '',
+            debug                           => 2,
+        );
+
+        my $result = $class->new->migrate_from_unique_collections;
+        $global = $global->get_from_storage;
+
+        is( $result->{config_id},        $global->id,       'Migrated into the global configuration' );
+        is( $global->enabled,            1,                 'Enabled, as the old plugin was' );
+        is( $global->day_of_week,        3,                 'run_on_dow' );
+        is( $global->require_lost,       1,                 'require_lost_fee' );
+        is( $global->threshold,          26,                'fees_threshold rounded up' );
+        is( $global->processing_fee,     10,                'processing_fee rounded down' );
+        is( $global->fees_newer,         120,               'fees_newer is the larger age' );
+        is( $global->fees_older,         60,                'fees_older is the smaller age' );
+        is( $global->clear_below,        1,                 'auto_clear_paid' );
+        is( $global->clear_threshold,    5,                 'auto_clear_paid_threshold' );
+        is( $global->restriction,        1,                 'add_restriction' );
+        is( $global->remove_restriction, 0,                 'remove_restriction' );
+        is( $global->remove_minors,      1,                 'age_limitation' );
+        is( $global->ignore_before,      '2024-01-15',      'fees_created_before_date_filter' );
+        is( $global->collections_flag,   $attribute->code,  'collections_flag' );
+        is( $global->exemptions_flag,    undef,             'No exemptions flag, as the old plugin had none' );
+        is( $global->unique_email,       'ums@example.com', 'unique_email' );
+        is( $global->additional_email,   'a@example.com,b@example.com', 'Valid cc_email addresses' );
+        is_deeply(
+            [ map { $_->categorycode } $global->patron_categories->as_list ],
+            [ $category->categorycode ], 'Known patron categories'
+        );
+        is_deeply( [ sort map { $_->code } $global->debit_types->as_list ], [qw( LOST OVERDUE )], 'Debit types' );
+
+        my $transport = Koha::File::Transports->find( $global->sftp_server );
+        ok( $transport, 'SFTP server created' );
+        is( $transport->host,                'sftp.example.com', 'SFTP host' );
+        is( $transport->user_name,           'library',          'SFTP user' );
+        is( $transport->plain_text_password, 's3cret',           'SFTP password, stored encrypted' );
+        is( $transport->upload_directory,    'incoming/',        'Default upload directory, as the old plugin used' );
+
+        my $warnings = join "\n", @{ $result->{warnings} };
+        like(
+            $warnings, qr/fees_threshold 25.50 rounded to 26.*processing_fee 10.75 rounded to 10/s,
+            'Rounding is reported'
+        );
+        like(
+            $warnings,
+            qr/'not-an-email' is not valid.*NOT_A_CATEGORY.*environment variables/s,
+            'Dropped values and unmigrated settings are reported'
+        );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Unusable settings leave the global configuration disabled' => sub {
+
+        plan tests => 4;
+
+        $schema->storage->txn_begin;
+
+        my $global = $new_global->();
+        $set_old->(
+            __ENABLED__      => 1,
+            run_on_dow       => 1,
+            collections_flag => 'NOT_AN_ATTRIBUTE',
+            fees_threshold   => 'lots',
+        );
+
+        my $result = $class->new->migrate_from_unique_collections;
+        $global = $global->get_from_storage;
+
+        is( $global->enabled,          0,       'Disabled' );
+        is( $global->collections_flag, 'sort1', 'Unknown collections flag left at the default' );
+        is( $global->threshold,        10,      'Threshold that is not a number left at the default' );
+        like(
+            join( "\n", @{ $result->{warnings} } ),
+            qr/collections_flag 'NOT_AN_ATTRIBUTE'.*disabled/,
+            'Reported'
+        );
+
+        $schema->storage->txn_rollback;
+    };
 };

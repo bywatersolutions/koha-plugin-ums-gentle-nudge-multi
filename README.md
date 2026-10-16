@@ -140,6 +140,7 @@ Default: empty
 #### Clear flag when balance at or below threshold
 
 If you would like the collections flag automatically cleared for patrons who have paid their balance to the threshold.
+If set to No, the collections flag is never cleared automatically, even once the balance is paid in full.
 
 Default: No
 Threshold default: $0
