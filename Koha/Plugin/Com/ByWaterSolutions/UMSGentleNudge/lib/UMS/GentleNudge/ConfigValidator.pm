@@ -13,6 +13,7 @@ use Koha::Libraries;
 use Koha::Patron::Attribute::Types;
 use Koha::Patron::Categories;
 use Koha::SMTP::Servers;
+use UMS::GentleNudge::Configs;
 
 =head1 NAME
 
@@ -21,6 +22,7 @@ UMS::GentleNudge::ConfigValidator - Checks configuration values before they are 
 =head1 SYNOPSIS
 
     my @errors = UMS::GentleNudge::ConfigValidator::validate($body);
+    my $conflict = UMS::GentleNudge::ConfigValidator::conflict( $body, $config_id );
 
 =head1 API
 
@@ -155,6 +157,39 @@ sub validate {
         if _is_yes( $data->{enabled} ) && !defined $data->{sftp_server} && !defined $data->{unique_email};
 
     return @errors;
+}
+
+=head3 conflict
+
+    my $message = conflict( $config_data, $config_id );
+
+Returns a message if another configuration already covers what this one
+would: the global configuration, or the same library or library group.
+Pass the C<$config_id> of the configuration being edited so it is not
+counted against itself. Returns undef when there is no conflict.
+
+=cut
+
+sub conflict {
+    my ( $data, $config_id ) = @_;
+
+    my $config_type = $data->{config_type} // '';
+    my ( $search, $message );
+    if ( $config_type eq 'global' ) {
+        $search  = { config_type => 'global' };
+        $message = 'A global configuration already exists.';
+    } elsif ( $config_type eq 'library' ) {
+        $search  = { branch => $data->{branch} };
+        $message = 'A configuration matching this library already exists.';
+    } elsif ( $config_type eq 'group' ) {
+        $search  = { config_group => $data->{config_group} };
+        $message = 'A configuration matching this group already exists.';
+    } else {
+        return;
+    }
+    $search->{config_id} = { '!=' => $config_id } if defined $config_id;
+
+    return UMS::GentleNudge::Configs->search($search)->count ? $message : undef;
 }
 
 =head3 _is_flag

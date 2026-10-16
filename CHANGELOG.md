@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nightly cron now exits early when the plugin is not enabled, instead of erroring on every configuration
 
 ### Fixed
+- A second global configuration could be created, and editing a configuration could move it onto a library or group that already had one; duplicates are now refused when adding and editing, and the database enforces one configuration per library and per group
 - Errors when saving a configuration were not shown in the form (except duplicates)
 - The configs API controller did not load Try::Tiny, so its error handling never ran and errors became generic 500 responses
 - Configuration values (patron category codes, attribute codes, day ranges, thresholds, dates, library and group) are now passed to the report queries as bound values instead of being pasted into the SQL; a category code containing a quote previously broke the query

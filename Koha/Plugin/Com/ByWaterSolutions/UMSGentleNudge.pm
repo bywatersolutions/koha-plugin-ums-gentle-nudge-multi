@@ -114,6 +114,18 @@ sub _table_exists {
     return 0;
 }
 
+=head3 _index_exists (helper)
+
+Method to check if an index exists on a table in Koha.
+
+=cut
+
+sub _index_exists {
+    my ( $self, $table, $index ) = @_;
+    my $rows = C4::Context->dbh->selectall_arrayref( "SHOW INDEX FROM $table WHERE Key_name = ?", undef, $index );
+    return @$rows ? 1 : 0;
+}
+
 =head3 _column_exists (helper)
 
 Method to check if a column exists in a table in Koha.
@@ -1061,6 +1073,8 @@ sub install() {
                     PRIMARY KEY (config_id),
                     KEY branch (branch),
                     KEY config_group (config_group),
+                    UNIQUE KEY branch_unique (branch),
+                    UNIQUE KEY config_group_unique (config_group),
                     KEY smtp_server (smtp_server),
                     KEY sftp_server (sftp_server),
                     CONSTRAINT config_branch FOREIGN KEY (branch) REFERENCES branches (branchcode) ON DElETE CASCADE ON UPDATE CASCADE,
@@ -1266,20 +1280,32 @@ plugin is installed over an existing older version of a plugin
 
 sub upgrade {
     my ( $self, $args ) = @_;
-    my $database_version = $self->retrieve_data('__INSTALLED_VERSION__') || 0;
 
-    if ( $self->_version_compare( $database_version, "2.20.0" ) == -1 ) {
+    my $dbh           = C4::Context->dbh;
+    my $configuration = $self->get_qualified_table_name('config');
 
-        my $configuration = $self->get_qualified_table_name('config');
+    # Only one configuration may cover a library or a library group.
+    # Each step checks first, so upgrade can safely run more than once.
+    for my $key ( [ branch_unique => 'branch' ], [ config_group_unique => 'config_group' ] ) {
+        my ( $name, $column ) = @$key;
+        next if $self->_index_exists( $configuration, $name );
 
-        return 1;
+        my $duplicates = $dbh->selectcol_arrayref(
+            "SELECT $column FROM $configuration WHERE $column IS NOT NULL GROUP BY $column HAVING COUNT(*) > 1");
+        die "Cannot add unique key on $configuration.$column: more than one configuration exists for "
+            . join( ', ', @$duplicates )
+            . ". Delete the extra configurations and upgrade again.\n"
+            if @$duplicates;
+
+        $dbh->do("ALTER TABLE $configuration ADD UNIQUE KEY $name ($column)");
     }
-    $database_version = "3.00.0";
-    $self->store_data( { '__INSTALLED_VERSION__' => $database_version } );
+
     logaction(
-        'GentleNudge',        "UPGRADED", undef,
-        $json->encode($database_version), 'cron'
+        'GentleNudge',          "UPGRADED", undef,
+        $json->encode($VERSION), 'cron'
     );
+
+    return 1;
 }
 
 =head3 uninstall

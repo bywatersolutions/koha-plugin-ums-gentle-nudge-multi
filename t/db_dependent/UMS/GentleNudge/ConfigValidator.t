@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 use t::lib::TestBuilder;
 
@@ -217,6 +217,70 @@ subtest 'validate() tests' => sub {
         );
         is_deeply( $errors_for->( unique_email => '', enabled => '0' ), [], 'Disabled with no destination is allowed' );
     };
+
+    $schema->storage->txn_rollback;
+};
+
+subtest 'conflict() tests' => sub {
+
+    plan tests => 8;
+
+    $schema->storage->txn_begin;
+
+    UMS::GentleNudge::Configs->search->delete;
+
+    my $build_config = sub {
+        my ($values) = @_;
+        return $builder->build_object(
+            {
+                class => 'UMS::GentleNudge::Configs',
+                value => {
+                    branch       => undef,
+                    config_group => undef,
+                    sftp_server  => undef,
+                    smtp_server  => undef,
+                    %$values,
+                }
+            }
+        );
+    };
+
+    my $library     = $builder->build_object( { class => 'Koha::Libraries' } );
+    my $group       = $builder->build_object( { class => 'Koha::Library::Groups' } );
+    my $global      = $build_config->( { config_type => 'global' } );
+    my $library_cfg = $build_config->( { config_type => 'library', branch => $library->branchcode } );
+    my $group_cfg   = $build_config->( { config_type => 'group', config_group => $group->id } );
+
+    my $conflict = \&UMS::GentleNudge::ConfigValidator::conflict;
+
+    is( $conflict->( { config_type => 'global' } ), 'A global configuration already exists.', 'Second global' );
+    is(
+        $conflict->( { config_type => 'library', branch => $library->branchcode } ),
+        'A configuration matching this library already exists.', 'Second config for a library'
+    );
+    is(
+        $conflict->( { config_type => 'group', config_group => $group->id } ),
+        'A configuration matching this group already exists.', 'Second config for a group'
+    );
+
+    my $other_library = $builder->build_object( { class => 'Koha::Libraries' } );
+    is( $conflict->( { config_type => 'library', branch => $other_library->branchcode } ), undef, 'Different library' );
+
+    is( $conflict->( { config_type => 'global' }, $global->config_id ), undef, 'Editing the global config itself' );
+    is(
+        $conflict->( { config_type => 'library', branch => $library->branchcode }, $library_cfg->config_id ),
+        undef, 'Editing a library config without changing its library'
+    );
+
+    my $other_cfg = $build_config->( { config_type => 'library', branch => $other_library->branchcode } );
+    is(
+        $conflict->( { config_type => 'library', branch => $library->branchcode }, $other_cfg->config_id ),
+        'A configuration matching this library already exists.', 'Editing a config onto a library that has one'
+    );
+    is(
+        $conflict->( { config_type => 'global' }, $library_cfg->config_id ),
+        'A global configuration already exists.', 'Changing a library config to global when one exists'
+    );
 
     $schema->storage->txn_rollback;
 };

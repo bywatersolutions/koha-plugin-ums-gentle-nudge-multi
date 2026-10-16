@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 10;
+use Test::More tests => 11;
 use Test::Exception;
 use Test::MockModule;
 use Test::MockObject;
@@ -880,4 +880,52 @@ subtest '_sort_column() tests' => sub {
     is( $sort_column->('sort2'), 'sort2', 'sort2 allowed' );
     throws_ok { $sort_column->('sort1 = 1 OR 1') } qr/Invalid sort field flag/, 'Anything else dies';
     throws_ok { $sort_column->(undef) } qr/Invalid sort field flag ''/, 'Undefined dies';
+};
+
+subtest 'upgrade() tests' => sub {
+
+    plan tests => 6;
+
+    # ALTER TABLE cannot be rolled back, so work on a copy of the config
+    # table without its unique keys
+    my $dbh   = C4::Context->dbh;
+    my $real  = $class->new->get_qualified_table_name('config');
+    my $table = 'ums_gentle_nudge_upgrade_test';
+    $dbh->do("DROP TABLE IF EXISTS $table");
+    $dbh->do("CREATE TABLE $table LIKE $real");
+    for my $key (qw( branch_unique config_group_unique )) {
+        $dbh->do("ALTER TABLE $table DROP INDEX $key") if $class->new->_index_exists( $table, $key );
+    }
+
+    my $plugin_mock = Test::MockModule->new($class);
+    $plugin_mock->mock( get_qualified_table_name => sub { return $table } );
+    $plugin_mock->mock( logaction                => sub { } );
+
+    my $plugin = $class->new;
+    my $insert = sub {
+        $dbh->do(
+            "INSERT INTO $table ( branch, config_group, enabled, config_type, config_debit_type, require_lost ) VALUES ( ?, ?, 0, 'library', 'MANUAL', 0 )",
+            undef, @_
+        );
+    };
+
+    $insert->( 'UPGRADE_A', undef );
+    $insert->( 'UPGRADE_A', undef );
+    throws_ok { $plugin->upgrade } qr/more than one configuration exists for UPGRADE_A/,
+        'Refuses to add the key while duplicates exist';
+
+    $dbh->do("DELETE FROM $table");
+    $insert->( 'UPGRADE_A', 1 );
+    $insert->( 'UPGRADE_B', undef );
+    $insert->( undef,       undef );
+    $insert->( undef,       undef );
+    ok( $plugin->upgrade, 'Upgrade succeeds; repeated NULLs are allowed' );
+    ok( $plugin->_index_exists( $table, 'branch_unique' ),       'branch_unique added' );
+    ok( $plugin->_index_exists( $table, 'config_group_unique' ), 'config_group_unique added' );
+    ok( $plugin->upgrade, 'Running upgrade again succeeds' );
+
+    throws_ok { $insert->( 'UPGRADE_A', undef ) } 'Koha::Exceptions::Object::DuplicateID',
+        'Second config for a library is refused with the exception the API turns into a 409';
+
+    $dbh->do("DROP TABLE IF EXISTS $table");
 };

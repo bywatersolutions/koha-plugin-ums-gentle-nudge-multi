@@ -6,6 +6,7 @@ use Mojo::Base 'Mojolicious::Controller';
 use Koha::Plugin::Com::ByWaterSolutions::UMSGentleNudge;
 use Koha::Libraries;
 use Koha::Library::Groups;
+use Scalar::Util qw( blessed );
 use Try::Tiny;
 use UMS::GentleNudge::ConfigValidator;
 
@@ -82,25 +83,11 @@ sub add {
         my $group = Koha::Library::Groups->find( $body->{'config_group'} );
         return $c->render_resource_not_found("Library group") unless $group;
         $body->{'config_name'} = $group->title;
-        my $match_result = $plugin->configs->check_for_existing_group( $group->id );
-        if ( $match_result->{duplicate_found} ) {
-            return $c->render(
-                status  => 409,
-                openapi => { error => 'A configuration matching this group already exists.' },
-            );
-        }
     }
     if ( $config_type eq "library" ) {
         my $library = Koha::Libraries->find( $body->{'branch'} );
         return $c->render_resource_not_found("Library") unless $library;
         $body->{'config_name'} = $library->branchname;
-        my $match_result = $plugin->configs->check_for_existing_branch( $library->branchcode );
-        if ( $match_result->{duplicate_found} ) {
-            return $c->render(
-                status  => 409,
-                openapi => { error => 'A configuration matching this library already exists.' },
-            );
-        }
     }
 
     # Legacy: accept debit_type as alias for config_debit_type
@@ -108,6 +95,9 @@ sub add {
 
     if ( my @errors = UMS::GentleNudge::ConfigValidator::validate($body) ) {
         return $c->render( status => 400, openapi => { error => join( '; ', @errors ), errors => \@errors } );
+    }
+    if ( my $conflict = UMS::GentleNudge::ConfigValidator::conflict($body) ) {
+        return $c->render( status => 409, openapi => { error => $conflict } );
     }
 
     return try {
@@ -129,7 +119,7 @@ sub add {
             openapi => $c->objects->find( $plugin->configs, $config->config_id ),
         );
     } catch {
-        $c->unhandled_exception($_);
+        return $c->_render_duplicate_or_exception($_);
     };
 }
 
@@ -166,6 +156,9 @@ sub update {
     if ( my @errors = UMS::GentleNudge::ConfigValidator::validate($body) ) {
         return $c->render( status => 400, openapi => { error => join( '; ', @errors ), errors => \@errors } );
     }
+    if ( my $conflict = UMS::GentleNudge::ConfigValidator::conflict( $body, $config->config_id ) ) {
+        return $c->render( status => 409, openapi => { error => $conflict } );
+    }
 
     return try {
         my $patron_category_codes = delete $body->{patron_category_codes} // delete $body->{patron_categories};
@@ -186,7 +179,7 @@ sub update {
             openapi => $c->objects->find( $plugin->configs, $c->param('config_id') ),
         );
     } catch {
-        $c->unhandled_exception($_);
+        return $c->_render_duplicate_or_exception($_);
     };
 }
 
@@ -213,6 +206,26 @@ sub delete {
     } catch {
         $c->unhandled_exception($_);
     };
+}
+
+=head3 _render_duplicate_or_exception
+
+Renders a 409 when storing a configuration hit the unique keys on branch or
+config_group (two saves for the same library or group at the same time),
+otherwise hands the exception to unhandled_exception.
+
+=cut
+
+sub _render_duplicate_or_exception {
+    my ( $c, $error ) = @_;
+
+    if ( blessed $error && $error->isa('Koha::Exceptions::Object::DuplicateID') ) {
+        return $c->render(
+            status  => 409,
+            openapi => { error => 'A configuration for this library or group already exists.' },
+        );
+    }
+    return $c->unhandled_exception($error);
 }
 
 1;
