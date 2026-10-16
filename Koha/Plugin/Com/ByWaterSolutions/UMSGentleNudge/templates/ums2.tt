@@ -19,6 +19,29 @@
           </button><!-- /New library button -->
       </div> <!-- /toolbar -->
     <div>
+        [% IF import_error %]
+            <div class="alert alert-danger" role="alert" id="import_result">
+                <p>The old Gentle Nudge plugin's settings could not be imported. The global configuration was not changed.</p>
+                <pre>[% import_error | html %]</pre>
+            </div>
+        [% ELSIF import_result.nothing_to_import %]
+            <div class="alert alert-warning" role="alert" id="import_result">
+                <p>The old Gentle Nudge plugin has no saved settings to import.</p>
+            </div>
+        [% ELSIF import_result %]
+            <div class="alert alert-info" role="alert" id="import_result">
+                <p>The old Gentle Nudge plugin's settings were imported into the global configuration.</p>
+                [% IF import_result.warnings.size %]
+                    <p>These settings could not be carried over as they were:</p>
+                    <ul>
+                        [% FOREACH warning IN import_result.warnings %]
+                            <li>[% warning | html %]</li>
+                        [% END %]
+                    </ul>
+                [% END %]
+                <p>Check the global configuration, and disable the old plugin before enabling this one.</p>
+            </div>
+        [% END %]
         <div class="page-section">
             <div class="card">
                 <div class="card-header">
@@ -140,6 +163,19 @@
                 <button type="submit" value="Save" class="btn btn-default" type="button">Save</button>
               </fieldset>
               </form>
+            [% IF unique_collections %]
+                <form id="import_form" method="post" class="form">
+                    <input type="hidden" name="class" value="[% CLASS | html %]"/>
+                    <input type="hidden" name="method" value="[% METHOD | html %]"/>
+                    <input type="hidden" name="op" value="cud-import-unique-collections"/>
+                    [% INCLUDE 'csrf-token.inc' %]
+                    <h3>Import from the old Gentle Nudge plugin</h3>
+                    <p>Copies the settings of the single-configuration Gentle Nudge plugin into the global configuration, replacing its current settings. Its SFTP settings are saved as the "UMS Gentle Nudge" SFTP server.</p>
+                    <fieldset class="action">
+                        <button type="submit" class="btn btn-default"><i class="fa fa-file-import"></i> Import settings</button>
+                    </fieldset>
+                </form>
+            [% END %]
                             </div>                        
                       </div><!-- /tab-content -->
                   </div><!-- /card-header -->
@@ -554,6 +590,10 @@ If using another category, the authorized values should be 0 and 1, but the desc
                 var UMSDeleteModal = document.getElementById('UMSDeleteModal');
                 var UMSConfigModal = document.getElementById('UMSConfigModal');
                 var UMSSyncModal   = document.getElementById('UMSSyncModal');
+
+            $('#import_form').on('submit', function () {
+                return confirm(_("Replace the global configuration with the old Gentle Nudge plugin's settings?"));
+            });
 
             UMSDeleteModal.addEventListener('show.bs.modal', function (event){
                 //Button that triggered the modal

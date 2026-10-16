@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- An "Import settings" button on the Plugin settings tab copies the old Gentle Nudge plugin's (UniqueCollections) settings into the global configuration, for installations that already had this plugin before 1.1.0 and so never ran the migration on install. Shown only when the old plugin has saved settings; importing again updates the "UMS Gentle Nudge" SFTP server rather than adding another
+
 ## [1.1.1] - 2026-10-16
 
 ### Fixed
