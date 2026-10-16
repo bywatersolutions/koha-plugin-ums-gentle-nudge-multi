@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.1] - 2026-10-16
 
 ### Fixed
 - Reinstalling the plugin over an existing installation (for example after its plugin_data was lost) no longer turns the plugin off, resets the fine branch setting, adds a second global configuration, or overwrites the global configuration with the old Gentle Nudge plugin's settings
