@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-10-16
 
 ### Added
 - Installing the plugin copies the settings of the single-configuration Gentle Nudge plugin (UniqueCollections) into the global configuration, including its SFTP settings as a new SFTP server. Values that cannot be carried over are written to the action log. The plugin is left disabled until it is turned on
