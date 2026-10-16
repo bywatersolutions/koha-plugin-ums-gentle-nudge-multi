@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 12;
+use Test::More tests => 13;
 use Test::Exception;
 use Test::MockModule;
 use Test::MockObject;
@@ -880,6 +880,86 @@ subtest '_sort_column() tests' => sub {
     is( $sort_column->('sort2'), 'sort2', 'sort2 allowed' );
     throws_ok { $sort_column->('sort1 = 1 OR 1') } qr/Invalid sort field flag/, 'Anything else dies';
     throws_ok { $sort_column->(undef) } qr/Invalid sort field flag ''/, 'Undefined dies';
+};
+
+subtest 'install() tests' => sub {
+
+    plan tests => 3;
+
+    # install runs CREATE TABLE IF NOT EXISTS, which commits, so nothing here
+    # can be rolled back: note what is there and put it back afterwards
+    my $dbh    = C4::Context->dbh;
+    my $plugin = $class->new;
+    my $table  = $plugin->get_qualified_table_name('config');
+
+    my @setting_keys   = qw( global_enabled global_fine_branch );
+    my %saved          = map { $_ => $plugin->retrieve_data($_) } @setting_keys;
+    my $clear_settings = sub {
+        $dbh->do( 'DELETE FROM plugin_data WHERE plugin_class = ? AND plugin_key = ?', undef, $class, $_ )
+            for @setting_keys;
+    };
+    my ($last_config_id) = $dbh->selectrow_array("SELECT COALESCE( MAX(config_id), 0 ) FROM $table");
+    my $globals = sub { $dbh->selectrow_array("SELECT COUNT(*) FROM $table WHERE config_type = 'global'") };
+
+    my ( $migrations, $uninstalls ) = ( 0, 0 );
+    my $plugin_mock = Test::MockModule->new($class);
+    $plugin_mock->mock( logaction                       => sub { } );
+    $plugin_mock->mock( migrate_from_unique_collections => sub { $migrations++ } );
+    $plugin_mock->mock( uninstall                       => sub { $uninstalls++ } );
+
+    # Clean up even if a subtest dies
+    eval {
+
+        subtest 'Running install again keeps the existing configuration' => sub {
+
+            plan tests => 5;
+
+            $plugin->store_data( { global_enabled => '1', global_fine_branch => 'item_home' } );
+            my $before = $globals->();
+
+            ok( $plugin->install, 'Install succeeds' );
+            is( $globals->(),                                 $before,     'No second global configuration added' );
+            is( $migrations,                                  0,           'Old plugin settings not migrated again' );
+            is( $plugin->retrieve_data('global_enabled'),     '1',         'Plugin left enabled' );
+            is( $plugin->retrieve_data('global_fine_branch'), 'item_home', 'Fine branch kept' );
+        };
+
+        # The configuration table is there, so pretend it is not for a new install
+        my $table_exists = $class->can('_table_exists');
+        $plugin_mock->mock( _table_exists => sub { $_[1] eq $table ? 0 : $table_exists->(@_) } );
+
+        subtest 'New install creates the defaults and migrates' => sub {
+
+            plan tests => 5;
+
+            $clear_settings->();
+            my $before = $globals->();
+
+            ok( $plugin->install, 'Install succeeds' );
+            is( $globals->(),                                 $before + 1, 'Default global configuration created' );
+            is( $migrations,                                  1,           'Old plugin settings migrated' );
+            is( $plugin->retrieve_data('global_enabled'),     '0',         'Plugin left disabled' );
+            is( $plugin->retrieve_data('global_fine_branch'), 'patron',    'Fine branch defaults to the patron\'s' );
+        };
+
+        subtest 'Failed migration on a new install drops the tables' => sub {
+
+            plan tests => 2;
+
+            $plugin_mock->mock( migrate_from_unique_collections => sub { die "Migration failed\n" } );
+
+            throws_ok { $plugin->install } qr/Migration failed/, 'The migration error is passed on';
+            is( $uninstalls, 1, 'Tables dropped, so installing again migrates again' );
+        };
+
+    };
+    my $error = $@;
+
+    $dbh->do( "DELETE FROM $table WHERE config_id > ?", undef, $last_config_id );
+    $clear_settings->();
+    $plugin->store_data( { $_ => $saved{$_} } ) for grep { defined $saved{$_} } @setting_keys;
+
+    die $error if $error;
 };
 
 subtest 'upgrade() tests' => sub {

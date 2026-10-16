@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Reinstalling the plugin over an existing installation (for example after its plugin_data was lost) no longer turns the plugin off, resets the fine branch setting, adds a second global configuration, or overwrites the global configuration with the old Gentle Nudge plugin's settings
+
 ## [1.1.0] - 2026-10-16
 
 ### Added
