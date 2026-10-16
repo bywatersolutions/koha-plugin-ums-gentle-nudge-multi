@@ -824,14 +824,14 @@ subtest 'run_update_report_and_clear_paid() tests' => sub {
         $schema->storage->txn_rollback;
     };
 
-    subtest 'clear_below off: cleared only when paid in full' => sub {
+    subtest 'clear_below off: never cleared' => sub {
 
         plan tests => 2;
 
         $schema->storage->txn_begin;
 
         is_deeply( $run->( 3, clear_below => 0 ), [ 1, 1 ], 'Balance below the threshold: still in collections' );
-        is_deeply( $run->( 0, clear_below => 0 ), [ 0, 0 ], 'Paid in full: cleared and restriction removed' );
+        is_deeply( $run->( 0, clear_below => 0 ), [ 1, 1 ], 'Paid in full: still in collections' );
 
         $schema->storage->txn_rollback;
     };

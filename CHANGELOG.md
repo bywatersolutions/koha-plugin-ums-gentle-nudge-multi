@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- With "Clear flag when balance at or below threshold" (clear_below) set to No, patrons are no longer cleared from collections when they pay in full; they are never cleared automatically, as with the old Gentle Nudge plugin's auto clear setting
+
 ### Fixed
 - Configurations scheduled for Sunday never ran new submissions, and were sent update reports on Sundays instead
 

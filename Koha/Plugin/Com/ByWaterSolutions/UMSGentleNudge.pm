@@ -761,9 +761,11 @@ sub _send_report_email {
 =head3 run_update_report_and_clear_paid
 
 Builds the update report of patrons currently flagged for collections, and
-writes it to a CSV for UMS. Patrons whose balance has dropped to the clear
-threshold or below are removed from collections, and their collections
-restriction is lifted, when the configuration has remove_restriction set.
+writes it to a CSV for UMS. When the configuration has clear_below set,
+patrons whose balance has dropped to the clear threshold or below are removed
+from collections, and their collections restriction is lifted when the
+configuration has remove_restriction set. Without clear_below, nobody is
+cleared, as with the old plugin's auto_clear_paid.
 
 =cut
 
@@ -858,10 +860,9 @@ sub run_update_report_and_clear_paid {
             my $due = $r->{Due} || 0;
             $due =~ s/,//g;
 
-            # With clear_below, patrons are cleared once they have paid down
-            # to clear_threshold; without it, only once they have paid in full
-            my $clear_at = $params->{clear_below} ? ( $params->{clear_threshold} || 0 ) : 0;
-            if ( $due <= $clear_at ) {
+            # Patrons are only cleared automatically with clear_below, once
+            # they have paid down to clear_threshold
+            if ( $params->{clear_below} && $due <= ( $params->{clear_threshold} || 0 ) ) {
                 $self->clear_patron_from_collections( $params, $r->{borrowernumber} );
                 if ( $params->{remove_restriction} ) {
                     Koha::Patron::Restrictions->search(
