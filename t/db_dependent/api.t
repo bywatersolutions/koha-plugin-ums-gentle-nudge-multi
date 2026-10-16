@@ -93,14 +93,21 @@ subtest 'add() tests' => sub {
     my $librarian = $builder->build_object( { class => 'Koha::Patrons', value => { flags => 2**19 } } );
     $librarian->set_password( { password => $password, skip_validation => 1 } );
 
+    # Only one global configuration may exist
+    UMS::GentleNudge::Configs->search( { config_type => 'global' } )->delete;
+
     my $body = {
-        config_type  => 'global',
-        config_name  => 'Test Config',
-        enabled      => 1,
-        threshold    => "25",
-        day_of_week  => "1",
-        config_debit_type   => 'manual',
-        require_lost => "0",
+        config_type       => 'global',
+        config_name       => 'Test Config',
+        enabled           => 1,
+        threshold         => "25",
+        day_of_week       => "1",
+        fees_newer        => "90",
+        fees_older        => "0",
+        collections_flag  => 'sort1',
+        unique_email      => 'ums@example.com',
+        config_debit_type => 'MANUAL',
+        require_lost      => "0",
     };
 
     $t->post_ok( "//" . $librarian->userid . ":$password\@$base/configs" => json => $body )
@@ -151,12 +158,19 @@ subtest 'add() duplicate detection tests' => sub {
         }
     );
 
+    # Valid apart from the duplicate, so the conflict check is reached
     my $body = {
-        config_type  => 'library',
-        branch       => $library->branchcode,
-        enabled      => 1,
-        config_debit_type   => 'manual',
-        require_lost => "0",
+        config_type       => 'library',
+        branch            => $library->branchcode,
+        enabled           => 1,
+        threshold         => "25",
+        day_of_week       => "1",
+        fees_newer        => "90",
+        fees_older        => "0",
+        collections_flag  => 'sort1',
+        unique_email      => 'ums@example.com',
+        config_debit_type => 'MANUAL',
+        require_lost      => "0",
     };
 
     $t->post_ok( "//" . $librarian->userid . ":$password\@$base/configs" => json => $body )

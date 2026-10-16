@@ -924,8 +924,10 @@ subtest 'upgrade() tests' => sub {
     ok( $plugin->_index_exists( $table, 'config_group_unique' ), 'config_group_unique added' );
     ok( $plugin->upgrade, 'Running upgrade again succeeds' );
 
-    throws_ok { $insert->( 'UPGRADE_A', undef ) } 'Koha::Exceptions::Object::DuplicateID',
-        'Second config for a library is refused with the exception the API turns into a 409';
+    # Newer Koha turns the DBI error into Koha::Exceptions::Object::DuplicateID
+    throws_ok { $insert->( 'UPGRADE_A', undef ) }
+    qr/Duplicate (?:ID|entry 'UPGRADE_A' for key '(?:\w+\.)?branch_unique')/,
+        'Second config for a library is refused by branch_unique';
 
     $dbh->do("DROP TABLE IF EXISTS $table");
 };

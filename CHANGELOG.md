@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-16
+
 ### Added
 - Configuration values are checked when a configuration is saved (numbers, day of week, fee age window, flags, date, email addresses, debit types, patron categories, servers, and that an enabled configuration has an SFTP server or UMS email address); the form shows what needs fixing
 
