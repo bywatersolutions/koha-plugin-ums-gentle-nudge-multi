@@ -43,7 +43,7 @@ use constant LOG_DEBUG_LL => 2;
 use constant LOG_TRACE_LL => 3;
 
 ## Here we set our plugin version
-our $VERSION         = "1.1.0";
+our $VERSION         = "1.1.1";
 our $MINIMUM_VERSION = "24.05";
 our $debug           = $ENV{UMS_COLLECTIONS_DEBUG}        // 0;
 our $no_email        = $ENV{UMS_COLLECTIONS_NO_EMAIL}     // 0;
@@ -1044,7 +1044,11 @@ sub install() {
 
     my $configuration = $self->get_qualified_table_name('config');
 
-    unless ( $self->_table_exists('config') ) {
+    # Koha runs install again whenever __INSTALLED__ is missing from
+    # plugin_data, so only a new install may set defaults or migrate
+    my $new_install = !$self->_table_exists($configuration);
+
+    if ($new_install) {
         C4::Context->dbh->do( "
         CREATE TABLE IF NOT EXISTS $configuration (
                     config_id int(11) NOT NULL AUTO_INCREMENT COMMENT 'unique id for each config',
@@ -1093,12 +1097,14 @@ sub install() {
         );    #Create default configuration
     }
 
-    $self->store_data(
-        {
-            global_enabled     => '0',
-            global_fine_branch => 'patron',
-        }
+    my %default_settings = (
+        global_enabled     => '0',
+        global_fine_branch => 'patron',
     );
+    for my $key ( keys %default_settings ) {
+        $self->store_data( { $key => $default_settings{$key} } )
+            unless defined $self->retrieve_data($key);
+    }
 
     my $config_debit_type = $self->get_qualified_table_name('config_dt');
     $dbh->do( "
@@ -1122,7 +1128,16 @@ sub install() {
         ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     " );
 
-    $self->migrate_from_unique_collections;
+    if ($new_install) {
+        try {
+            $self->migrate_from_unique_collections;
+        } catch {
+
+            # Drop the new tables so that installing again migrates again
+            $self->uninstall;
+            die $_;
+        };
+    }
 
     my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
     my $info = $self->retrieve_data('__INSTALLED_VERSION__');
@@ -1140,8 +1155,9 @@ sub install() {
 
 Copies the settings of the single-configuration Gentle Nudge plugin
 (Koha::Plugin::Com::ByWaterSolutions::UniqueCollections) into the global
-configuration. Called by C<install>. Does nothing, and returns undef, when
-that plugin has no saved settings.
+configuration. Called by C<install> only when it creates the configuration
+table, so an existing configuration is never overwritten. Does nothing, and
+returns undef, when that plugin has no saved settings.
 
 Old values that cannot be carried over are left at the global configuration's
 defaults and listed in the returned C<warnings>, which are also written to the
