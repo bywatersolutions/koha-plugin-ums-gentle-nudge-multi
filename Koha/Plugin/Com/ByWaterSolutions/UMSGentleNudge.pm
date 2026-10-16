@@ -17,10 +17,12 @@ require UMS::GentleNudge::CSV;
 use Koha::DateUtils qw(dt_from_string);
 use Koha::Database;
 use Koha::Email;
+use Koha::File::Transport;
 use Koha::File::Transports;
 use Koha::Libraries;
 use Koha::Library::Groups;
 use Koha::Patron::Attribute::Types;
+use Koha::Patron::Categories;
 use Koha::Patron::Debarments qw(AddDebarment);
 use Koha::Patrons;
 use Koha::Plugins;
@@ -33,7 +35,7 @@ use JSON;
 use Module::Metadata;
 use Net::SFTP::Foreign;
 use Try::Tiny;
-use POSIX qw( strftime );
+use POSIX qw( ceil floor strftime );
 use Scalar::Util qw( blessed );
 
 use constant LOG_INFO_LL  => 1;
@@ -1120,6 +1122,8 @@ sub install() {
         ) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     " );
 
+    $self->migrate_from_unique_collections;
+
     my $default_config = $dbh->selectcol_arrayref("SELECT config_id FROM $configuration");
     my $info = $self->retrieve_data('__INSTALLED_VERSION__');
 
@@ -1128,6 +1132,192 @@ sub install() {
         $json->encode($info), 'cron'
     );
     return 1;
+}
+
+=head3 migrate_from_unique_collections
+
+    my $result = $plugin->migrate_from_unique_collections;
+
+Copies the settings of the single-configuration Gentle Nudge plugin
+(Koha::Plugin::Com::ByWaterSolutions::UniqueCollections) into the global
+configuration. Called by C<install>. Does nothing, and returns undef, when
+that plugin has no saved settings.
+
+Old values that cannot be carried over are left at the global configuration's
+defaults and listed in the returned C<warnings>, which are also written to the
+action log. Amounts are whole numbers here, so fractional amounts are rounded
+so the plugin never does more than the old settings would have: the threshold
+is rounded up, and the processing fee and clear threshold are rounded down.
+
+The SFTP settings become a new SFTP server in Koha's file transports. The
+global configuration is enabled only if the old plugin was enabled and the
+settings carried over cleanly; the plugin itself (global_enabled) is left off,
+so nothing runs until it is turned on after disabling the old plugin.
+
+=cut
+
+sub migrate_from_unique_collections {
+    my ($self) = @_;
+
+    require UMS::GentleNudge::ConfigValidator;
+
+    my $old_class = 'Koha::Plugin::Com::ByWaterSolutions::UniqueCollections';
+    my %old       = map { @$_ } @{ C4::Context->dbh->selectall_arrayref(
+            'SELECT plugin_key, plugin_value FROM plugin_data WHERE plugin_class = ?',
+            undef, $old_class
+        )
+    };
+
+    # Koha's own keys (__ENABLED__ etc.) are there even if it was never configured
+    return unless grep { !/^__/ } keys %old;
+
+    my $global = $self->configs->search( { config_type => 'global' } )->next
+        or die "No global configuration to migrate the $old_class settings into\n";
+
+    my @warnings;
+    my $data = $global->unblessed;
+    $data->{enabled} = $old{__ENABLED__} ? 1 : 0;
+
+    my $set_number = sub {
+        my ( $field, $old_key, $round ) = @_;
+        my $value = $old{$old_key} // '';
+        $value =~ s/^\s+|\s+$//g;
+        return if $value eq '';
+        if ( $value !~ /^\d+(?:\.\d+)?$/ ) {
+            push @warnings, "$old_key '$value' is not a number; $field left at $data->{$field}";
+            return;
+        }
+        my $whole = $round->($value);
+        push @warnings, "$old_key $value rounded to $whole: $field must be a whole number"
+            if $whole != $value;
+        $data->{$field} = $whole;
+    };
+    my $yes = sub { ( $old{ $_[0] } // '' ) eq 'yes' ? 1 : 0 };
+
+    if ( ( $old{run_on_dow} // '' ) =~ /^[0-6]$/ ) {
+        $data->{day_of_week} = $old{run_on_dow};
+    } else {
+        push @warnings,
+            "run_on_dow '"
+            . ( $old{run_on_dow} // '' )
+            . "' is not a day of the week; day_of_week left at $data->{day_of_week}";
+    }
+
+    $set_number->( threshold       => 'fees_threshold',            \&ceil );
+    $set_number->( processing_fee  => 'processing_fee',            \&floor );
+    $set_number->( clear_threshold => 'auto_clear_paid_threshold', \&floor );
+
+    # The old plugin swapped these so the starting age is the larger, as fees_newer must be
+    $set_number->( fees_newer => 'fees_starting_age', \&floor );
+    $set_number->( fees_older => 'fees_ending_age',   \&floor );
+    @$data{qw( fees_newer fees_older )} = @$data{qw( fees_older fees_newer )}
+        if $data->{fees_newer} < $data->{fees_older};
+
+    $data->{require_lost}       = $yes->('require_lost_fee');
+    $data->{clear_below}        = $yes->('auto_clear_paid');
+    $data->{restriction}        = $yes->('add_restriction');
+    $data->{remove_restriction} = $yes->('remove_restriction');
+    $data->{remove_minors}      = $yes->('age_limitation');
+
+    # The old plugin added its processing fee as a MANUAL debit and had no exemptions flag
+    $data->{config_debit_type} = 'MANUAL';
+    $data->{exemptions_flag}   = undef;
+
+    my $flag = $old{collections_flag} // '';
+    if ( UMS::GentleNudge::ConfigValidator::_is_flag($flag) ) {
+        $data->{collections_flag} = $flag;
+    } else {
+        push @warnings, "collections_flag '$flag' is not sort1, sort2 or a patron attribute type; "
+            . "collections_flag left at $data->{collections_flag} and the global configuration disabled";
+        $data->{enabled} = 0;
+    }
+
+    my $ignore_before = $old{fees_created_before_date_filter} // '';
+    if ( $ignore_before ne '' ) {
+        my $date = eval { dt_from_string($ignore_before) };
+        if ($date) {
+            $data->{ignore_before} = $date->ymd;
+        } else {
+            push @warnings, "fees_created_before_date_filter '$ignore_before' is not a date; ignore_before not set";
+        }
+    }
+
+    my $emails = sub {
+        my ( $old_key, @addresses ) = @_;
+        my @valid;
+        for my $address ( grep { $_ ne '' } @addresses ) {
+            if ( Koha::Email->is_valid($address) ) {
+                push @valid, $address;
+            } else {
+                push @warnings, "$old_key address '$address' is not valid and was dropped";
+            }
+        }
+        return @valid ? join( ',', @valid ) : undef;
+    };
+    $data->{unique_email}     = $emails->( unique_email => $old{unique_email} // '' );
+    $data->{additional_email} = $emails->( cc_email     => split( /[\s,;]+/, $old{cc_email} // '' ) );
+
+    my @categories  = grep { $_ ne '' } map { s/^\s+|\s+$//gr } split /,/, $old{categorycodes}    // '';
+    my @debit_types = grep { $_ ne '' } map { s/^\s+|\s+$//gr } split /,/, $old{debit_type_codes} // '';
+    if ( my @unknown = grep { !Koha::Patron::Categories->find($_) } @categories ) {
+        push @warnings, "Unknown patron categories dropped: " . join( ', ', @unknown );
+        @categories = grep { Koha::Patron::Categories->find($_) } @categories;
+    }
+    if ( my @unknown = grep { !Koha::Account::DebitTypes->find($_) } @debit_types ) {
+        push @warnings, "Unknown debit types dropped: " . join( ', ', @unknown );
+        @debit_types = grep { Koha::Account::DebitTypes->find($_) } @debit_types;
+    }
+
+    push @warnings,
+        "Debug level, no email and archive directory are only read from the "
+        . "UMS_COLLECTIONS_DEBUG, UMS_COLLECTIONS_NO_EMAIL and UMS_COLLECTIONS_ARCHIVES_DIR "
+        . "environment variables and were not migrated"
+        if grep { defined $old{$_} && $old{$_} ne '' && $old{$_} ne '0' } qw( debug no_email archive_dir );
+
+    Koha::Database->schema->txn_do(
+        sub {
+            my $host = $old{host} // '';
+            $host =~ s/^\s+|\s+$//g;
+            if ( $host ne '' ) {
+                my $transport = Koha::File::Transport->new(
+                    {
+                        name             => 'UMS Gentle Nudge',
+                        transport        => 'sftp',
+                        host             => $host,
+                        port             => 22,
+                        auth_mode        => 'password',
+                        user_name        => $old{username},
+                        password         => $old{password},
+                        upload_directory => $old{upload_path} || 'incoming',
+                    }
+                )->store;
+                $data->{sftp_server} = $transport->id;
+            }
+
+            if ( $data->{enabled} && !defined $data->{sftp_server} && !defined $data->{unique_email} ) {
+                push @warnings, "No SFTP host or valid UMS email address; the global configuration was disabled";
+                $data->{enabled} = 0;
+            }
+
+            my %check = (
+                %$data,
+                debit_type_codes      => \@debit_types,
+                patron_category_codes => \@categories,
+            );
+            if ( my @errors = UMS::GentleNudge::ConfigValidator::validate( \%check ) ) {
+                die "Settings from $old_class could not be migrated:\n" . join( "\n", @errors ) . "\n";
+            }
+
+            $global->set($data)->store;
+            $global->set_debit_types( \@debit_types );
+            $global->set_patron_categories( \@categories );
+        }
+    );
+
+    my $result = { config_id => $global->id, warnings => \@warnings };
+    logaction( 'GentleNudge', 'MIGRATED', undef, $json->encode($result), 'cron' );
+
+    return $result;
 }
 
 =head3 build_params
