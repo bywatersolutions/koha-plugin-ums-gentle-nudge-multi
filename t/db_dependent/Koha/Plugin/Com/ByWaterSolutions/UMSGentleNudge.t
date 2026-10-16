@@ -20,7 +20,7 @@
 use Modern::Perl;
 
 use Test::NoWarnings;
-use Test::More tests => 13;
+use Test::More tests => 14;
 use Test::Exception;
 use Test::MockModule;
 use Test::MockObject;
@@ -1012,9 +1012,31 @@ subtest 'upgrade() tests' => sub {
     $dbh->do("DROP TABLE IF EXISTS $table");
 };
 
-subtest 'migrate_from_unique_collections() tests' => sub {
+subtest 'has_unique_collections_settings() tests' => sub {
 
     plan tests => 3;
+
+    $schema->storage->txn_begin;
+
+    my $old_class = 'Koha::Plugin::Com::ByWaterSolutions::UniqueCollections';
+    my $dbh       = C4::Context->dbh;
+    my $plugin    = $class->new;
+
+    $dbh->do( 'DELETE FROM plugin_data WHERE plugin_class = ?', undef, $old_class );
+    is( $plugin->has_unique_collections_settings, 0, 'False when the old plugin was never installed' );
+
+    $dbh->do( q{INSERT INTO plugin_data VALUES ( ?, '__ENABLED__', 1 )}, undef, $old_class );
+    is( $plugin->has_unique_collections_settings, 0, 'False when the old plugin was never configured' );
+
+    $dbh->do( q{INSERT INTO plugin_data VALUES ( ?, 'run_on_dow', 3 )}, undef, $old_class );
+    is( $plugin->has_unique_collections_settings, 1, 'True when the old plugin has settings' );
+
+    $schema->storage->txn_rollback;
+};
+
+subtest 'migrate_from_unique_collections() tests' => sub {
+
+    plan tests => 4;
 
     my $old_class = 'Koha::Plugin::Com::ByWaterSolutions::UniqueCollections';
     my $dbh       = C4::Context->dbh;
@@ -1162,6 +1184,40 @@ subtest 'migrate_from_unique_collections() tests' => sub {
             qr/'not-an-email' is not valid.*NOT_A_CATEGORY.*environment variables/s,
             'Dropped values and unmigrated settings are reported'
         );
+
+        $schema->storage->txn_rollback;
+    };
+
+    subtest 'Importing again updates the SFTP server' => sub {
+
+        plan tests => 4;
+
+        $schema->storage->txn_begin;
+
+        my $global = $new_global->();
+        my %old    = (
+            __ENABLED__      => 1,
+            run_on_dow       => 1,
+            collections_flag => 'sort1',
+            host             => 'sftp.example.com',
+            username         => 'library',
+            password         => 'first',
+        );
+
+        $set_old->(%old);
+        my $first_id = $class->new->migrate_from_unique_collections && $global->get_from_storage->sftp_server;
+
+        $set_old->( %old, password => 'second', upload_path => 'uploads' );
+        $class->new->migrate_from_unique_collections;
+        my $transport = Koha::File::Transports->find( $global->get_from_storage->sftp_server );
+
+        is( $transport->id, $first_id, 'Same SFTP server' );
+        is(
+            Koha::File::Transports->search( { name => 'UMS Gentle Nudge', host => 'sftp.example.com' } )->count, 1,
+            'No second SFTP server added'
+        );
+        is( $transport->plain_text_password, 'second',   'Password updated' );
+        is( $transport->upload_directory,    'uploads/', 'Upload directory updated' );
 
         $schema->storage->txn_rollback;
     };

@@ -198,6 +198,15 @@ sub configure {
                     }
                 );
             }
+        } elsif ( $action eq 'cud-import-unique-collections' ) {
+            try {
+                my $result = $self->migrate_from_unique_collections;
+                $template->param(
+                    import_result => $result // { nothing_to_import => 1 },
+                );
+            } catch {
+                $template->param( import_error => "$_" );
+            };
         } elsif ( $action eq 'sync-report' ) {
             my $sync_id = $cgi->param('config_id');
             my $sync    = { sync_id => $sync_id };
@@ -233,7 +242,8 @@ sub configure {
         smtp_servers       => \@smtp_servers,
         sftp_servers       => \@sftp_servers,
         global_enabled     => $self->retrieve_data('global_enabled'),
-        global_fine_branch => $self->retrieve_data('global_fine_branch')
+        global_fine_branch => $self->retrieve_data('global_fine_branch'),
+        unique_collections => $self->has_unique_collections_settings,
     );
     $self->output_html( $template->output() );
 }
@@ -1149,15 +1159,43 @@ sub install() {
     return 1;
 }
 
+=head3 has_unique_collections_settings
+
+    if ( $plugin->has_unique_collections_settings ) { ... }
+
+Returns true if the single-configuration Gentle Nudge plugin
+(Koha::Plugin::Com::ByWaterSolutions::UniqueCollections) has saved settings
+that C<migrate_from_unique_collections> can import.
+
+=cut
+
+sub has_unique_collections_settings {
+    my ($self) = @_;
+
+    my %old = $self->_unique_collections_settings;
+
+    # Koha's own keys (__ENABLED__ etc.) are there even if it was never configured
+    return ( grep { !/^__/ } keys %old ) ? 1 : 0;
+}
+
+sub _unique_collections_settings {
+    return map { @$_ } @{ C4::Context->dbh->selectall_arrayref(
+            'SELECT plugin_key, plugin_value FROM plugin_data WHERE plugin_class = ?',
+            undef, 'Koha::Plugin::Com::ByWaterSolutions::UniqueCollections'
+        )
+    };
+}
+
 =head3 migrate_from_unique_collections
 
     my $result = $plugin->migrate_from_unique_collections;
 
 Copies the settings of the single-configuration Gentle Nudge plugin
 (Koha::Plugin::Com::ByWaterSolutions::UniqueCollections) into the global
-configuration. Called by C<install> only when it creates the configuration
-table, so an existing configuration is never overwritten. Does nothing, and
-returns undef, when that plugin has no saved settings.
+configuration, overwriting it. Called by C<install> when it creates the
+configuration table, and from the plugin settings tab of the configure page
+for installations that already have one. Does nothing, and returns undef,
+when that plugin has no saved settings.
 
 Old values that cannot be carried over are left at the global configuration's
 defaults and listed in the returned C<warnings>, which are also written to the
@@ -1165,7 +1203,9 @@ action log. Amounts are whole numbers here, so fractional amounts are rounded
 so the plugin never does more than the old settings would have: the threshold
 is rounded up, and the processing fee and clear threshold are rounded down.
 
-The SFTP settings become a new SFTP server in Koha's file transports. The
+The SFTP settings become an SFTP server named "UMS Gentle Nudge" in Koha's file
+transports; importing again updates the one with the same host and user rather
+than adding another. The
 global configuration is enabled only if the old plugin was enabled and the
 settings carried over cleanly; the plugin itself (global_enabled) is left off,
 so nothing runs until it is turned on after disabling the old plugin.
@@ -1178,14 +1218,8 @@ sub migrate_from_unique_collections {
     require UMS::GentleNudge::ConfigValidator;
 
     my $old_class = 'Koha::Plugin::Com::ByWaterSolutions::UniqueCollections';
-    my %old       = map { @$_ } @{ C4::Context->dbh->selectall_arrayref(
-            'SELECT plugin_key, plugin_value FROM plugin_data WHERE plugin_class = ?',
-            undef, $old_class
-        )
-    };
-
-    # Koha's own keys (__ENABLED__ etc.) are there even if it was never configured
-    return unless grep { !/^__/ } keys %old;
+    return unless $self->has_unique_collections_settings;
+    my %old = $self->_unique_collections_settings;
 
     my $global = $self->configs->search( { config_type => 'global' } )->next
         or die "No global configuration to migrate the $old_class settings into\n";
@@ -1295,14 +1329,18 @@ sub migrate_from_unique_collections {
             my $host = $old{host} // '';
             $host =~ s/^\s+|\s+$//g;
             if ( $host ne '' ) {
-                my $transport = Koha::File::Transport->new(
+                my %transport = (
+                    name      => 'UMS Gentle Nudge',
+                    transport => 'sftp',
+                    host      => $host,
+                    user_name => $old{username},
+                );
+                my $transport = Koha::File::Transports->search( \%transport )->next
+                    // Koha::File::Transport->new( \%transport );
+                $transport = $transport->set(
                     {
-                        name             => 'UMS Gentle Nudge',
-                        transport        => 'sftp',
-                        host             => $host,
                         port             => 22,
                         auth_mode        => 'password',
-                        user_name        => $old{username},
                         password         => $old{password},
                         upload_directory => $old{upload_path} || 'incoming',
                     }
