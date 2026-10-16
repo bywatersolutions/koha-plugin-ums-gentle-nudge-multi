@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Configurations scheduled for Sunday never ran new submissions, and were sent update reports on Sundays instead
+
 ## [1.0.0] - 2026-10-16
 
 ### Added

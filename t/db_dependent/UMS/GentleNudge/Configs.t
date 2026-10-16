@@ -19,7 +19,7 @@
 
 use Modern::Perl;
 
-use Test::More tests => 1;
+use Test::More tests => 2;
 use Test::MockModule;
 use t::lib::TestBuilder;
 
@@ -126,6 +126,54 @@ subtest 'today_enabled_configs() tests' => sub {
     ok(
         !( grep { $_ == $config_wed_disabled->config_id } @thu_ids ),
         'After switching to Thursday, still excludes disabled configs'
+    );
+
+    $schema->storage->txn_rollback;
+};
+
+subtest 'Sunday configurations' => sub {
+
+    plan tests => 4;
+
+    $schema->storage->txn_begin;
+
+    # day_of_week stores Sunday as 0; DateTime counts Sunday as 7
+    my $sunday = DateTime->new( year => 2026, month => 6, day => 21 );
+    my $monday = DateTime->new( year => 2026, month => 6, day => 22 );
+    my $today  = $sunday;
+
+    my $mock_configs = Test::MockModule->new('UMS::GentleNudge::Configs');
+    $mock_configs->mock( 'dt_from_string', sub { return $today->clone } );
+
+    my $config = $builder->build_object(
+        {
+            class => 'UMS::GentleNudge::Configs',
+            value => {
+                enabled           => 1,
+                day_of_week       => 0,
+                config_type       => 'global',
+                config_debit_type => 'MANUAL',
+                require_lost      => 0,
+            },
+        }
+    );
+
+    my $includes = sub {
+        my ($configs) = @_;
+        return ( grep { $_->config_id == $config->config_id } $configs->as_list ) ? 1 : 0;
+    };
+
+    ok( $includes->( UMS::GentleNudge::Configs->today_enabled_configs ), 'Sunday config runs on Sunday' );
+    ok(
+        !$includes->( UMS::GentleNudge::Configs->not_today_enabled_configs ),
+        'Sunday config is not an update run on Sunday'
+    );
+
+    $today = $monday;
+    ok( !$includes->( UMS::GentleNudge::Configs->today_enabled_configs ), 'Sunday config does not run on Monday' );
+    ok(
+        $includes->( UMS::GentleNudge::Configs->not_today_enabled_configs ),
+        'Sunday config is an update run on Monday'
     );
 
     $schema->storage->txn_rollback;

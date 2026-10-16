@@ -32,6 +32,17 @@ sub object_class {
     return 'UMS::GentleNudge::Config';
 }
 
+=head3 _today_day_of_week
+
+Today's day of the week as stored in day_of_week: 0 (Sunday) to 6 (Saturday).
+DateTime counts Monday as 1 and Sunday as 7.
+
+=cut
+
+sub _today_day_of_week {
+    return dt_from_string->day_of_week % 7;
+}
+
 =head3 today_enabled_configs
 
     my $configs = UMS::GentleNudge::Configs->today_enabled_configs;
@@ -43,7 +54,7 @@ Returns the resultset of configs that are enabled and scheduled for today.
 sub today_enabled_configs {
     my ($self) = @_;
 
-    my $dow = dt_from_string->day_of_week;
+    my $dow = _today_day_of_week();
 
     return $self->search(
         {
@@ -63,7 +74,7 @@ Returns the resultset of configs that are enabled and not scheduled for today
 sub not_today_enabled_configs {
     my ($self) = @_;
 
-    my $dow = dt_from_string->day_of_week;
+    my $dow = _today_day_of_week();
     return $self->search(
         {
             enabled     => 1,
