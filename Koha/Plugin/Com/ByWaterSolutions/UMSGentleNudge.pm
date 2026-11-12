@@ -57,8 +57,7 @@ our $metadata = {
     minimum_version => $MINIMUM_VERSION,
     maximum_version => undef,
     version         => $VERSION,
-    description     =>
-        'Plugin to forward messages to Unique Collections for processing and sending with multiple configurations',
+    description     => 'Plugin to forward messages to Unique Collections for processing and sending with multiple configurations',
     plugin_title => "UMS Collections Multi-Configuration",
 };
 
